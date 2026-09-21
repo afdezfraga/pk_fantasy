@@ -1,0 +1,42 @@
+@import 'tailwindcss';
+
+/*
+ * Dark by default: this gets used on phones, on a sofa, mid-battle.
+ * Tier colours are shared by the market, squad lists and the draft board, so a Pokémon reads
+ * the same everywhere.
+ */
+@theme {
+  --color-surface: #0f1117;
+  --color-panel: #171a23;
+  --color-panel-2: #1e222e;
+  --color-line: #2a2f3d;
+  --color-ink: #e8eaf0;
+  --color-muted: #949cb0;
+  --color-accent: #ffcb05;
+  --color-accent-ink: #1b1d25;
+  --color-positive: #4ade80;
+  --color-negative: #f87171;
+
+  --color-tier-s: #ff5c5c;
+  --color-tier-aplus: #ff9f43;
+  --color-tier-a: #ffd93d;
+  --color-tier-b: #6bcB77;
+  --color-tier-c: #4d96ff;
+  --color-tier-d: #9b8fd6;
+  --color-tier-ur: #6b7280;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--color-surface);
+  color: var(--color-ink);
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Tabular figures everywhere money is shown, so columns of prices line up. */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}

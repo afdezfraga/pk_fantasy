@@ -1,0 +1,148 @@
+{
+  "_comment": [
+    "Competitive tiers, used as the primary input to Pokémon pricing.",
+    "",
+    "FORMAT: DOUBLES (VGC). Champions is a doubles game — 4v4, bring six pick four — and the",
+    "doubles meta is very different from singles. Incineroar is S tier here on utility (Intimidate,",
+    "Fake Out, pivoting) while a singles list puts it mid-table; Hisuian Samurott is the reverse.",
+    "If your league plays singles instead, replace these lists with a singles tier list — nothing",
+    "else needs to change.",
+    "",
+    "Edit freely: this is the commissioner's balance lever, and house rules beat any public list.",
+    "Names are matched case-insensitively against each roster entry's species name, regional-form",
+    "label, Mega label and alternate-form label, so 'Wash Rotom', 'Alolan Ninetales' and",
+    "'Mega Charizard Y' all resolve. Anything that fails to match is reported by",
+    "`npm run roster:build` rather than ignored, so typos surface immediately.",
+    "",
+    "`baseTiersIncludeMegas` says whether the tiers above already account for a species' Mega.",
+    "This doubles source does — Staraptor is S precisely because of Mega Staraptor — so Mega",
+    "tiers are shown for information but must NOT promote the species again, or Eelektross gets",
+    "counted as S twice over. If you swap in a tier list that ranks base forms only, set this to",
+    "false and each species will inherit the best tier its Megas reach.",
+    "",
+    "Anything absent is `defaultTier` (UR), and is priced on base stats instead — see",
+    "computeBaseValue in config/economy.ts."
+  ],
+  "source": "Game8 Pokémon Champions doubles tier list, cross-checked against championscalc doubles usage rankings (Regulation M-B/M-C), captured 2026-09-11",
+  "sourceUrl": "https://game8.co/games/Pokemon-Champions/archives/593883",
+  "format": "doubles",
+  "updated": "2026-09-11",
+  "defaultTier": "UR",
+  "baseTiersIncludeMegas": true,
+
+  "tiers": {
+    "S": [
+      "Garchomp",
+      "Sinistcha",
+      "Basculegion",
+      "Whimsicott",
+      "Kingambit",
+      "Staraptor",
+      "Incineroar",
+      "Charizard",
+      "Raichu",
+      "Pelipper",
+      "Rillaboom"
+    ],
+
+    "A+": [
+      "Sneasler",
+      "Archaludon",
+      "Grimmsnarl",
+      "Sylveon",
+      "Swampert",
+      "Metagross",
+      "Farigiraf",
+      "Eternal Flower Floette",
+      "Gholdengo",
+      "Aerodactyl",
+      "Annihilape",
+      "Mawile",
+      "Sableye",
+      "Alolan Ninetales",
+      "Indeedee"
+    ],
+
+    "A": [
+      "Torkoal",
+      "Froslass",
+      "Talonflame",
+      "Wash Rotom",
+      "Glimmora",
+      "Delphox",
+      "Dragonite",
+      "Tyranitar",
+      "Blastoise",
+      "Milotic",
+      "Venusaur",
+      "Hydreigon",
+      "Politoed",
+      "Tsareena",
+      "Gengar"
+    ],
+
+    "B": [
+      "Kangaskhan",
+      "Pyroar",
+      "Gardevoir",
+      "Corviknight",
+      "Scrafty",
+      "Vivillon",
+      "Eelektross",
+      "Scovillain",
+      "Primarina",
+      "Ceruledge",
+      "Scizor",
+      "Excadrill",
+      "Kommo-o",
+      "Blaziken",
+      "Meowscarada"
+    ],
+
+    "C": [
+      "Dragalge",
+      "Hisuian Arcanine",
+      "Gyarados",
+      "Meganium",
+      "Gallade",
+      "Aegislash",
+      "Heat Rotom",
+      "Sceptile",
+      "Mamoswine",
+      "Malamar",
+      "Volcarona",
+      "Clefable",
+      "Hisuian Typhlosion",
+      "Hatterene"
+    ],
+
+    "D": [
+      "Lycanroc",
+      "Kleavor",
+      "Oranguru",
+      "Overqwil",
+      "Vanilluxe",
+      "Hisuian Zoroark",
+      "Espathra",
+      "Toxapex",
+      "Heliolisk",
+      "Lucario",
+      "Hisuian Samurott",
+      "Weavile",
+      "Tinkaton"
+    ]
+  },
+
+  "megaTiers": {
+    "_comment": "Megas ranked on their own merit. Only the S tier is published by the source; the rest inherit their base species' tier for display purposes.",
+    "S": [
+      "Mega Charizard Y",
+      "Mega Metagross",
+      "Mega Scrafty",
+      "Mega Gengar",
+      "Mega Eelektross",
+      "Mega Staraptor",
+      "Mega Floette"
+    ]
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "_comment": [
+    "The Pokémon Champions ranked ladder, as the league understands it.",
+    "",
+    "Tiers run bottom to top. Within a tier, ranks count DOWN from `ranks` to 1 — you start at",
+    "Poké Ball 4 and climb to Poké Ball 1, then promote to Great Ball 4. Each rank has a progress",
+    "gauge; wins fill it, losses drain it.",
+    "",
+    "Players report their own standing, so these numbers only drive ordering, the progress helper",
+    "and promotion bonuses — the app never simulates the ladder, it records what you tell it.",
+    "",
+    "If the game's numbers differ from these, edit this file; nothing in the code hard-codes a",
+    "tier name or a gauge size."
+  ],
+
+  "_progressComment": "Each tier needs a different number of gauge steps to clear a rank: Poké Ball 3, Great Ball 4, Ultra Ball 5. Set per tier below.",
+  "winProgress": 1,
+  "streakBonusProgress": 1,
+  "lossProgress": -1,
+
+  "tiers": [
+    { "key": "beginner", "name": "Beginner", "short": "BEG", "ranks": 0, "progress": 0, "color": "#6b7280" },
+    { "key": "poke", "name": "Poké Ball", "short": "PB", "ranks": 4, "progress": 3, "color": "#e35d5d" },
+    { "key": "great", "name": "Great Ball", "short": "GB", "ranks": 4, "progress": 4, "color": "#4d96ff" },
+    { "key": "ultra", "name": "Ultra Ball", "short": "UB", "ranks": 4, "progress": 5, "color": "#f0a30a" },
+    { "key": "master", "name": "Master Ball", "short": "MB", "ranks": 4, "progress": 5, "color": "#b06cd6", "rated": true },
+    { "key": "champion", "name": "Champion", "short": "CH", "ranks": 0, "progress": 0, "color": "#ffcb05", "rated": true }
+  ],
+
+  "_promotionComment": "Paid once, the first time a team reaches each rank or tier. Climbing is the point of the league, so it pays properly.",
+  "promotionBonus": {
+    "rank": 4000,
+    "tier": 20000
+  }
+}

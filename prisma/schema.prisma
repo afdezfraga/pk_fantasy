@@ -1,0 +1,466 @@
+// Pokémon Champions fantasy league.
+//
+// Money is always an integer number of Pokédollars. `Team.cash` is a cached balance; the
+// `Transaction` ledger is the source of truth, and `verifyLedger()` asserts they agree.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// --- identity ---------------------------------------------------------------------------------
+
+model User {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  displayName  String
+  passwordHash String
+  createdAt    DateTime @default(now())
+
+  sessions       Session[]
+  teams          Team[]
+  leaguesRunning League[]   @relation("Commissioner")
+  auditLogs      AuditLog[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// --- league -----------------------------------------------------------------------------------
+
+model League {
+  id             String   @id @default(cuid())
+  name           String
+  inviteCode     String   @unique
+  commissionerId String
+  /// JSON `LeagueConfig` — budget, squad limits. See config/economy.ts.
+  config         String
+  /// SETUP | DRAFTING | ACTIVE | COMPLETE
+  status         String   @default("SETUP")
+  /// Current round. Advancing it clears waivers and resets the per-round pay cap.
+  round          Int      @default(1)
+  createdAt      DateTime @default(now())
+
+  commissioner User          @relation("Commissioner", fields: [commissionerId], references: [id])
+  teams        Team[]
+  ownerships   Ownership[]
+  transactions Transaction[]
+  auditLogs    AuditLog[]
+  draft        Draft?
+  matches      Match[]
+  trades       TradeOffer[]
+  events       LeagueEvent[]
+}
+
+model Team {
+  id       String @id @default(cuid())
+  leagueId String
+  userId   String
+  name     String
+
+  /// Cached balance. The Transaction ledger is authoritative.
+  cash           Int
+  /// Lower is better; reset by reverse standings each season.
+  waiverPriority Int @default(0)
+
+  /// Club crest, drawn as SVG from these unless an image has been uploaded.
+  /// shield | round | diamond | banner
+  crestShape     String    @default("shield")
+  crestPrimary   String    @default("#1f2ec8")
+  crestSecondary String    @default("#ffcb05")
+  /// A Pokémon slug (drawn from its sprite) or an icon key from app/components/ClubCrest.tsx.
+  crestEmblem    String?
+  /// Up to three letters across the crest. Defaults to the team's initials.
+  crestInitials  String?
+  /// Uploaded crest (PNG, JPEG or WebP), which replaces the drawn one. Kept in the database so a
+  /// backup is still just the one file.
+  crestImage     Bytes?
+  crestMime      String?
+  crestUpdatedAt DateTime?
+
+  wins   Int @default(0)
+  losses Int @default(0)
+  /// Accumulated fantasy points from per-Pokémon stats. Colour, not the league table — league
+  /// position comes from the Champions ladder standing below.
+  points Int @default(0)
+
+  /// Current Champions ladder standing, self-reported. See lib/ladder.ts.
+  tierKey         String  @default("beginner")
+  /// Counts down within a tier: 4 is the bottom, 1 the top. Null for tiers without sub-ranks.
+  ladderRank      Int?
+  ladderProgress  Int     @default(0)
+  /// Rated tiers (Master Ball, Champion) use a rating and a global placement instead of a gauge.
+  ratingPoints    Float?
+  globalPlacement Int?
+  /// Highest rung ever reached, so promotion bonuses are paid once and never farmed by
+  /// demoting and re-climbing.
+  bestRung        Int     @default(0)
+  standingUpdated DateTime?
+
+  createdAt DateTime @default(now())
+
+  league       League        @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  user         User          @relation(fields: [userId], references: [id])
+  ownerships   Ownership[]
+  transactions Transaction[]
+  draftPicks   DraftPick[]
+  homeMatches  Match[]       @relation("HomeMatches")
+  awayMatches  Match[]       @relation("AwayMatches")
+  tradesOffered  TradeOffer[] @relation("TradesOffered")
+  tradesReceived TradeOffer[] @relation("TradesReceived")
+  rankEvents     RankEvent[]
+
+  @@unique([leagueId, userId])
+  @@index([leagueId])
+}
+
+// --- catalog ----------------------------------------------------------------------------------
+
+/// Seeded from data/roster.json by `npm run db:seed`. Global — shared by every league.
+model Pokemon {
+  /// Stable, readable identity: "charizard", "raichu-alola". Also the URL segment.
+  slug         String  @id
+  dex          Int
+  name         String
+  form         String?
+  /// JSON string[] — e.g. ["Fire","Flying"].
+  types        String
+  bst          Int
+  /// BST of the strongest form it can reach in battle (Mega, or a transform like Palafin Hero).
+  effectiveBst Int
+  /// S | A+ | A | B | C | D | UR
+  tier         String
+  baseValue    Int
+  /// Big illustrated artwork — a hero image, too heavy for a list.
+  spriteUrl    String?
+  /// The 96px game sprite, for rows in the market, draft board and history.
+  iconUrl      String?
+  /// The Pokémon HOME render, for squad and lineup cards.
+  homeUrl      String?
+  /// JSON MegaForm[].
+  megas        String
+  /// JSON AlternateForm[].
+  alternateForms String
+  /// False once a roster rotation drops this Pokémon from Champions entirely.
+  legal        Boolean @default(true)
+  /// On the roster, but obtainable only by transfer or event. Signable unless the league says no.
+  restricted   Boolean @default(false)
+  notes        String?
+  versionAdded String
+
+  ownerships Ownership[]
+
+  @@index([tier])
+  @@index([dex])
+}
+
+// --- ownership --------------------------------------------------------------------------------
+
+/// Who owns which Pokémon, per league. The heart of the app.
+///
+/// A row exists for every legal Pokémon as soon as a league is created, with `teamId = null`
+/// meaning "free agent". Acquisition is a guarded UPDATE against the expected current owner,
+/// so two simultaneous buys cannot both succeed.
+model Ownership {
+  id          String @id @default(cuid())
+  leagueId    String
+  pokemonSlug String
+  /// Null means unowned — a free agent or on waivers.
+  teamId      String?
+
+  /// FREE_AGENT | OWNED | WAIVERS
+  status String @default("FREE_AGENT")
+
+  /// In the team's starting lineup. Only starters may be reported in a match.
+  /// Cleared whenever the Pokémon leaves a squad, so a sale can't leave a phantom slot filled.
+  starter Boolean @default(false)
+  /// Shirt number and order within the squad, set by dragging cards around. Null sorts last.
+  slot    Int?
+  /// The club captain. At most one per team.
+  captain Boolean @default(false)
+
+  /// What the current owner paid.
+  acquiredPrice Int       @default(0)
+  /// Owned: what the Pokémon is worth, and what selling it pays. Starts at a fraction of the price
+  /// and moves with every match it plays (see VALUE_RULES). Free agent: the shop price.
+  marketValue   Int
+  acquiredAt    DateTime?
+  /// Season after which the contract expires and the Pokémon hits free agency.
+  contractUntil Int?
+  /// While on waivers, the round at which it opens to the market.
+  waiverUntil   Int?
+
+  league  League  @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  pokemon Pokemon @relation(fields: [pokemonSlug], references: [slug])
+  team    Team?   @relation(fields: [teamId], references: [id], onDelete: SetNull)
+
+  /// THE rule: at most one owner per Pokémon per league.
+  @@unique([leagueId, pokemonSlug])
+  @@index([leagueId, teamId])
+  @@index([leagueId, status])
+  @@index([leagueId, teamId, starter])
+}
+
+// --- money ------------------------------------------------------------------------------------
+
+/// Append-only ledger. Never update or delete a row; correct with a compensating entry.
+model Transaction {
+  id       String  @id @default(cuid())
+  leagueId String
+  /// Null means the league bank (draft fees paid in, event payouts paid out).
+  teamId   String?
+
+  /// DRAFT_PICK | MARKET_BUY | MARKET_SELL | TRADE | MATCH_PAYOUT | EVENT | ADJUSTMENT
+  type         String
+  /// Signed: negative is money leaving the team.
+  amount       Int
+  /// Team balance immediately after this entry, for cheap auditing.
+  balanceAfter Int
+  description  String
+  /// Ownership / Match / TradeOffer id, depending on `type`.
+  relatedId    String?
+  createdAt    DateTime @default(now())
+
+  league League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  team   Team?  @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@index([leagueId, teamId])
+  @@index([leagueId, createdAt])
+}
+
+// --- draft ------------------------------------------------------------------------------------
+
+model Draft {
+  id       String @id @default(cuid())
+  leagueId String @unique
+
+  /// SNAKE — auction drafts arrive with the auction system in M4.
+  type   String @default("SNAKE")
+  /// PENDING | ACTIVE | COMPLETE
+  status String @default("PENDING")
+
+  rounds Int
+  /// 0-based index of the next pick to be made, counted across all rounds.
+  cursor Int    @default(0)
+  /// JSON string[] of team ids in first-round order. Reversed on even rounds.
+  order  String
+
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  league League      @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  picks  DraftPick[]
+}
+
+model DraftPick {
+  id      String @id @default(cuid())
+  draftId String
+  /// 0-based pick index across the whole draft.
+  overall Int
+  round   Int
+  teamId  String
+
+  pokemonSlug String?
+  price       Int      @default(0)
+  pickedAt    DateTime @default(now())
+
+  draft Draft @relation(fields: [draftId], references: [id], onDelete: Cascade)
+  team  Team  @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([draftId, overall])
+  @@index([draftId])
+}
+
+// --- audit ------------------------------------------------------------------------------------
+
+/// Who did what. Results are reported free-for-all, so provenance matters.
+model AuditLog {
+  id          String   @id @default(cuid())
+  leagueId    String
+  actorUserId String?
+  action      String
+  /// JSON payload describing the change.
+  detail      String
+  createdAt   DateTime @default(now())
+
+  league League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  actor  User?  @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([leagueId, createdAt])
+}
+
+// --- competition ------------------------------------------------------------------------------
+
+/// One battle between two teams. Anyone may report any match; `reportedById` records who did.
+model Match {
+  id       String @id @default(cuid())
+  leagueId String
+  round    Int    @default(1)
+
+  homeTeamId String
+  /// Null when the opponent isn't in this league — a ladder match, or a solo career.
+  awayTeamId String?
+  /// Name of an outside opponent, when `awayTeamId` is null.
+  opponentName String?
+  homeScore  Int
+  awayScore  Int
+
+  /// Who entered this result. Shown in the feed — social pressure in place of a confirmation step.
+  reportedById String?
+  note         String?
+
+  /// Ladder tier of the reporting team when it played. Sets the reward and the value moves.
+  tierKey String?
+  /// Consecutive wins including this one (0 for a loss).
+  streak  Int     @default(0)
+  /// What the home team was paid for it — 0 for a loss, or beyond the round's pay cap.
+  reward  Int     @default(0)
+  playedAt     DateTime @default(now())
+  createdAt    DateTime @default(now())
+
+  league       League             @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  homeTeam     Team               @relation("HomeMatches", fields: [homeTeamId], references: [id], onDelete: Cascade)
+  awayTeam     Team?              @relation("AwayMatches", fields: [awayTeamId], references: [id], onDelete: Cascade)
+  stats        MatchPokemonStat[]
+  valueChanges ValueChange[]
+
+  @@index([leagueId, round])
+  @@index([leagueId, playedAt])
+}
+
+/// How one Pokémon performed in one match. This is what makes individual Pokémon gain value.
+model MatchPokemonStat {
+  id          String @id @default(cuid())
+  matchId     String
+  teamId      String
+  pokemonSlug String
+
+  kos      Int     @default(0)
+  fainted  Boolean @default(false)
+  /// Brought to the match but never sent out.
+  benched  Boolean @default(false)
+  /// Computed from config/scoring.ts at report time, so past matches keep their scoring.
+  points   Int     @default(0)
+
+  match Match @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  @@unique([matchId, pokemonSlug])
+  @@index([matchId])
+  @@index([teamId])
+}
+
+/// Every move of an owned Pokémon's value, and why. Feeds the sparkline on its card, and lets a
+/// deleted match take back exactly what it moved (its rows go with it).
+model ValueChange {
+  id          String  @id @default(cuid())
+  leagueId    String
+  teamId      String?
+  pokemonSlug String
+  /// Set for WIN and LOSS; the match is what caused the move.
+  matchId     String?
+  /// BUY | WIN | LOSS | SELL | TRADE
+  reason      String
+  pct         Float   @default(0)
+  delta       Int
+  valueAfter  Int
+  round       Int     @default(1)
+  createdAt   DateTime @default(now())
+
+  match Match? @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  @@index([leagueId, pokemonSlug, createdAt])
+  @@index([matchId])
+}
+
+// --- trades -----------------------------------------------------------------------------------
+
+model TradeOffer {
+  id         String @id @default(cuid())
+  leagueId   String
+  fromTeamId String
+  toTeamId   String
+
+  /// Cash the proposer adds. Negative means they're asking for cash instead.
+  cash   Int    @default(0)
+  /// PENDING | ACCEPTED | REJECTED | CANCELLED
+  status String @default("PENDING")
+  note   String?
+
+  createdAt  DateTime  @default(now())
+  resolvedAt DateTime?
+
+  league   League      @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  fromTeam Team        @relation("TradesOffered", fields: [fromTeamId], references: [id], onDelete: Cascade)
+  toTeam   Team        @relation("TradesReceived", fields: [toTeamId], references: [id], onDelete: Cascade)
+  items    TradeItem[]
+
+  @@index([leagueId, status])
+}
+
+model TradeItem {
+  id          String @id @default(cuid())
+  offerId     String
+  /// FROM — leaving the proposer; TO — leaving the recipient.
+  side        String
+  pokemonSlug String
+
+  offer TradeOffer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+
+  @@index([offerId])
+}
+
+// --- events -----------------------------------------------------------------------------------
+
+/// A random event that fired, and what it did. Kept so the feed can explain surprise money.
+model LeagueEvent {
+  id       String  @id @default(cuid())
+  leagueId String
+  teamId   String?
+  round    Int
+
+  templateKey String
+  title       String
+  description String
+  /// JSON describing what changed.
+  detail      String
+  createdAt   DateTime @default(now())
+
+  league League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+
+  @@index([leagueId, round])
+}
+
+/// A recorded change of ladder standing, for the feed and the promotion bonus trail.
+model RankEvent {
+  id       String @id @default(cuid())
+  leagueId String
+  teamId   String
+
+  fromLabel String
+  toLabel   String
+  /// Rungs climbed; negative when a player slips back.
+  rungDelta Int
+  /// Bonus paid for this promotion, if any.
+  bonus     Int    @default(0)
+  round     Int    @default(1)
+
+  createdAt DateTime @default(now())
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@index([leagueId, createdAt])
+}

@@ -1,0 +1,94 @@
+{
+  "_comment": [
+    "The random-event deck. One is drawn each time the commissioner advances the round.",
+    "",
+    "Add your own freely — nothing here is referenced by name in code except `effect.kind`,",
+    "which must be one of: CASH (flat money), CASH_PER_POKEMON, VALUE_SPIKE (one Pokémon's",
+    "market value moves), TYPE_SHIFT (every Pokémon of a type moves), TAX (a share of cash).",
+    "",
+    "`weight` is relative — an event with weight 4 is twice as likely as one with weight 2.",
+    "`scope` is `team` (picks one team at random) or `league` (everyone)."
+  ],
+  "events": [
+    {
+      "key": "sponsorship",
+      "title": "Sponsorship deal",
+      "description": "A Silph Co. rep liked what they saw. {team} banks ₽{amount}.",
+      "scope": "team",
+      "weight": 5,
+      "effect": { "kind": "CASH", "min": 8000, "max": 30000 }
+    },
+    {
+      "key": "gate_receipts",
+      "title": "Packed house",
+      "description": "Ticket sales are up across the league. Every team takes ₽{amount}.",
+      "scope": "league",
+      "weight": 4,
+      "effect": { "kind": "CASH", "min": 4000, "max": 12000 }
+    },
+    {
+      "key": "merch",
+      "title": "Merchandise run",
+      "description": "{team} sells plushies of the whole squad — ₽{amount} per Pokémon.",
+      "scope": "team",
+      "weight": 3,
+      "effect": { "kind": "CASH_PER_POKEMON", "min": 800, "max": 2500 }
+    },
+    {
+      "key": "training_bill",
+      "title": "Training bill",
+      "description": "Gym time isn't free. {team} pays ₽{amount}.",
+      "scope": "team",
+      "weight": 3,
+      "effect": { "kind": "CASH", "min": -18000, "max": -5000 }
+    },
+    {
+      "key": "luxury_tax",
+      "title": "Luxury tax",
+      "description": "The league takes {percent}% of every team's cash pile.",
+      "scope": "league",
+      "weight": 2,
+      "effect": { "kind": "TAX", "percent": 5 }
+    },
+    {
+      "key": "breakout_star",
+      "title": "Breakout star",
+      "description": "{pokemon} is all over the highlight reels — value up {percent}%.",
+      "scope": "league",
+      "weight": 4,
+      "effect": { "kind": "VALUE_SPIKE", "percent": 18 }
+    },
+    {
+      "key": "slump",
+      "title": "Form slump",
+      "description": "Nobody wants {pokemon} right now — value down {percent}%.",
+      "scope": "league",
+      "weight": 4,
+      "effect": { "kind": "VALUE_SPIKE", "percent": -15 }
+    },
+    {
+      "key": "meta_shift",
+      "title": "Metagame shift",
+      "description": "{type}-types are everywhere this week — their value moves {percent}%.",
+      "scope": "league",
+      "weight": 3,
+      "effect": { "kind": "TYPE_SHIFT", "percent": 12 }
+    },
+    {
+      "key": "meta_crash",
+      "title": "Counter-meta",
+      "description": "Everyone's packing answers to {type}-types — their value moves {percent}%.",
+      "scope": "league",
+      "weight": 3,
+      "effect": { "kind": "TYPE_SHIFT", "percent": -12 }
+    },
+    {
+      "key": "prize_money",
+      "title": "Exhibition prize",
+      "description": "{team} won a side tournament and pockets ₽{amount}.",
+      "scope": "team",
+      "weight": 2,
+      "effect": { "kind": "CASH", "min": 15000, "max": 45000 }
+    }
+  ]
+}

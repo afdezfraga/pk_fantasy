@@ -1,0 +1,23 @@
+node_modules/
+.next/
+out/
+build/
+*.tsbuildinfo
+next-env.d.ts
+
+# local env
+.env
+.env.local
+
+# database
+*.db
+*.db-journal
+prisma/dev.db*
+
+# roster build cache (regenerable; the roster output itself IS committed)
+.cache/
+
+# sprites downloaded by `roster:build --sprites`
+public/sprites/
+
+.DS_Store

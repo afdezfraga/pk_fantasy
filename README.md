@@ -12,7 +12,8 @@ streak multiplies it. Your Pokémon gain and lose value with every match they pl
 market and player-to-player trades do the rest.
 
 > **Status: playable.** Club pages and crests, a drag-and-drop squad board, draft, market,
-> trades, ladder ranks, match reporting and streak rewards all work. Solo play is supported.
+> trades, ladder ranks, match reporting, streak rewards and random events all work. Solo play is
+> supported.
 
 ## Quick start
 
@@ -202,6 +203,77 @@ you'll skip your remaining picks and play with a tiny squad. That's allowed: the
 anyone who can't afford what's left, and the commissioner can end it early. There are no wages or
 upkeep, so nothing bleeds you — but nothing tops you up either until you start winning.
 
+## Events
+
+Every few matches something goes wrong at your club, and you decide what to do about it. **You
+can't report another match until you have.** That's the whole shape of it: an event is a problem
+with two or three answers, none of them free.
+
+The best ones cost no money at all. A sulking star has to be run at zero EVs for five matches; the
+pitch is being relaid so you can't set weather or terrain; the coach has a philosophy and you're
+attacking with STAB moves only until they get over it. Those change how you actually play, which
+is worth more than another number moving.
+
+**One lands the moment the draft ends**, before your first match, and then roughly every five
+matches you report — jittered, so you can't count the timing and plan around it. Closing a round
+draws a league-wide one that every club answers for itself.
+
+### What the app can and can't check
+
+The app never watches a battle, so consequences come in two kinds and it's honest about which:
+
+- **Enforced.** "Charizard is out injured" — it's greyed out in the match picker and the report
+  is refused. So are type bans, bring limits, transfer freezes, money and value.
+- **On your word.** "No Mega Evolution for four matches" — the app can't tell, so it asks. You
+  tick a box when you report, and what you claimed is stored on the result and shown in the feed
+  next to it. That's the same honour system the scoreline already runs on.
+
+Whatever's in force is shown on your club page, above the report form, and on every result it
+affected — and when it ends you're told, in the league feed and on the page: *"Kangaskhan has been
+cleared to play again."* A restriction you forget about is worse than no restriction.
+
+### Nothing can lock you out
+
+Because reporting is blocked, an event you can't answer would be a dead league. Four things stop
+that:
+
+- **Your assistant will handle it.** One click on nearly every event; they pick at random from
+  whatever's open. It costs you control, not money, and it's always available.
+- **A bill you can't pay puts you in the red.** Event charges are the only thing in the app that
+  may push a balance negative. Debt is then its own punishment — you can't sign anyone until you've
+  sold or won your way back into the black.
+- **A ban never stops you fielding a match.** Down to exactly four usable Pokémon, a barred one
+  can still be *brought* — but only benched. Send it out and the match is recorded as a loss,
+  because that's a forfeit.
+- **The commissioner can force one through**, and `eventsEnabled: 0` turns the system off.
+
+### Writing your own
+
+`data/events.json` is the deck, and adding to it needs no code — only `kind` is referenced by
+name, and it must be one of the vocabulary in `lib/services/effects.ts`. `npm test` validates the
+deck on every run and fails if a template has no option a broke club could click, if a percentage
+cost has no floor, or if a lasting restriction doesn't say how it ends.
+
+Two dials in `config/economy.ts`: `eventEveryMatches` for pacing, and `eventSeverity` as a
+percentage scaler on every cost and penalty, for when a season tells you the deck is too harsh.
+
+Some events aren't random at all. Name a Pokémon in your six and then leave it out of ten matches
+and it asks why; play the same four in all of your last ten and they burn out; make three market
+moves in a round and nobody knows where anybody is meant to be; sit bottom of the table and a
+backer nobody else would take a call from turns up. Those are drawn *ahead* of the deck — an event
+you caused beats one that was rolled — and they name the Pokémon that actually caused them.
+
+Both counts are measured from the Pokémon's own history, not the club's: a signing that arrived
+yesterday hasn't been ignored for a season, however long the club has been going.
+
+### Rounds are the clock
+
+There are no fixtures and no dates worth trusting, so **the round is how the app tells time**.
+A league is on round 1 from the moment it's created — through setup and the draft, and on into
+play — so nothing ever happens outside a round. Every match, event, restriction, value move and
+ledger entry records the round it happened in, which is what makes "what did this club do this
+round" a question with an answer.
+
 ## How ownership works
 
 This is the part worth understanding, because it's the league's one hard rule.
@@ -247,7 +319,10 @@ data/roster.json           generated catalog (committed)
 data/roster.csv            same data, hand-editable
 data/tiers.json            competitive tiers — the balance lever
 data/ranks.json            the Champions ladder: tiers, gauges, promotion bonuses
-data/events.json           the random-event deck (parked until events return as decisions)
+data/events.json           the event deck — problems managers answer
+lib/services/events.ts     drawing an event, and answering it
+lib/services/effects.ts    what an event leaves behind, and how long it lasts
+lib/services/triggers.ts   the club's situation, and what it's done to deserve an event
 config/scoring.ts          points per KO/faint, win rewards by tier, streak multipliers
 lib/ladder.ts              rank ordering, formatting, gauge maths
 lib/roster/parse.ts        Bulbapedia wikitext parser (pure, tested)
@@ -268,11 +343,17 @@ app/                       Next.js App Router pages
 npm test
 ```
 
-127 tests. The ones that matter: four teams racing for the same Pokémon and exactly one winning
+194 tests. The ones that matter: four teams racing for the same Pokémon and exactly one winning
 *and only that one being charged*; the ledger balancing after a run of buys and sells; a win
 streak paying ₽10,000 → ₽30,000 → ₽50,000 and a deleted match giving all of it back along with
 the value it moved; the snake order reversing; and the ladder comparing gauges as fractions,
 since a tier's gauge size varies.
+
+On the events side: that the deck can never offer a club nothing it can afford, since reporting
+is blocked until an event is answered; that a club with ₽0 still gets to answer and lands in debt
+rather than stranded; that two page loads arriving together draw exactly one event; that a banned
+Pokémon is refused while there's cover, allowed benched when there isn't, and forfeits the match
+if it plays; and that a restriction ends on exactly the match it said it would.
 
 Integration tests build a throwaway SQLite database with a small fixed catalog, so they fail when
 the logic breaks rather than when Garchomp changes tier.
@@ -291,6 +372,7 @@ don't have a second server already holding port 3000.
 - [x] **Economy.** Market buy/sell, trades, ledger, value that moves with results.
 - [x] **Competition.** Ladder ranks, match logging, per-Pokémon scoring, streak rewards with a cap.
 - [x] **The club.** Crests, the squad board, honours, per-Pokémon stats, promotion bonuses.
+- [x] **Events.** Decisions with consequences, battle-rule restrictions, triggered events.
 - [ ] **Later.** Seasons and playoffs, contract expiry, auctions, FAAB waivers, value charts.
 
 ## Data sources

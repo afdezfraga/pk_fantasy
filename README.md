@@ -214,6 +214,12 @@ pitch is being relaid so you can't set weather or terrain; the coach has a philo
 attacking with STAB moves only until they get over it. Those change how you actually play, which
 is worth more than another number moving.
 
+Some ask something bigger. A club offers a straight swap for one of yours — take it and you get a
+named Pokémon of the same standing, refuse and yours plays five matches with its training undone.
+Recruitment offers two free agents for one of your best, and lets you pick which of your best. A
+sponsor asks how many of your next five you think you'll win, and pays — or charges — on what you
+said. The league wants your money locked away for two rounds at 15%.
+
 **One lands the moment the draft ends**, before your first match, and then roughly every five
 matches you report — jittered, so you can't count the timing and plan around it. Closing a round
 draws a league-wide one that every club answers for itself.
@@ -223,10 +229,16 @@ draws a league-wide one that every club answers for itself.
 The app never watches a battle, so consequences come in two kinds and it's honest about which:
 
 - **Enforced.** "Charizard is out injured" — it's greyed out in the match picker and the report
-  is refused. So are type bans, bring limits, transfer freezes, money and value.
+  is refused. So are type bans, bring limits, transfer freezes, money and value. A freeze stops
+  signings, sales and trades alike, and lifts when the round turns.
 - **On your word.** "No Mega Evolution for four matches" — the app can't tell, so it asks. You
   tick a box when you report, and what you claimed is stored on the result and shown in the feed
   next to it. That's the same honour system the scoreline already runs on.
+
+Anything you *agreed to* — a sponsor target, a league bond — is shown apart from the things done
+to you, and a target counts up as you play: *"Sponsor target — 1 of 2 wins"*. A wager settles the
+moment the answer is certain rather than when its window runs out, so a run you can no longer
+rescue is called at the match it died, not three matches later.
 
 Whatever's in force is shown on your club page, above the report form, and on every result it
 affected — and when it ends you're told, in the league feed and on the page: *"Kangaskhan has been
@@ -253,6 +265,15 @@ that:
 name, and it must be one of the vocabulary in `lib/services/effects.ts`. `npm test` validates the
 deck on every run and fails if a template has no option a broke club could click, if a percentage
 cost has no floor, or if a lasting restriction doesn't say how it ends.
+`npx tsx scripts/preview-events.ts` renders a template against a real club, which is the quickest
+way to find out whether what you wrote reads like anything.
+
+Two things worth knowing when you write one. An option marked `repeat: "@starters"` becomes one
+option per Pokémon — *"Let Garchomp go"*, *"Let Ferrothorn go"* — spread across the squad by value,
+which is how a club chooses *who* an event takes without a decision becoming more than a button.
+And a win is worth ₽1,000 in the beginner tier and ₽100,000 in Champion, so money is priced in
+win-rewards (`rewardWins`) or as a share of the balance (`pct` + `min`) rather than flat, or one
+figure is pocket change to one club and a season's earnings to another.
 
 Two dials in `config/economy.ts`: `eventEveryMatches` for pacing, and `eventSeverity` as a
 percentage scaler on every cost and penalty, for when a season tells you the deck is too harsh.
@@ -292,7 +313,10 @@ really do click at the same instant during a draft. Backing it up, `@@unique([le
 pokemonSlug])` means a Pokémon can only ever have one row in a league.
 
 Every acquisition path — draft, market, trade, auction, waiver — goes through
-`lib/services/ownership.ts`, and nothing else is allowed to write `Ownership.teamId`.
+`lib/services/ownership.ts`, and nothing else is allowed to write `Ownership.teamId`. Events that
+hand a Pokémon over need to release and sign inside one transaction, and SQLite won't nest one, so
+`claimFreeAgent` and `releaseToMarket` are the same guarded writes taking a caller's transaction
+rather than opening their own. `acquireFreeAgent` and `sellToMarket` are thin wrappers over them.
 
 Money works the same way: `Team.cash` is a cache, the `Transaction` ledger is the truth, and
 `verifyLedger()` asserts they agree. Debits are guarded on `cash >= amount` inside the UPDATE, so
@@ -334,6 +358,7 @@ lib/services/league.ts     creation, joining, invite codes
 prisma/schema.prisma       data model
 scripts/build-roster.ts    the roster pipeline
 scripts/seed.ts            roster.json -> database
+scripts/preview-events.ts  renders a template against a real club, for writing the deck
 app/                       Next.js App Router pages
 ```
 
@@ -343,7 +368,7 @@ app/                       Next.js App Router pages
 npm test
 ```
 
-194 tests. The ones that matter: four teams racing for the same Pokémon and exactly one winning
+214 tests. The ones that matter: four teams racing for the same Pokémon and exactly one winning
 *and only that one being charged*; the ledger balancing after a run of buys and sells; a win
 streak paying ₽10,000 → ₽30,000 → ₽50,000 and a deleted match giving all of it back along with
 the value it moved; the snake order reversing; and the ladder comparing gauges as fractions,
@@ -353,7 +378,11 @@ On the events side: that the deck can never offer a club nothing it can afford, 
 is blocked until an event is answered; that a club with ₽0 still gets to answer and lands in debt
 rather than stranded; that two page loads arriving together draw exactly one event; that a banned
 Pokémon is refused while there's cover, allowed benched when there isn't, and forfeits the match
-if it plays; and that a restriction ends on exactly the match it said it would.
+if it plays; and that a restriction ends on exactly the match it said it would. Also that a swap
+substitutes an equivalent when the Pokémon it named has been signed by somebody else in the
+meantime, that a wager settles the instant its answer is certain, and that a frozen club can
+neither sign, sell nor trade until the round turns, and that deleting a result gives a wager
+back its match and its win together.
 
 Integration tests build a throwaway SQLite database with a small fixed catalog, so they fail when
 the logic breaks rather than when Garchomp changes tier.

@@ -113,7 +113,9 @@ describe('when an event arrives', () => {
     // completeDraft zeroes the countdown; the draw itself is lazy.
     await db.team.updateMany({ where: { leagueId: league.id }, data: { eventCountdown: 0 } });
 
-    const drawn = await ensurePendingEvent(league.id, team.id);
+    // 0.5 is above every virtueChance in the deck, so this draws a problem rather than the
+    // occasional good day — which resolves itself and would rightly block nobody.
+    const drawn = await ensurePendingEvent(league.id, team.id, () => 0.5);
     expect(drawn).not.toBeNull();
 
     const event = await pendingEvent(league.id, team.id);
@@ -129,14 +131,16 @@ describe('when an event arrives', () => {
     await db.team.updateMany({ where: { leagueId: league.id }, data: { eventCountdown: 0 } });
 
     const results = await Promise.allSettled([
-      ensurePendingEvent(league.id, team.id),
-      ensurePendingEvent(league.id, team.id),
-      ensurePendingEvent(league.id, team.id),
+      ensurePendingEvent(league.id, team.id, () => 0.5),
+      ensurePendingEvent(league.id, team.id, () => 0.5),
+      ensurePendingEvent(league.id, team.id, () => 0.5),
     ]);
     expect(results.every((result) => result.status === 'fulfilled')).toBe(true);
 
+    // One *draw*, which is the invariant. Asserting one pending row would be a claim about the
+    // deck rather than the race, since a virtue resolves itself the moment it fires.
     const events = await db.leagueEvent.findMany({
-      where: { leagueId: league.id, teamId: team.id, status: 'PENDING' },
+      where: { leagueId: league.id, teamId: team.id, status: { not: 'NOTICE' } },
     });
     expect(events).toHaveLength(1);
   });
@@ -162,7 +166,7 @@ describe('when an event arrives', () => {
 
     await play(league.id, team.id, users[0].id);
     expect((await db.team.findUniqueOrThrow({ where: { id: team.id } })).eventCountdown).toBe(0);
-    expect(await ensurePendingEvent(league.id, team.id)).not.toBeNull();
+    expect(await ensurePendingEvent(league.id, team.id, () => 0.5)).not.toBeNull();
   });
 });
 
@@ -971,5 +975,37 @@ describe('deleting a result the wager counted', () => {
     expect(after?.matchesLeft).toBe(5);
     expect(after?.params.won).toBe(0);
     expect(after?.label).toContain('0 of 2 wins');
+  });
+});
+
+describe('a decision the rest of the squad watched', () => {
+  it('puts the milder version in force on the others too', async () => {
+    const { league, team, users } = await makeActiveLeague({ size: 6 });
+
+    const event = await stage(league.id, team.id, [
+      {
+        key: 'refuse',
+        effects: [
+          { ...lasting('ZERO_EVS', {}, 5), pokemonSlug: 'garchomp', label: 'Garchomp — no EVs' },
+          { ...lasting('ZERO_EVS', {}, 2), pokemonSlug: 'torkoal', label: 'Torkoal — unsettled by it' },
+          { ...lasting('ZERO_EVS', {}, 2), pokemonSlug: 'sableye', label: 'Sableye — unsettled by it' },
+        ],
+      },
+    ]);
+    await resolveEvent({ eventId: event.id, teamId: team.id, choiceKey: 'refuse', actorUserId: users[0].id });
+
+    const live = await activeEffects(league.id, team.id);
+    const byPokemon = new Map(live.map((effect) => [effect.pokemonSlug, effect.matchesLeft]));
+    expect(live).toHaveLength(3);
+    // The one it happened to carries it longest; the ones who watched get over it sooner.
+    expect(byPokemon.get('garchomp')).toBe(5);
+    expect(byPokemon.get('torkoal')).toBe(2);
+    expect(byPokemon.get('sableye')).toBe(2);
+
+    // And all three have to be confirmed before the club can report again.
+    await expect(play(league.id, team.id, users[0].id)).rejects.toThrow(EffectViolation);
+    await expect(
+      play(league.id, team.id, users[0].id, { attested: live.map((effect) => effect.id) }),
+    ).resolves.toBeTruthy();
   });
 });

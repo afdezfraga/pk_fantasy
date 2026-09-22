@@ -221,6 +221,7 @@ function context(overrides: Partial<EventContext>): EventContext {
     squadValue: 80_000,
     freeAgents: [],
     ownedTypes: ['Normal'],
+    severity: 100,
     hasCaptain: false,
     captainAvailable: false,
     ladderPosition: 1,
@@ -409,6 +410,135 @@ describe('money priced in wins', () => {
     const reckless = offer.options.find((option) => option.key === 'reckless')!;
     expect(reckless.effects[0].matches).toBe(5);
     expect(reckless.effects[0].params.wins).toBe(5);
+  });
+});
+
+describe('when it lands on the captain', () => {
+  const template = loadDeck().find((entry) => entry.key === 'transfer_request')!;
+
+  const squad = (captainSlug: string | null) => [
+    member('a', { marketValue: 50_000, captain: captainSlug === 'a' }),
+    member('b', { captain: captainSlug === 'b' }),
+    member('c'),
+    member('d'),
+  ];
+
+  it('costs more and lasts longer', () => {
+    // @mostValuableStarter picks 'a'; severityMult.captain is 1.5.
+    const ordinary = materialise(template, context({ squad: squad('b') }), null, () => 0.5);
+    const onCaptain = materialise(template, context({ squad: squad('a') }), null, () => 0.5);
+
+    expect(ordinary.options.find((option) => option.key === 'bonus')!.cost).toBe(7_500);
+    expect(onCaptain.options.find((option) => option.key === 'bonus')!.cost).toBe(11_300);
+
+    const evs = (offer: ReturnType<typeof materialise>) =>
+      offer.options.find((option) => option.key === 'refuse')!.effects[0].matches;
+    expect(evs(ordinary)).toBe(5);
+    expect(evs(onCaptain)).toBe(8);
+  });
+
+  it('sends the trouble outward when it is refused', () => {
+    const offer = materialise(template, context({ squad: squad('a') }), null, () => 0.5);
+    const refuse = offer.options.find((option) => option.key === 'refuse')!;
+
+    const zeroEvs = refuse.effects.filter((effect) => effect.kind === 'ZERO_EVS');
+    expect(zeroEvs).toHaveLength(3);
+
+    // The one it happened to, and two others who watched it happen for less time.
+    const [head, ...rest] = zeroEvs;
+    expect(head.pokemonSlug).toBe('a');
+    expect(rest.map((effect) => effect.pokemonSlug)).not.toContain('a');
+    for (const ripple of rest) {
+      expect(ripple.matches).toBeLessThan(head.matches);
+      expect(ripple.label).toContain('unsettled');
+      expect(ripple.label).not.toContain('{');
+    }
+  });
+
+  it('leaves everybody else alone when it lands on anybody else', () => {
+    const offer = materialise(template, context({ squad: squad('b') }), null, () => 0.5);
+    const refuse = offer.options.find((option) => option.key === 'refuse')!;
+    // The ripple is not about the captain being the subject — it is about a Pokémon being told
+    // no in front of the squad, which happens whoever it is.
+    expect(refuse.effects.filter((effect) => effect.kind === 'ZERO_EVS')).toHaveLength(3);
+  });
+});
+
+describe('every placeholder resolves', () => {
+  it('leaves nothing unsubstituted in any template, on any branch', () => {
+    // A brace that reaches a manager is a bug they cannot do anything about. The deck is checked
+    // whole here rather than one template at a time, so a new placeholder cannot be added to the
+    // wording without also being given a value.
+    const rich = context({
+      squad: [
+        member('a', { marketValue: 90_000, captain: true, hasMega: true }),
+        member('b', { marketValue: 60_000 }),
+        member('c', { marketValue: 40_000 }),
+        member('d', { marketValue: 20_000 }),
+        member('e', { marketValue: 10_000 }),
+      ],
+      hasCaptain: true,
+      captainAvailable: true,
+      freeAgents: [
+        { pokemonSlug: 'w', name: 'W', form: null, marketValue: 88_000 },
+        { pokemonSlug: 'x', name: 'X', form: null, marketValue: 30_000 },
+        { pokemonSlug: 'y', name: 'Y', form: null, marketValue: 20_000 },
+        { pokemonSlug: 'z', name: 'Z', form: null, marketValue: 8_000 },
+      ],
+    });
+
+    for (const template of loadDeck()) {
+      const offer = materialise(template, rich, 'a', () => 0.5);
+      expect(offer.description, template.key).not.toContain('{');
+      for (const option of offer.options) {
+        expect(option.label, `${template.key}/${option.key} label`).not.toContain('{');
+        expect(option.detail, `${template.key}/${option.key} detail`).not.toContain('{');
+        for (const effect of option.effects) {
+          expect(effect.label, `${template.key}/${option.key}/${effect.kind}`).not.toContain('{');
+          expect(effect.liftedMessage, `${template.key}/${option.key}/${effect.kind}`).not.toContain(
+            '{',
+          );
+        }
+      }
+
+      // The good days go out through the same feed and get the same check.
+      if (!template.virtue) continue;
+      const virtue = materialise(
+        {
+          ...template,
+          description: template.virtue.description,
+          options: [{ key: 'v', label: 'v', detail: 'v', effects: template.virtue.effects }],
+        },
+        rich,
+        'a',
+        () => 0.5,
+      );
+      expect(virtue.description, `${template.key} virtue`).not.toContain('{');
+      for (const effect of virtue.options[0].effects) {
+        expect(effect.label, `${template.key} virtue/${effect.kind}`).not.toContain('{');
+        expect(effect.liftedMessage, `${template.key} virtue/${effect.kind}`).not.toContain('{');
+      }
+    }
+  });
+});
+
+describe('the league severity dial', () => {
+  const template = loadDeck().find((entry) => entry.key === 'transfer_request')!;
+
+  it('scales what an event costs and how long it bites', () => {
+    const half = materialise(template, context({ severity: 50 }), null, () => 0.5);
+    const harsh = materialise(template, context({ severity: 200 }), null, () => 0.5);
+
+    expect(half.options.find((option) => option.key === 'bonus')!.cost).toBe(3_800);
+    expect(harsh.options.find((option) => option.key === 'bonus')!.cost).toBe(15_000);
+    expect(half.options.find((option) => option.key === 'refuse')!.effects[0].matches).toBe(3);
+    expect(harsh.options.find((option) => option.key === 'refuse')!.effects[0].matches).toBe(10);
+  });
+
+  it('never rounds a consequence away to nothing', () => {
+    // A restriction scaled to a fraction of a match is still a restriction.
+    const offer = materialise(template, context({ severity: 1 }), null, () => 0.5);
+    expect(offer.options.find((option) => option.key === 'refuse')!.effects[0].matches).toBe(1);
   });
 });
 

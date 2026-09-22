@@ -53,6 +53,7 @@ export default async function ClubPage({ params }: { params: Promise<{ id: strin
       <Constraints
         constraints={effects.map((effect) => ({
           id: effect.id,
+          kind: effect.kind,
           label: effect.label,
           attested: effect.attested,
           matchesLeft: effect.matchesLeft,

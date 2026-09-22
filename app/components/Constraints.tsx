@@ -7,10 +7,11 @@
  * report form and inside every history row, and every restriction announces its own end.
  */
 
-import type { MatchConstraint } from '../../lib/services/effects.ts';
+import { isCommitment, type EffectKind, type MatchConstraint } from '../../lib/services/effects.ts';
 
 export interface ConstraintView {
   id: string;
+  kind: EffectKind;
   label: string;
   attested: boolean;
   matchesLeft: number;
@@ -35,9 +36,40 @@ export function Constraints({
 }) {
   if (constraints.length === 0) return null;
 
+  const restrictions = constraints.filter((constraint) => !isCommitment(constraint.kind));
+  const commitments = constraints.filter((constraint) => isCommitment(constraint.kind));
+
   return (
-    <div className="rounded-lg border border-negative/40 bg-negative/5 px-3 py-2.5">
-      <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-negative">
+    <div className="flex flex-col gap-2">
+      {restrictions.length > 0 && (
+        <Strip title={title} tone="negative" constraints={restrictions} />
+      )}
+      {/* What the club agreed to, kept apart from what was done to it. */}
+      {commitments.length > 0 && (
+        <Strip title="Running" tone="accent" constraints={commitments} />
+      )}
+    </div>
+  );
+}
+
+function Strip({
+  title,
+  tone,
+  constraints,
+}: {
+  title: string;
+  tone: 'negative' | 'accent';
+  constraints: ConstraintView[];
+}) {
+  const box =
+    tone === 'negative'
+      ? 'border-negative/40 bg-negative/5'
+      : 'border-accent/40 bg-accent/5';
+  const heading = tone === 'negative' ? 'text-negative' : 'text-accent';
+
+  return (
+    <div className={`rounded-lg border px-3 py-2.5 ${box}`}>
+      <div className={`mb-1.5 text-[11px] font-semibold uppercase tracking-wide ${heading}`}>
         {title}
       </div>
       <ul className="flex flex-col gap-1">

@@ -142,6 +142,7 @@ export default async function MatchesPage({ params }: { params: Promise<{ id: st
           banEnforced={banEnforced}
           constraints={effects.map((effect) => ({
             id: effect.id,
+            kind: effect.kind,
             label: effect.label,
             attested: effect.attested,
             matchesLeft: effect.matchesLeft,

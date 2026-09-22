@@ -20,8 +20,7 @@
  */
 
 import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
 
 import type { Prisma } from '@prisma/client';
 
@@ -45,7 +44,10 @@ import { audit } from './money.ts';
 import { claimFreeAgent, parseConfig, releaseToMarket } from './ownership.ts';
 import { buildContext, fires, meetsRequires, type EventContext, type Requires, type Trigger } from './triggers.ts';
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '../..');
+// Resolved at runtime, not from `import.meta.url`: the bundler inlines that as the absolute path
+// of the machine that ran `next build`, which is fine on a laptop and wrong in a container.
+// `process.cwd()` is the repo root under dev, `next start` and vitest alike.
+const DATA_DIR = process.env.PKF_DATA_DIR ?? join(process.cwd(), 'data');
 
 export class EventError extends Error {
   constructor(message: string) {
@@ -168,7 +170,7 @@ let cache: EventTemplate[] | null = null;
 
 export function loadDeck(): EventTemplate[] {
   if (!cache) {
-    const file = JSON.parse(readFileSync(join(ROOT, 'data/events.json'), 'utf8'));
+    const file = JSON.parse(readFileSync(join(DATA_DIR, 'events.json'), 'utf8'));
     cache = file.events as EventTemplate[];
   }
   return cache;

@@ -468,9 +468,6 @@ model LeagueEvent {
   choices   String  @default("[]")
   /// Key of the option taken.
   choiceKey String?
-  /// Phase 2: what the manager wrote, and the adjudicator's verdict on it.
-  response  String?
-  verdict   String?
 
   resolvedAt   DateTime?
   resolvedById String?

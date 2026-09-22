@@ -264,6 +264,10 @@ async function completeDraft(leagueId: string, draftId: string) {
       data: { status: 'COMPLETE', completedAt: new Date() },
     }),
     db.league.update({ where: { id: leagueId }, data: { status: 'ACTIVE' } }),
+    // Every club starts with an event due, so the first thing after the draft is a decision
+    // rather than a blank page — and the system gets taught at the moment it costs least to
+    // learn it. `ensurePendingEvent` draws them lazily on the next page load.
+    db.team.updateMany({ where: { leagueId }, data: { eventCountdown: 0 } }),
   ]);
 }
 

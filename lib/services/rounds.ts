@@ -1,12 +1,14 @@
 /**
- * Advancing a round: waivers clear and the per-round match pay cap starts again.
+ * Advancing a round: waivers clear, the per-round match pay cap starts again, and the league
+ * draws one shared shock for everybody to answer for themselves.
  *
- * There are no wages, upkeep or value drift any more — money only moves when a team signs, sells,
- * trades or wins, and values only move when a Pokémon plays. Random events stay parked in
- * lib/services/events.ts until they come back as decisions players make.
+ * There are no wages, upkeep or value drift — money only moves when a team signs, sells, trades,
+ * wins, or answers an event, and values only move when a Pokémon plays or an event moves them.
  */
 
 import { db } from '../db.ts';
+import { expireByRound } from './effects.ts';
+import { drawLeagueEvent } from './events.ts';
 import { audit } from './money.ts';
 
 export class RoundError extends Error {
@@ -26,6 +28,7 @@ export async function advanceRound(input: { leagueId: string; actorUserId: strin
   }
 
   const round = league.round;
+  const next = round + 1;
 
   await db.$transaction(async (tx) => {
     // Waivers clear once their hold expires.
@@ -34,15 +37,25 @@ export async function advanceRound(input: { leagueId: string; actorUserId: strin
       data: { status: 'FREE_AGENT' },
     });
 
-    await tx.league.update({ where: { id: input.leagueId }, data: { round: round + 1 } });
+    // Restrictions measured in rounds rather than matches end here, and say so.
+    await expireByRound(tx, { leagueId: input.leagueId, round: next });
 
+    await tx.league.update({ where: { id: input.leagueId }, data: { round: next } });
+
+    // One round ends and the next begins in the same breath — a league is never between rounds.
+    // Everything that happens is stamped with the round it happened in, so this trail plus those
+    // stamps is enough to reconstruct any round after the fact.
     await audit(tx, {
       leagueId: input.leagueId,
       actorUserId: input.actorUserId,
       action: 'ROUND_ADVANCE',
-      detail: { round, waiversCleared: cleared.count },
+      detail: { closed: round, opened: next, waiversCleared: cleared.count },
     });
   });
 
-  return { round };
+  // Outside the transaction: a shock failing to draw must not undo the round that closed.
+  // Each club gets its own copy to answer, so the same news lands differently everywhere.
+  const events = await drawLeagueEvent(input.leagueId, next);
+
+  return { round, events };
 }

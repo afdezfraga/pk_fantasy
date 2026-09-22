@@ -13,7 +13,20 @@
 import { applyPct, valuePerf, VALUE_RULES } from '../../config/economy.ts';
 import { PAYOUTS, scorePokemon, scoreTeam, type PokemonLine } from '../../config/scoring.ts';
 import { db } from '../db.ts';
+import { parseTypes } from '../format.ts';
+import {
+  activeEffects,
+  chargeForEvent,
+  enforce,
+  payoutMultiplier,
+  tickEffects,
+  valueMultiplier,
+  type LiveEffect,
+  type MatchConstraint,
+} from './effects.ts';
+import { ensurePendingEvent, EventPendingError, pendingEvent } from './events.ts';
 import { audit, postEntry } from './money.ts';
+import { parseConfig } from './ownership.ts';
 import { recordValue } from './value.ts';
 
 export class MatchError extends Error {
@@ -34,6 +47,13 @@ export interface ReportInput {
   awayScore: number;
   /** Per-Pokémon lines, for either team. Optional — a bare result still works. */
   lines: (PokemonLine & { teamId: string })[];
+  /**
+   * Ids of the attested effects the manager confirmed they played under.
+   *
+   * The app cannot check that a match was really played without Mega Evolution, so it asks and
+   * records the answer — the same honour system the scoreline itself runs on.
+   */
+  attested?: string[];
   note?: string;
   reportedById: string;
 }
@@ -107,7 +127,49 @@ export async function reportMatch(input: ReportInput) {
     }
   }
 
-  const homeWon = input.homeScore > input.awayScore;
+  // A club with a decision outstanding cannot play on. Events are meant to be answered, and a
+  // deadline measured in matches is the only one this app can enforce — there are no fixtures
+  // and rounds close whenever the commissioner gets round to it.
+  const blocking = await pendingEvent(input.leagueId, input.homeTeamId);
+  if (blocking) throw new EventPendingError(blocking.title);
+
+  // What each side is playing under. Enforcement applies to the reporting club; multipliers
+  // apply to whichever side owns them.
+  const effectsByTeam = new Map<string, LiveEffect[]>();
+  for (const teamId of teamIds) {
+    effectsByTeam.set(teamId, await activeEffects(input.leagueId, teamId));
+  }
+
+  const config = parseConfig(league.config);
+  const homeEffects = effectsByTeam.get(input.homeTeamId) ?? [];
+  const homeLines = input.lines.filter((line) => line.teamId === input.homeTeamId);
+
+  const squadRows = await db.ownership.findMany({
+    where: { leagueId: input.leagueId, teamId: input.homeTeamId },
+    include: { pokemon: { select: { types: true } } },
+  });
+
+  const { constraints, surrendered, surrenderReason } = enforce({
+    effects: homeEffects,
+    squad: squadRows.map((row) => ({
+      pokemonSlug: row.pokemonSlug,
+      starter: row.starter,
+      types: parseTypes(row.pokemon.types),
+    })),
+    lines: homeLines.map((line) => ({ pokemonSlug: line.pokemonSlug, benched: line.benched })),
+    attested: input.attested ?? [],
+    bringToMatch: config.bringToMatch,
+  });
+
+  // Sending out a Pokémon that may not play forfeits the match. The app records that rather
+  // than refusing the report: a club that has sold down below a legal four has no other way to
+  // log a game, and being unable to report at all is a worse outcome than losing one.
+  const reportedHomeScore = surrendered ? 0 : input.homeScore;
+  const reportedAwayScore = surrendered
+    ? Math.max(1, homeLines.filter((line) => !line.benched).length)
+    : input.awayScore;
+
+  const homeWon = reportedHomeScore > reportedAwayScore;
   const homeValue = await squadValue(input.leagueId, input.homeTeamId);
   const awayValue = input.awayTeamId ? await squadValue(input.leagueId, input.awayTeamId) : homeValue;
   const homeStreak = await winStreak(input.leagueId, input.homeTeamId);
@@ -149,12 +211,17 @@ export async function reportMatch(input: ReportInput) {
         homeTeamId: input.homeTeamId,
         awayTeamId: input.awayTeamId,
         opponentName: input.awayTeamId ? null : input.opponentName!.trim(),
-        homeScore: input.homeScore,
-        awayScore: input.awayScore,
+        homeScore: reportedHomeScore,
+        awayScore: reportedAwayScore,
         reportedById: input.reportedById,
-        note: input.note?.trim() || null,
+        note: surrendered
+          ? [input.note?.trim(), `Surrendered — ${surrenderReason}`].filter(Boolean).join(' · ')
+          : input.note?.trim() || null,
         tierKey: sides[0].tierKey,
         streak: sides[0].streak,
+        // Frozen rather than looked up later, so a result always remembers its own conditions
+        // and editing the deck can never rewrite the history of a match already played.
+        constraints: constraints.length > 0 ? JSON.stringify(constraints) : null,
       },
     });
 
@@ -169,7 +236,9 @@ export async function reportMatch(input: ReportInput) {
         streak: side.streak,
         tierKey: side.tierKey,
       });
-      const pct = valuePerf(side.tierKey, side.won);
+      const sideEffects = effectsByTeam.get(side.teamId) ?? [];
+      // An event can damp or amplify what a match is worth, in money and in value alike.
+      const pct = valuePerf(side.tierKey, side.won) * valueMultiplier(sideEffects);
 
       for (const line of lines) {
         await tx.matchPokemonStat.create({
@@ -210,8 +279,9 @@ export async function reportMatch(input: ReportInput) {
         },
       });
 
-      // Points, values and streaks always count; only the money is capped.
-      const payout = withinPayCap ? score.money : 0;
+      // Points, values and streaks always count; only the money is capped. Ledger amounts must
+      // be whole Pokédollars, so a multiplier rounds here rather than leaving a fraction.
+      const payout = withinPayCap ? Math.round(score.money * payoutMultiplier(sideEffects)) : 0;
       if (payout > 0) {
         await postEntry(tx, {
           leagueId: input.leagueId,
@@ -234,15 +304,58 @@ export async function reportMatch(input: ReportInput) {
 
     await tx.match.update({ where: { id: match.id }, data: { reward: results[0].money } });
 
+    // A payment plan is charged per match, and may push a club into the red — it agreed to it,
+    // and being unable to report would be the worse punishment.
+    for (const effect of homeEffects) {
+      if (effect.kind !== 'UPKEEP') continue;
+      await chargeForEvent(tx, {
+        leagueId: input.leagueId,
+        teamId: input.homeTeamId,
+        amount: -(effect.params.amount ?? 0),
+        description: effect.label,
+      });
+    }
+
+    // Restrictions are counted down in matches played, and the ones that lift say so out loud.
+    const lifted = await tickEffects(tx, {
+      leagueId: input.leagueId,
+      teamId: input.homeTeamId,
+      round: league.round,
+    });
+
+    await tx.team.update({
+      where: { id: input.homeTeamId },
+      data: { eventCountdown: { decrement: 1 } },
+    });
+
     await audit(tx, {
       leagueId: input.leagueId,
       actorUserId: input.reportedById,
       action: 'MATCH_REPORT',
-      detail: { matchId: match.id, results },
+      detail: { matchId: match.id, results, surrendered },
     });
 
-    return { match, results, paid: withinPayCap, paidThisRound: paidThisRound + 1 };
+    return {
+      match,
+      results,
+      paid: withinPayCap,
+      paidThisRound: paidThisRound + 1,
+      surrendered,
+      lifted: lifted.map((effect) => effect.liftedMessage),
+    };
   });
+}
+
+/**
+ * Reports a match, then draws the club's next event if this one brought it due.
+ *
+ * The draw sits outside the match transaction on purpose: an event failing to draw must never
+ * roll back a result somebody has already played.
+ */
+export async function reportMatchAndDraw(input: ReportInput) {
+  const result = await reportMatch(input);
+  const event = await ensurePendingEvent(input.leagueId, input.homeTeamId);
+  return { ...result, drewEvent: event !== null };
 }
 
 /**
@@ -326,6 +439,22 @@ export async function deleteMatch(input: { matchId: string; actorUserId: string 
         },
       });
     }
+
+    // Give back the match this one counted against every restriction still in force, and the
+    // one it counted toward the next event.
+    //
+    // Deliberately partial: an event this match *drew* stays drawn, and a decision already
+    // taken stays taken. That matches how the ledger treats a deleted match — the money comes
+    // back through a compensating entry rather than the history being rewritten — and undoing
+    // a choice somebody has already lived with would be worse than leaving it.
+    await tx.activeEffect.updateMany({
+      where: { leagueId: match.leagueId, teamId: match.homeTeamId, matchesLeft: { gt: 0 } },
+      data: { matchesLeft: { increment: 1 } },
+    });
+    await tx.team.update({
+      where: { id: match.homeTeamId },
+      data: { eventCountdown: { increment: 1 } },
+    });
 
     await tx.match.delete({ where: { id: match.id } });
 

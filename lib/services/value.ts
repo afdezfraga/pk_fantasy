@@ -5,7 +5,7 @@
 
 import type { Prisma } from '@prisma/client';
 
-export type ValueReason = 'BUY' | 'WIN' | 'LOSS' | 'SELL' | 'TRADE';
+export type ValueReason = 'BUY' | 'WIN' | 'LOSS' | 'SELL' | 'TRADE' | 'EVENT';
 
 export async function recordValue(
   tx: Prisma.TransactionClient,

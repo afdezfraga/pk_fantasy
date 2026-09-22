@@ -123,6 +123,54 @@ describe('validateDeck', () => {
   it('rejects a duplicate key', () => {
     expect(validateDeck([base, base]).join(' ')).toMatch(/duplicate key/);
   });
+
+  it('rejects a default option that repeats over the squad', () => {
+    // It would offer nothing at all to a club with no starters, and the default is the one
+    // branch that has to exist for everybody.
+    const options = [{ ...base.options[0], repeat: '@starters' as const }, base.options[1]];
+    expect(validateDeck([{ ...base, options }]).join(' ')).toMatch(/cannot repeat/);
+  });
+
+  it('rejects a wager with no target to hit', () => {
+    const options = [
+      { ...base.options[0], effects: [{ kind: 'PLEDGE', outOf: 5, rewardWins: 3, label: 'x', liftedMessage: 'y' }] },
+      base.options[1],
+    ];
+    expect(validateDeck([{ ...base, options }]).join(' ')).toMatch(/needs wins and outOf/);
+  });
+
+  it('rejects a wager asking for more wins than matches', () => {
+    const options = [
+      { ...base.options[0], effects: [{ kind: 'PLEDGE', wins: 6, outOf: 5, rewardWins: 3, label: 'x', liftedMessage: 'y' }] },
+      base.options[1],
+    ];
+    expect(validateDeck([{ ...base, options }]).join(' ')).toMatch(/no greater than outOf/);
+  });
+
+  it('rejects a wager that pays nothing either way', () => {
+    const options = [
+      { ...base.options[0], effects: [{ kind: 'PLEDGE', wins: 2, outOf: 5, label: 'x', liftedMessage: 'y' }] },
+      base.options[1],
+    ];
+    expect(validateDeck([{ ...base, options }]).join(' ')).toMatch(/reward, a penalty, or both/);
+  });
+
+  it('rejects a bond priced as a percentage with no floor', () => {
+    // The same rule as every other charge: 20% of nothing is nothing.
+    const options = [
+      { ...base.options[0], effects: [{ kind: 'ESCROW', pct: 20, returnPct: 115, rounds: 2, label: 'x', liftedMessage: 'y' }] },
+      base.options[1],
+    ];
+    expect(validateDeck([{ ...base, options }]).join(' ')).toMatch(/needs a "min" floor/);
+  });
+
+  it('rejects a swap with no idea what "similar value" means', () => {
+    const options = [
+      { ...base.options[0], effects: [{ kind: 'SWAP_OFFER' }] },
+      base.options[1],
+    ];
+    expect(validateDeck([{ ...base, options }]).join(' ')).toMatch(/SWAP_OFFER needs a band/);
+  });
 });
 
 describe('pickWeighted', () => {
@@ -169,7 +217,9 @@ function context(overrides: Partial<EventContext>): EventContext {
     losingStreak: 0,
     squad: [member('a', { marketValue: 50_000 }), member('b'), member('c'), member('d')],
     squadSize: 4,
+    squadRoom: 4,
     squadValue: 80_000,
+    freeAgents: [],
     ownedTypes: ['Normal'],
     hasCaptain: false,
     captainAvailable: false,
@@ -218,6 +268,147 @@ describe('fires', () => {
 
   it('catches a Pokémon that never gets a rest', () => {
     expect(fires(context({ everPresent: { pokemonSlug: 'a', matches: 14 } }), { everyMatchStreak: 12 }).fired).toBe(true);
+  });
+});
+
+describe('letting the club choose who', () => {
+  const template = loadDeck().find((entry) => entry.key === 'release_for_two')!;
+
+  const market = [
+    { pokemonSlug: 'x', name: 'X', form: null, marketValue: 9_000 },
+    { pokemonSlug: 'y', name: 'Y', form: null, marketValue: 7_000 },
+    { pokemonSlug: 'z', name: 'Z', form: null, marketValue: 5_000 },
+  ];
+
+  it('offers one branch per Pokémon, spread across the squad by value', () => {
+    const offer = materialise(
+      template,
+      context({
+        squad: [
+          member('best', { marketValue: 100_000 }),
+          member('upper', { marketValue: 80_000 }),
+          member('middle', { marketValue: 60_000 }),
+          member('lower', { marketValue: 40_000 }),
+          member('worst', { marketValue: 20_000 }),
+        ],
+        freeAgents: market,
+      }),
+      null,
+      () => 0.5,
+    );
+
+    // The best, the middle and the worst — asking a real question rather than three shades of
+    // the same one.
+    const keys = offer.options.map((option) => option.key);
+    expect(keys).toEqual(['release:best', 'release:middle', 'release:worst', 'decline']);
+    expect(offer.options[0].label).toContain('best');
+  });
+
+  it('names who arrives, under a ceiling set by who leaves', () => {
+    const offer = materialise(
+      template,
+      context({
+        squad: [
+          member('best', { marketValue: 100_000 }),
+          member('b', { marketValue: 80_000 }),
+          member('c', { marketValue: 60_000 }),
+          member('d', { marketValue: 40_000 }),
+          member('worst', { marketValue: 20_000 }),
+        ],
+        freeAgents: market,
+      }),
+      null,
+      () => 0.5,
+    );
+
+    // 40% of ₽100,000 buys the two best under ₽40,000; 40% of ₽20,000 buys only what is under
+    // ₽8,000, which is a materially worse deal and is stated as such before you click.
+    const fromBest = offer.options.find((option) => option.key === 'release:best')!;
+    expect(fromBest.detail).toContain('X and Y');
+    expect(fromBest.effects[0].params.slugs).toEqual(['x', 'y']);
+    expect(fromBest.effects[0].params.amount).toBe(40_000);
+
+    const fromWorst = offer.options.find((option) => option.key === 'release:worst')!;
+    expect(fromWorst.effects[0].params.slugs).toEqual(['y', 'z']);
+  });
+
+  it('closes a branch the market cannot actually fill', () => {
+    const offer = materialise(
+      template,
+      context({
+        squad: [
+          member('a', { marketValue: 50_000 }),
+          member('b', { marketValue: 50_000 }),
+          member('c', { marketValue: 50_000 }),
+          member('d', { marketValue: 50_000 }),
+          member('e', { marketValue: 50_000 }),
+        ],
+        // One agent under the ₽20,000 ceiling where the offer promises two.
+        freeAgents: [{ pokemonSlug: 'x', name: 'X', form: null, marketValue: 9_000 }],
+      }),
+      null,
+      () => 0.5,
+    );
+
+    const release = offer.options.find((option) => option.key.startsWith('release:'))!;
+    expect(release.available).toBe(false);
+    expect(release.unavailableReason).toContain('1 free agent');
+    // And the club can still answer, which is the whole point of the rule.
+    expect(offer.options.find((option) => option.key === 'decline')!.available).toBe(true);
+  });
+
+  it('names the Pokémon coming the other way in a swap', () => {
+    const swap = loadDeck().find((entry) => entry.key === 'swap_offer')!;
+    const offer = materialise(
+      swap,
+      context({
+        squad: [
+          member('a', { marketValue: 50_000 }),
+          member('b'),
+          member('c'),
+          member('d'),
+        ],
+        freeAgents: [
+          { pokemonSlug: 'far', name: 'Far', form: null, marketValue: 9_000 },
+          { pokemonSlug: 'near', name: 'Near', form: null, marketValue: 52_000 },
+        ],
+      }),
+      null,
+      () => 0,
+    );
+
+    const take = offer.options.find((option) => option.key === 'swap')!;
+    expect(take.effects[0].params.slug).toBe('near');
+    expect(take.detail).toContain('Near');
+    expect(take.available).toBe(true);
+  });
+});
+
+describe('money priced in wins', () => {
+  const template = loadDeck().find((entry) => entry.key === 'sponsor_target')!;
+
+  it('scales a wager to what the club\u2019s own matches are worth', () => {
+    // A win pays ₽2,000 in Great and ₽25,000 in Master, so one flat figure would be pocket
+    // change to one club and a season's earnings to another.
+    const great = materialise(template, context({ tierKey: 'great' }), null, () => 0.5);
+    const master = materialise(template, context({ tierKey: 'master' }), null, () => 0.5);
+
+    const modest = (offer: ReturnType<typeof materialise>) =>
+      offer.options.find((option) => option.key === 'modest')!.effects[0].params;
+
+    expect(modest(great).reward).toBe(6_000);
+    expect(modest(master).reward).toBe(75_000);
+    expect(modest(great).penalty).toBe(2_000);
+
+    // And the number on the button is the number that will be paid.
+    expect(great.options.find((option) => option.key === 'modest')!.detail).toContain('₽6,000');
+  });
+
+  it('gives a wager exactly as many matches as its window', () => {
+    const offer = materialise(template, context({}), null, () => 0.5);
+    const reckless = offer.options.find((option) => option.key === 'reckless')!;
+    expect(reckless.effects[0].matches).toBe(5);
+    expect(reckless.effects[0].params.wins).toBe(5);
   });
 });
 

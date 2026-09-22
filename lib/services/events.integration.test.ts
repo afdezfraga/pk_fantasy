@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 
 import { LEAGUE_DEFAULTS, type LeagueConfig } from '../../config/economy.ts';
 import { db } from '../db.ts';
-import { addEffect, activeEffects, type EffectSpec } from './effects.ts';
+import { addEffect, activeEffects, EffectViolation, type EffectSpec } from './effects.ts';
 import {
   delegateEvent,
   ensurePendingEvent,
@@ -674,5 +674,302 @@ describe('league defaults', () => {
     // parseConfig spreads the defaults, so nothing needs migrating.
     expect(LEAGUE_DEFAULTS.eventsEnabled).toBe(1);
     expect(LEAGUE_DEFAULTS.eventEveryMatches).toBeGreaterThan(0);
+  });
+});
+
+// --- the events that move Pokémon and money around ----------------------------------------------
+
+/** A pending event with exactly the branches a test wants to take. */
+async function stage(
+  leagueId: string,
+  teamId: string,
+  options: { key: string; cost?: number; effects: unknown[] }[],
+) {
+  await db.team.update({ where: { id: teamId }, data: { eventCountdown: 0 } });
+  await db.leagueEvent.create({
+    data: {
+      leagueId,
+      teamId,
+      round: 1,
+      templateKey: 'staged',
+      title: 'Staged',
+      description: 'x',
+      detail: JSON.stringify({ delegable: true }),
+      status: 'PENDING',
+      choices: JSON.stringify(
+        options.map((option) => ({
+          key: option.key,
+          label: option.key,
+          detail: '',
+          default: option.key === options[0].key,
+          available: true,
+          cost: option.cost ?? 0,
+          effects: option.effects,
+        })),
+      ),
+    },
+  });
+  return (await pendingEvent(leagueId, teamId))!;
+}
+
+function lasting(kind: string, params: Record<string, unknown>, matches = 0, rounds = 0) {
+  return {
+    kind,
+    pokemonSlug: null,
+    params,
+    matches,
+    rounds,
+    label: `${kind} in force`,
+    liftedMessage: `${kind} lifted`,
+  };
+}
+
+describe('a Pokémon leaving and another arriving', () => {
+  it('swaps one for the other without a Pokédollar moving', async () => {
+    const { league, team, users } = await makeActiveLeague({ size: 6 });
+    const before = await db.team.findUniqueOrThrow({ where: { id: team.id } });
+
+    const event = await stage(league.id, team.id, [
+      {
+        key: 'swap',
+        effects: [
+          {
+            kind: 'SWAP_OFFER',
+            pokemonSlug: 'pikachu',
+            params: { slug: 'ditto', amount: 6_000, band: 30 },
+            matches: 0,
+            rounds: 0,
+            label: 'Swapped Pikachu for Ditto',
+            liftedMessage: '',
+          },
+        ],
+      },
+    ]);
+
+    await resolveEvent({ eventId: event.id, teamId: team.id, choiceKey: 'swap', actorUserId: users[0].id });
+
+    const gone = await db.ownership.findUniqueOrThrow({
+      where: { leagueId_pokemonSlug: { leagueId: league.id, pokemonSlug: 'pikachu' } },
+    });
+    const arrived = await db.ownership.findUniqueOrThrow({
+      where: { leagueId_pokemonSlug: { leagueId: league.id, pokemonSlug: 'ditto' } },
+    });
+    expect(gone.teamId).toBeNull();
+    expect(arrived.teamId).toBe(team.id);
+    // A swap is a swap: the squad is the same size and the balance has not moved.
+    expect(await db.ownership.count({ where: { leagueId: league.id, teamId: team.id } })).toBe(6);
+    expect((await db.team.findUniqueOrThrow({ where: { id: team.id } })).cash).toBe(before.cash);
+    expect(await verifyLedger(db, league.id)).toEqual([]);
+  });
+
+  it('substitutes an equivalent when the one it promised has been signed', async () => {
+    const { league, team, other, users } = await makeActiveLeague({ size: 6 });
+    // Somebody else takes Ditto between the offer and the answer.
+    const ditto = await db.ownership.findUniqueOrThrow({
+      where: { leagueId_pokemonSlug: { leagueId: league.id, pokemonSlug: 'ditto' } },
+    });
+    await acquireFreeAgent({
+      leagueId: league.id,
+      pokemonSlug: 'ditto',
+      teamId: other.id,
+      price: ditto.marketValue,
+      type: 'MARKET_BUY',
+    });
+
+    const event = await stage(league.id, team.id, [
+      {
+        key: 'swap',
+        effects: [
+          {
+            kind: 'SWAP_OFFER',
+            pokemonSlug: 'pikachu',
+            params: { slug: 'ditto', amount: 6_000, band: 30 },
+            matches: 0,
+            rounds: 0,
+            label: 'Swap',
+            liftedMessage: '',
+          },
+        ],
+      },
+    ]);
+    await resolveEvent({ eventId: event.id, teamId: team.id, choiceKey: 'swap', actorUserId: users[0].id });
+
+    // Somebody of the same standing arrives instead — the promise was a Pokémon of that value,
+    // and failing here would punish a manager for taking a moment to think about it.
+    const squad = await db.ownership.findMany({ where: { leagueId: league.id, teamId: team.id } });
+    expect(squad).toHaveLength(6);
+    expect(squad.map((row) => row.pokemonSlug)).not.toContain('pikachu');
+    expect(squad.map((row) => row.pokemonSlug)).not.toContain('ditto');
+    expect(squad.some((row) => ['delibird', 'luvdisc', 'furfrou'].includes(row.pokemonSlug))).toBe(true);
+  });
+
+  it('takes one and gives two back', async () => {
+    const { league, team, users } = await makeActiveLeague({ size: 6 });
+    const before = await db.team.findUniqueOrThrow({ where: { id: team.id } });
+
+    const event = await stage(league.id, team.id, [
+      {
+        key: 'release',
+        effects: [
+          {
+            kind: 'RELEASE_FOR_TWO',
+            pokemonSlug: 'torkoal',
+            params: { slugs: ['ditto', 'delibird'], count: 2, amount: 28_000 },
+            matches: 0,
+            rounds: 0,
+            label: 'Released Torkoal for Ditto and Delibird',
+            liftedMessage: '',
+          },
+        ],
+      },
+    ]);
+    await resolveEvent({ eventId: event.id, teamId: team.id, choiceKey: 'release', actorUserId: users[0].id });
+
+    const squad = await db.ownership.findMany({ where: { leagueId: league.id, teamId: team.id } });
+    expect(squad).toHaveLength(7);
+    const slugs = squad.map((row) => row.pokemonSlug);
+    expect(slugs).not.toContain('torkoal');
+    expect(slugs).toContain('ditto');
+    expect(slugs).toContain('delibird');
+    // Depth, not money: nothing was paid for the two and nothing was received for the one.
+    expect((await db.team.findUniqueOrThrow({ where: { id: team.id } })).cash).toBe(before.cash);
+    expect(await verifyLedger(db, league.id)).toEqual([]);
+  });
+});
+
+describe('a wager on results', () => {
+  it('pays out the moment the target is reached, with matches to spare', async () => {
+    const { league, team, users } = await makeActiveLeague({ size: 6 });
+    const event = await stage(league.id, team.id, [
+      { key: 'take', effects: [lasting('PLEDGE', { wins: 2, outOf: 5, reward: 10_000, penalty: 4_000 }, 5)] },
+    ]);
+    await resolveEvent({ eventId: event.id, teamId: team.id, choiceKey: 'take', actorUserId: users[0].id });
+    const before = await db.team.findUniqueOrThrow({ where: { id: team.id } });
+
+    await play(league.id, team.id, users[0].id, { won: true });
+    // Halfway: still running, and the strip says where the club has got to.
+    const midway = (await activeEffects(league.id, team.id)).find((effect) => effect.kind === 'PLEDGE');
+    expect(midway?.label).toContain('1 of 2 wins');
+
+    await play(league.id, team.id, users[0].id, { won: true });
+
+    expect(await activeEffects(league.id, team.id)).toHaveLength(0);
+    const after = await db.team.findUniqueOrThrow({ where: { id: team.id } });
+    const payouts = await db.transaction.findMany({
+      where: { leagueId: league.id, teamId: team.id, type: 'EVENT' },
+    });
+    expect(payouts.map((row) => row.amount)).toContain(10_000);
+    expect(after.cash).toBeGreaterThan(before.cash);
+
+    const notice = await db.leagueEvent.findFirst({
+      where: { leagueId: league.id, teamId: team.id, templateKey: 'lifted:pledge' },
+    });
+    expect(notice?.title).toBe('Target met');
+    expect(notice?.description).toContain('2 of 5');
+    expect(await verifyLedger(db, league.id)).toEqual([]);
+  });
+
+  it('settles a failure as soon as it becomes impossible, not when the window ends', async () => {
+    const { league, team, users } = await makeActiveLeague({ size: 6 });
+    const event = await stage(league.id, team.id, [
+      { key: 'take', effects: [lasting('PLEDGE', { wins: 3, outOf: 3, reward: 30_000, penalty: 9_000 }, 3)] },
+    ]);
+    await resolveEvent({ eventId: event.id, teamId: team.id, choiceKey: 'take', actorUserId: users[0].id });
+    const before = await db.team.findUniqueOrThrow({ where: { id: team.id } });
+
+    // One defeat and all five wins are already gone. Being told at the third match that you
+    // failed at the first is a worse experience than being told at the first.
+    await play(league.id, team.id, users[0].id, { won: false });
+
+    expect(await activeEffects(league.id, team.id)).toHaveLength(0);
+    const after = await db.team.findUniqueOrThrow({ where: { id: team.id } });
+    expect(after.cash).toBe(before.cash - 9_000);
+    const notice = await db.leagueEvent.findFirst({
+      where: { leagueId: league.id, teamId: team.id, templateKey: 'lifted:pledge' },
+    });
+    expect(notice?.title).toBe('Target missed');
+    expect(await verifyLedger(db, league.id)).toEqual([]);
+  });
+});
+
+describe('money locked away', () => {
+  it('charges now and pays back with interest when the round it names closes', async () => {
+    const { league, team, users } = await makeActiveLeague({ size: 6 });
+    const before = await db.team.findUniqueOrThrow({ where: { id: team.id } });
+
+    const event = await stage(league.id, team.id, [
+      { key: 'buy', effects: [lasting('ESCROW', { amount: 50_000, returnPct: 115 }, 0, 2)] },
+    ]);
+    await resolveEvent({ eventId: event.id, teamId: team.id, choiceKey: 'buy', actorUserId: users[0].id });
+    expect((await db.team.findUniqueOrThrow({ where: { id: team.id } })).cash).toBe(before.cash - 50_000);
+
+    await advanceRound({ leagueId: league.id, actorUserId: users[0].id });
+    // Still locked after one round: the terms said two.
+    expect((await db.team.findUniqueOrThrow({ where: { id: team.id } })).cash).toBe(before.cash - 50_000);
+
+    await advanceRound({ leagueId: league.id, actorUserId: users[0].id });
+    expect((await db.team.findUniqueOrThrow({ where: { id: team.id } })).cash).toBe(before.cash + 7_500);
+    expect(await verifyLedger(db, league.id)).toEqual([]);
+  });
+});
+
+describe('a club whose transfers are frozen', () => {
+  it('cannot sign, sell or trade until the freeze lifts', async () => {
+    const { league, team, users } = await makeActiveLeague({ size: 6 });
+    const event = await stage(league.id, team.id, [
+      { key: 'decline', effects: [lasting('TRANSFER_FREEZE', {}, 0, 1)] },
+    ]);
+    await resolveEvent({ eventId: event.id, teamId: team.id, choiceKey: 'decline', actorUserId: users[0].id });
+
+    const free = await db.ownership.findFirstOrThrow({
+      where: { leagueId: league.id, teamId: null, pokemonSlug: 'delibird' },
+    });
+    await expect(
+      acquireFreeAgent({
+        leagueId: league.id,
+        pokemonSlug: 'delibird',
+        teamId: team.id,
+        price: free.marketValue,
+        type: 'MARKET_BUY',
+      }),
+    ).rejects.toThrow(EffectViolation);
+    await expect(
+      sellToMarket({ leagueId: league.id, pokemonSlug: 'pikachu', teamId: team.id }),
+    ).rejects.toThrow(EffectViolation);
+
+    await advanceRound({ leagueId: league.id, actorUserId: users[0].id });
+
+    // And the freeze announces its own end, like every other restriction.
+    const lifted = await db.leagueEvent.findFirst({
+      where: { leagueId: league.id, teamId: team.id, templateKey: 'lifted:transfer_freeze' },
+    });
+    expect(lifted?.status).toBe('NOTICE');
+
+    await expect(
+      sellToMarket({ leagueId: league.id, pokemonSlug: 'pikachu', teamId: team.id }),
+    ).resolves.toBeTruthy();
+  });
+});
+
+describe('deleting a result the wager counted', () => {
+  it('gives back the match and the win together', async () => {
+    const { league, team, users } = await makeActiveLeague({ size: 6 });
+    const event = await stage(league.id, team.id, [
+      { key: 'take', effects: [lasting('PLEDGE', { wins: 2, outOf: 5, reward: 10_000, penalty: 4_000 }, 5)] },
+    ]);
+    await resolveEvent({ eventId: event.id, teamId: team.id, choiceKey: 'take', actorUserId: users[0].id });
+
+    const first = await play(league.id, team.id, users[0].id, { won: true });
+    const running = (await activeEffects(league.id, team.id)).find((effect) => effect.kind === 'PLEDGE');
+    expect(running?.matchesLeft).toBe(4);
+    expect(running?.params.won).toBe(1);
+
+    await deleteMatch({ matchId: first.match.id, actorUserId: users[0].id });
+
+    // Returning the match without returning the win would quietly make the target easier.
+    const after = (await activeEffects(league.id, team.id)).find((effect) => effect.kind === 'PLEDGE');
+    expect(after?.matchesLeft).toBe(5);
+    expect(after?.params.won).toBe(0);
+    expect(after?.label).toContain('0 of 2 wins');
   });
 });

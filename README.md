@@ -212,7 +212,10 @@ with two or three answers, none of them free.
 The best ones cost no money at all. A sulking star has to be run at zero EVs for five matches; the
 pitch is being relaid so you can't set weather or terrain; the coach has a philosophy and you're
 attacking with STAB moves only until they get over it. Those change how you actually play, which
-is worth more than another number moving.
+is worth more than another number moving. A flight doesn't land and you take three into a match
+instead of four, or drive everyone through the night and watch a fortnight of development go
+nowhere. Somebody complains about how you play and you spend four matches without a protection
+move.
 
 Some ask something bigger. A club offers a straight swap for one of yours — take it and you get a
 named Pokémon of the same standing, refuse and yours plays five matches with its training undone.
@@ -275,8 +278,17 @@ And a win is worth ₽1,000 in the beginner tier and ₽100,000 in Champion, so 
 win-rewards (`rewardWins`) or as a share of the balance (`pct` + `min`) rather than flat, or one
 figure is pocket change to one club and a season's earnings to another.
 
-Two dials in `config/economy.ts`: `eventEveryMatches` for pacing, and `eventSeverity` as a
-percentage scaler on every cost and penalty, for when a season tells you the deck is too harsh.
+Two dials in `config/economy.ts`: `eventEveryMatches` for pacing, and `eventSeverity` for when a
+season tells you the deck is too harsh — it scales what an option costs and how long its
+consequences last, the two quantities that unambiguously mean "worse" when they're bigger. Value
+percentages and one-off payments are left alone, since a scaler that can't tell a gain from a
+loss would make some events kinder the harsher you set the league.
+
+Upsetting the Pokémon the rest of the squad takes its lead from isn't a private matter. A template
+can carry `severityMult: { captain: 1.5 }`, so the same event costs more and lasts longer when it
+lands on your captain — and an effect can carry `spreadTo: "starters"`, which puts a milder copy
+on two others. Refuse your captain's transfer request and three of your six are sulking, not one.
+That's what makes choosing a captain a decision rather than a label.
 
 Some events aren't random at all. Name a Pokémon in your six and then leave it out of ten matches
 and it asks why; play the same four in all of your last ten and they burn out; make three market
@@ -368,7 +380,7 @@ app/                       Next.js App Router pages
 npm test
 ```
 
-214 tests. The ones that matter: four teams racing for the same Pokémon and exactly one winning
+221 tests. The ones that matter: four teams racing for the same Pokémon and exactly one winning
 *and only that one being charged*; the ledger balancing after a run of buys and sells; a win
 streak paying ₽10,000 → ₽30,000 → ₽50,000 and a deleted match giving all of it back along with
 the value it moved; the snake order reversing; and the ladder comparing gauges as fractions,
@@ -382,7 +394,9 @@ if it plays; and that a restriction ends on exactly the match it said it would. 
 substitutes an equivalent when the Pokémon it named has been signed by somebody else in the
 meantime, that a wager settles the instant its answer is certain, and that a frozen club can
 neither sign, sell nor trade until the round turns, and that deleting a result gives a wager
-back its match and its win together.
+back its match and its win together. And that a decision refused in front of the squad puts the
+milder version in force on two others, each of which has to be confirmed before the club plays
+again.
 
 Integration tests build a throwaway SQLite database with a small fixed catalog, so they fail when
 the logic breaks rather than when Garchomp changes tier.

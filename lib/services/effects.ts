@@ -86,6 +86,11 @@ export const EFFECT_KINDS = {
 
 export type EffectKind = keyof typeof EFFECT_KINDS;
 
+/** Whether an effect is about one Pokémon, the whole club, or either. */
+export function effectScope(kind: EffectKind): 'pokemon' | 'team' | 'either' {
+  return EFFECT_KINDS[kind].scope;
+}
+
 export function isEffectKind(value: string): value is EffectKind {
   return Object.hasOwn(EFFECT_KINDS, value);
 }
@@ -209,7 +214,9 @@ export async function activeEffects(
 ): Promise<LiveEffect[]> {
   const rows = await client.activeEffect.findMany({
     where: { leagueId, teamId },
-    orderBy: { createdAt: 'asc' },
+    // Effects installed by the same decision share a timestamp to the millisecond, so `id`
+    // breaks the tie and the strip doesn't reshuffle itself between page loads.
+    orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
   });
   return rows.map(toLive).filter((effect): effect is LiveEffect => effect !== null);
 }

@@ -66,6 +66,12 @@ export interface EventContext {
   hasCaptain: boolean;
   captainAvailable: boolean;
 
+  /**
+   * The league's severity dial, as a percentage. Scales what an event costs and how long its
+   * consequences last, so a league that finds the deck too harsh has one number to turn.
+   */
+  severity: number;
+
   /** 1 is top of the table. */
   ladderPosition: number;
   teamCount: number;
@@ -252,6 +258,7 @@ export async function buildContext(leagueId: string, teamId: string): Promise<Ev
     })),
     squadValue: squad.reduce((sum, member) => sum + member.marketValue, 0),
     ownedTypes: [...new Set(squad.flatMap((member) => member.types))],
+    severity: config.eventSeverity,
     hasCaptain: squad.some((member) => member.captain),
     captainAvailable: squad.some((member) => member.captain) && !captainSpent(effects),
     ladderPosition: order.findIndex((candidate) => candidate.id === teamId) + 1,

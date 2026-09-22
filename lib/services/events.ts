@@ -33,6 +33,7 @@ import {
   addEffect,
   chargeForEvent,
   cashCost,
+  effectScope,
   isEffectKind,
   isInstant,
   moveTypeValue,
@@ -93,6 +94,18 @@ export interface EffectSpecJson {
   /** ESCROW: what comes back, as a percentage of what went in. */
   returnPct?: number;
   /**
+   * Ripples a milder copy of this effect across the rest of the starting lineup.
+   *
+   * Upsetting the Pokémon the rest of the squad looks to is not a private matter, so a captain
+   * event resolved badly reaches further than the captain. The copies are picked and frozen at
+   * draw time like everything else, and last `spreadPct` of the original.
+   */
+  spreadTo?: 'starters';
+  spreadCount?: number;
+  spreadPct?: number;
+  spreadLabel?: string;
+  spreadLiftedMessage?: string;
+  /**
    * Money priced in wins rather than Pokédollars.
    *
    * A win is worth ₽1,000 in the beginner tier and ₽100,000 in Champion, so any flat figure is
@@ -139,6 +152,13 @@ export interface EventTemplate {
   requires?: Requires;
   trigger?: Trigger;
   target?: string;
+  /**
+   * Multipliers on how hard this lands, by who it landed on.
+   *
+   * `captain` applies when the resolved subject is the club's captain: the same event costs more
+   * and lasts longer when it is the Pokémon the squad takes its lead from.
+   */
+  severityMult?: { captain?: number };
   virtueChance?: number;
   virtue?: { title: string; description: string; effects: EffectSpecJson[] };
   options: OptionSpec[];
@@ -258,6 +278,21 @@ function checkEffect(effect: EffectSpecJson, where: string): string[] {
   }
   if (effect.kind === 'RELEASE_FOR_TWO' && (!effect.pct || !effect.count)) {
     problems.push(`${where}: RELEASE_FOR_TWO needs a pct of the leaver's value and a count`);
+  }
+
+  // A ripple copies a restriction onto other Pokémon, so it needs a restriction to copy and
+  // wording that names the right one. Reusing the original's label would tell a club that
+  // Garchomp is out injured on the card belonging to Ferrothorn.
+  if (effect.spreadTo) {
+    if (effectScope(effect.kind) === 'team') {
+      problems.push(`${where}: ${effect.kind} is club-wide already and cannot spread`);
+    }
+    if (isInstant(effect.kind)) {
+      problems.push(`${where}: ${effect.kind} happens once and cannot spread`);
+    }
+    if (!effect.spreadLabel || !effect.spreadLiftedMessage) {
+      problems.push(`${where}: a spreading effect needs spreadLabel and spreadLiftedMessage`);
+    }
   }
   return problems;
 }
@@ -439,7 +474,9 @@ export function materialise(
   const options = template.options.flatMap((option) => {
     const targets = repeatTargets(option, context, subject);
     return targets
-      .map((optionSubject) => offerOption(option, context, optionSubject, triggerSubject, baseVars, random))
+      .map((optionSubject) =>
+        offerOption(template, option, context, optionSubject, triggerSubject, baseVars, random),
+      )
       .filter((offered): offered is StoredOption => offered !== null);
   });
 
@@ -454,7 +491,76 @@ export function materialise(
  * only describe itself once it knows which Pokémon — "swap him for Ferrothorn" is the offer, and
  * "swap him for someone" is not.
  */
+/**
+ * How hard this event lands on this club.
+ *
+ * Two dials multiplied together: the league's own `eventSeverity`, which is the one number to
+ * turn when a season says the deck is too harsh, and the template's `severityMult` for landing
+ * on a captain. Both scale what an option costs and how long its consequences last — quantities
+ * that unambiguously mean "worse" when they are bigger. Value percentages and one-off payments
+ * are left alone, because a scaler that cannot tell a gain from a loss would make some events
+ * kinder the harsher the league was set.
+ */
+function severityFor(
+  template: EventTemplate,
+  context: EventContext,
+  subject: string | null,
+): number {
+  const captain = context.squad.find((member) => member.captain);
+  const onCaptain = subject !== null && captain?.pokemonSlug === subject;
+  const multiplier = onCaptain ? (template.severityMult?.captain ?? 1) : 1;
+  return (context.severity / 100) * multiplier;
+}
+
+/** Scales a quantity, never rounding a real consequence away to nothing. */
+function scale(value: number, factor: number, step: number): number {
+  if (value === 0 || factor === 1) return value;
+  return Math.max(step, roundTo(value * factor, step));
+}
+
+/**
+ * Milder copies of an effect, on other members of the starting lineup.
+ *
+ * Football Manager's squad hierarchy is the model: upsetting the Pokémon the rest of the squad
+ * takes its lead from sends the trouble outward. The copies are chosen here, at draw time, so
+ * the event that lands is the event the club read.
+ */
+function ripples(
+  effect: EffectSpecJson,
+  head: StoredEffect,
+  context: EventContext,
+  subject: string | null,
+  vars: Record<string, string>,
+  random: () => number,
+): StoredEffect[] {
+  if (effect.spreadTo !== 'starters' || head.matches <= 0) return [];
+
+  const others = context.squad.filter(
+    (member) => member.starter && member.pokemonSlug !== subject,
+  );
+  const wanted = Math.min(effect.spreadCount ?? 2, others.length);
+
+  const pool = [...others];
+  const picked: typeof others = [];
+  for (let i = 0; i < wanted; i += 1) {
+    picked.push(...pool.splice(Math.floor(random() * pool.length), 1));
+  }
+
+  const matches = Math.max(1, Math.round((head.matches * (effect.spreadPct ?? 50)) / 100));
+  return picked.map((member) => {
+    const rippleVars = { ...vars, pokemon: pokemonLabel(member) };
+    return {
+      ...head,
+      pokemonSlug: member.pokemonSlug,
+      matches,
+      label: render(effect.spreadLabel ?? effect.label ?? '', rippleVars),
+      liftedMessage: render(effect.spreadLiftedMessage ?? effect.liftedMessage ?? '', rippleVars),
+    };
+  });
+}
+
 function offerOption(
+  template: EventTemplate,
   option: OptionSpec,
   context: EventContext,
   subject: string | null,
@@ -462,7 +568,8 @@ function offerOption(
   baseVars: Record<string, string>,
   random: () => number,
 ): StoredOption | null {
-  const cost = costOf(context, option, subject);
+  const severity = severityFor(template, context, subject);
+  const cost = scale(costOf(context, option, subject), severity, 100);
   const vars: Record<string, string> = {
     ...baseVars,
     pokemon: subject ? labelFor(context, subject) : baseVars.pokemon,
@@ -471,7 +578,7 @@ function offerOption(
 
   let shortfall: string | null = null;
 
-  const effects: StoredEffect[] = option.effects.map((effect) => {
+  const effects: StoredEffect[] = option.effects.flatMap((effect) => {
     const slug = effect.target
       ? resolveTarget(context, effect.target, triggerSubject, random)
       : subject;
@@ -511,6 +618,7 @@ function offerOption(
     if (effect.kind === 'ESCROW' && effect.pct !== undefined) {
       params.amount = cashCost(context.cash, { pct: effect.pct, min: effect.min });
     }
+    if (effect.item !== undefined) effectVars.item = effect.item;
     effectVars.amount = money(params.amount ?? 0);
     effectVars.reward = money(params.reward ?? 0);
     effectVars.penalty = money(params.penalty ?? 0);
@@ -538,17 +646,25 @@ function offerOption(
       effectVars.incoming = listOf(candidates.map((candidate) => labelFor(context, candidate)));
     }
 
-    return {
+    // A wager lasts exactly as long as the window it names, and severity does not get to
+    // shorten or lengthen a bet the club agreed to in those terms.
+    const wager = effect.kind === 'PLEDGE';
+    if (wager && params.penalty !== undefined) {
+      params.penalty = scale(params.penalty, severity, 100);
+    }
+
+    const head: StoredEffect = {
       kind: effect.kind as EffectKind,
       // Team-wide effects carry no slug even when the event is about one Pokémon.
       pokemonSlug: effect.kind === 'TYPE_BAN' || effect.kind === 'TYPE_VALUE_SHIFT' ? null : slug,
       params,
-      // A wager lasts exactly as long as the window it names.
-      matches: effect.kind === 'PLEDGE' ? (effect.outOf ?? 0) : (effect.matches ?? 0),
+      matches: wager ? (effect.outOf ?? 0) : scale(effect.matches ?? 0, severity, 1),
       rounds: effect.rounds ?? 0,
       label: render(effect.label ?? '', effectVars),
       liftedMessage: render(effect.liftedMessage ?? '', effectVars),
     };
+
+    return [head, ...ripples(effect, head, context, slug, vars, random)];
   });
 
   // An option about a Pokémon that does not exist is not an option at all.
@@ -558,6 +674,7 @@ function offerOption(
   const money0 = effects.find(
     (effect) => effect.params.amount || effect.params.reward || effect.params.penalty,
   )?.params;
+  const item = effects.find((effect) => effect.params.item)?.params.item;
   const vars2 = {
     ...vars,
     incoming: incoming
@@ -565,6 +682,7 @@ function offerOption(
         ? listOf(incoming.params.slugs.map((slug) => labelFor(context, slug)))
         : labelFor(context, incoming.params.slug ?? null)
       : '',
+    ...(item ? { item } : {}),
     amount: money(money0?.amount ?? 0),
     reward: money(money0?.reward ?? 0),
     penalty: money(money0?.penalty ?? 0),

@@ -47,6 +47,17 @@
       "delegable": true,
       "trigger": { "benchedMatches": 10 },
       "target": "@trigger",
+      "virtueChance": 11,
+      "virtue": {
+        "title": "Training on its own",
+        "description": "Nobody told {pokemon} it had been forgotten. It has spent the weeks it was not picked getting better than the Pokémon who were, and this week it showed everybody.",
+        "effects": [
+          {
+            "kind": "VALUE_MOVE",
+            "pct": 15
+          }
+        ]
+      },
       "options": [
         {
           "key": "promote",
@@ -212,6 +223,7 @@
           }
         ]
       },
+      "severityMult": { "captain": 1.5 },
       "options": [
         {
           "key": "bonus",
@@ -244,7 +256,12 @@
               "kind": "ZERO_EVS",
               "matches": 5,
               "label": "{pokemon} — run it with no EVs invested",
-              "liftedMessage": "{pokemon} has come round. Train it properly again."
+              "liftedMessage": "{pokemon} has come round. Train it properly again.",
+              "spreadTo": "starters",
+              "spreadCount": 2,
+              "spreadPct": 40,
+              "spreadLabel": "{pokemon} — unsettled by it, run with no EVs invested",
+              "spreadLiftedMessage": "{pokemon} has stopped worrying about it. Train it properly again."
             },
             {
               "kind": "NO_MEGA",
@@ -267,6 +284,18 @@
       "delegable": false,
       "requires": { "minSquad": 3, "minMatches": 4 },
       "target": "@mostValuableStarter",
+      "severityMult": { "captain": 1.5 },
+      "virtueChance": 9,
+      "virtue": {
+        "title": "It signed on the spot",
+        "description": "{pokemon}'s people came in with a number, and {pokemon} signed the first thing put in front of it instead. It says it likes it here.",
+        "effects": [
+          {
+            "kind": "VALUE_MOVE",
+            "pct": 12
+          }
+        ]
+      },
       "options": [
         {
           "key": "pay",
@@ -322,6 +351,7 @@
           }
         ]
       },
+      "severityMult": { "captain": 1.5 },
       "options": [
         {
           "key": "rest",
@@ -401,6 +431,20 @@
       "cooldown": 9,
       "delegable": true,
       "requires": { "hasMega": true },
+      "virtueChance": 8,
+      "virtue": {
+        "title": "A week without the machines",
+        "description": "Nothing worked for six days, so they trained the way people did before any of it existed. {team} has not looked this sharp all season.",
+        "effects": [
+          {
+            "kind": "VALUE_MULT",
+            "times": 1.3,
+            "matches": 4,
+            "label": "Back to basics — values moving 30% faster",
+            "liftedMessage": "The novelty has worn off. Values move normally again."
+          }
+        ]
+      },
       "options": [
         {
           "key": "generator",
@@ -512,6 +556,20 @@
           "detail": "{cost}, and nobody notices.",
           "cost": { "kind": "CASH_PCT", "pct": 8, "min": 12000 },
           "effects": []
+        },
+        {
+          "key": "crate",
+          "label": "Take the sponsor's crate",
+          "detail": "They have pallets of {item} and nothing else. {pokemon} holds one for 4 matches, whether it suits it or not.",
+          "effects": [
+            {
+              "kind": "FIXED_ITEM",
+              "item": "Leftovers",
+              "matches": 4,
+              "label": "{pokemon} — must hold {item}",
+              "liftedMessage": "{pokemon} can hold what suits it again."
+            }
+          ]
         },
         {
           "key": "without",
@@ -735,6 +793,18 @@
       "cooldown": 8,
       "delegable": true,
       "tierLadder": false,
+      "virtueChance": 10,
+      "virtue": {
+        "title": "They owed you",
+        "description": "The auditors went back four years and came out the other side apologising. {team} has been underpaid for most of them.",
+        "effects": [
+          {
+            "kind": "CASH",
+            "amountWins": 3,
+            "label": "Audit settled in your favour"
+          }
+        ]
+      },
       "options": [
         {
           "key": "now",
@@ -771,6 +841,20 @@
       "delegable": true,
       "requires": { "minMatches": 3 },
       "target": "@cheapestStarter",
+      "virtueChance": 8,
+      "virtue": {
+        "title": "Somebody better was waiting",
+        "description": "The sponsor walked and a rival of theirs was on the phone inside the hour, with a better offer and a grudge to settle.",
+        "effects": [
+          {
+            "kind": "PAYOUT_MULT",
+            "times": 1.3,
+            "matches": 5,
+            "label": "New sponsor — win rewards up 30%",
+            "liftedMessage": "The signing bonus is spent. {team}'s rewards are back to normal."
+          }
+        ]
+      },
       "options": [
         {
           "key": "buyout",
@@ -883,6 +967,17 @@
       "delegable": true,
       "requires": { "minStarters": 5 },
       "target": "@randomStarter",
+      "virtueChance": 9,
+      "virtue": {
+        "title": "One of them thrived on it",
+        "description": "The new regimen flattened most of the squad. {pokemon} came out of it looking like something else entirely.",
+        "effects": [
+          {
+            "kind": "VALUE_MOVE",
+            "pct": 15
+          }
+        ]
+      },
       "options": [
         {
           "key": "isolate",
@@ -925,6 +1020,7 @@
       "delegable": true,
       "requires": { "minStarters": 4 },
       "target": "@randomStarter",
+      "severityMult": { "captain": 1.5 },
       "options": [
         {
           "key": "swap",
@@ -947,8 +1043,13 @@
             {
               "kind": "ZERO_EVS",
               "matches": 5,
+              "spreadTo": "starters",
+              "spreadCount": 2,
+              "spreadPct": 40,
               "label": "{pokemon} — run with no EVs",
-              "liftedMessage": "{pokemon} has put the move behind it. Its EV spread is its own again."
+              "liftedMessage": "{pokemon} has put the move behind it. Its EV spread is its own again.",
+              "spreadLabel": "{pokemon} — watched it happen, run with no EVs",
+              "spreadLiftedMessage": "{pokemon} has moved on from it. Its EV spread is its own again."
             }
           ]
         }
@@ -1192,6 +1293,105 @@
               "matches": 3,
               "label": "No same-type attacking moves",
               "liftedMessage": "{team} has fresh sets ready. Same-type attacks are back on the menu."
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "key": "travel_chaos",
+      "title": "Nobody's flight landed",
+      "description": "Half of {team} is still in a departure lounge two hundred miles away, and the ladder does not wait for anybody. Whoever travels has to be decided tonight.",
+      "scope": "team",
+      "weight": 5,
+      "cooldown": 8,
+      "delegable": true,
+      "requires": { "minMatches": 2, "minStarters": 5 },
+      "virtueChance": 10,
+      "virtue": {
+        "title": "The best week they had",
+        "description": "Nine hours on a coach with nothing to do but talk to each other. Whatever happened on that road, {team} came back a side rather than a squad.",
+        "effects": [
+          {
+            "kind": "PAYOUT_MULT",
+            "times": 1.25,
+            "matches": 4,
+            "label": "Something clicked on the road — win rewards up 25%",
+            "liftedMessage": "It has worn off, the way these things do. Rewards are back to normal."
+          }
+        ]
+      },
+      "options": [
+        {
+          "key": "light",
+          "label": "Go with whoever made it",
+          "detail": "Three into a match instead of four, for the next three. Fewer bodies, but the ones you have are fresh.",
+          "effects": [
+            {
+              "kind": "BRING_LIMIT",
+              "count": 3,
+              "matches": 3,
+              "label": "Travelling light — bring 3 to a match",
+              "liftedMessage": "The rest of {team} has finally landed. Take a full four again."
+            }
+          ]
+        },
+        {
+          "key": "drive",
+          "label": "Drive through the night and take everybody",
+          "detail": "Everybody travels, and everybody arrives wrecked. Three matches where nothing anybody does moves their value much.",
+          "default": true,
+          "effects": [
+            {
+              "kind": "VALUE_MULT",
+              "times": 0.6,
+              "matches": 3,
+              "label": "Run into the ground — value moves at 60%",
+              "liftedMessage": "{team} has caught up on its sleep. Values move normally again."
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "key": "stalling_complaint",
+      "title": "A word about how you play",
+      "description": "Three opponents have written to the league about {team} inside a month. Nobody has used the word cheating, and nobody has quite avoided it either.",
+      "scope": "team",
+      "weight": 4,
+      "cooldown": 9,
+      "delegable": true,
+      "requires": { "minMatches": 5 },
+      "target": "@captain",
+      "options": [
+        {
+          "key": "carry_on",
+          "label": "Carry on, and take the fine",
+          "detail": "{cost}, and you play how you like. The officials will be watching {pokemon} lead for the next three.",
+          "requires": { "hasCaptain": true },
+          "cost": { "kind": "CASH_PCT", "pct": 8, "min": 10000 },
+          "effects": [
+            {
+              "kind": "MUST_LEAD",
+              "matches": 3,
+              "label": "{pokemon} must lead — the officials are watching",
+              "liftedMessage": "The league has moved on to somebody else. Lead with whoever you like."
+            }
+          ]
+        },
+        {
+          "key": "adjust",
+          "label": "Play it their way",
+          "detail": "Four matches without a protection move of any kind. You will have to win them on the front foot.",
+          "default": true,
+          "effects": [
+            {
+              "kind": "NO_PROTECT",
+              "matches": 4,
+              "label": "No protection moves",
+              "liftedMessage": "The complaint has been filed and forgotten. Protect away."
             }
           ]
         }

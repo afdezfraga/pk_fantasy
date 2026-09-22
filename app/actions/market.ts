@@ -21,6 +21,8 @@ import { updateStanding, LadderError } from '../../lib/services/ladder.ts';
 import { getTier } from '../../lib/ladder.ts';
 import { LeagueError } from '../../lib/services/league.ts';
 import { DraftError } from '../../lib/services/draft.ts';
+import { EffectViolation } from '../../lib/services/effects.ts';
+import { ensurePendingEvent, EventError, EventPendingError } from '../../lib/services/events.ts';
 
 export interface ActionState {
   error?: string;
@@ -38,6 +40,9 @@ const KNOWN_ERRORS = [
   OwnershipConflict,
   RosterRuleViolation,
   InsufficientFunds,
+  EventError,
+  EventPendingError,
+  EffectViolation,
 ];
 
 /** Domain errors become messages; anything else is a real bug and should surface as one. */
@@ -54,7 +59,7 @@ async function myTeam(leagueId: string, userId: string) {
 }
 
 function refresh(leagueId: string) {
-  for (const path of ['', '/market', '/squad', '/matches', '/trades']) {
+  for (const path of ['', '/market', '/squad', '/matches', '/trades', '/events']) {
     revalidatePath(`/league/${leagueId}${path}`);
   }
 }
@@ -226,12 +231,16 @@ export async function reportMatchAction(
     return { error: 'Pick the Pokémon you brought to the match.' };
   }
 
+  // Honour-based restrictions the manager ticked. The app can't verify any of them, so it
+  // records what was claimed and shows it in the feed alongside the result.
+  const attested = formData.getAll('attested').map(String).filter(Boolean);
+
   // The scoreline is the lines — see lib/match.ts. Derived on the server as well as in the form
   // so what's saved is what the form promised, whatever was posted.
   const { homeScore, awayScore } = deriveScore({ won, lines });
 
   try {
-    await reportMatch({
+    const result = await reportMatch({
       leagueId,
       homeTeamId,
       // Every match is a public ladder game against someone outside the league.
@@ -240,11 +249,25 @@ export async function reportMatchAction(
       homeScore,
       awayScore,
       lines,
+      attested,
       note,
       reportedById: user.id,
     });
+
+    // A match may bring the next event due. Drawing it here rather than inside the report keeps
+    // a failed draw from rolling back a result somebody has already played.
+    await ensurePendingEvent(leagueId, homeTeamId);
     refresh(leagueId);
-    return { success: won ? 'Win recorded.' : 'Loss recorded.' };
+
+    const parts = [
+      result.surrendered
+        ? 'Surrendered — a Pokémon that may not play took the field, so it goes down as a loss.'
+        : won
+          ? 'Win recorded.'
+          : 'Loss recorded.',
+      ...result.lifted,
+    ];
+    return { success: parts.join(' ') };
   } catch (error) {
     return { error: toMessage(error) };
   }

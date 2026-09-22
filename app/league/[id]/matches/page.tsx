@@ -1,8 +1,11 @@
+import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 
 import { getSessionUser } from '../../../../lib/auth/session.ts';
 import { db } from '../../../../lib/db.ts';
-import { pokemonLabel } from '../../../../lib/format.ts';
+import { parseTypes, pokemonLabel } from '../../../../lib/format.ts';
+import { activeEffects, banned, parseConstraints } from '../../../../lib/services/effects.ts';
+import { ensurePendingEvent, pendingEvent } from '../../../../lib/services/events.ts';
 import { getLeagueContext } from '../../../../lib/services/league.ts';
 import { getLineup } from '../../../../lib/services/lineup.ts';
 import { getMatches, winStreak } from '../../../../lib/services/matches.ts';
@@ -36,8 +39,26 @@ export default async function MatchesPage({ params }: { params: Promise<{ id: st
     getMatches(id),
   ]);
 
+  // Opening this page is one of the moments an event can arrive — the draw is lazy.
+  if (myTeam && league.status === 'ACTIVE' && context.config.eventsEnabled) {
+    await ensurePendingEvent(id, myTeam.id);
+  }
+  const pending = myTeam ? await pendingEvent(id, myTeam.id) : null;
+
   // Only the starting lineup can be reported, so that's all the form is given.
   const lineup = myTeam ? await getLineup(id, myTeam.id) : null;
+  const effects = myTeam ? await activeEffects(id, myTeam.id) : [];
+
+  const squadForBans = (lineup?.starters ?? []).map((row) => ({
+    pokemonSlug: row.pokemonSlug,
+    starter: true,
+    types: parseTypes(row.pokemon.types),
+  }));
+  const { reasons, usable } = banned(effects, squadForBans);
+  // A ban that would leave the club unable to field a legal four stops being a ban and becomes
+  // a bench-only rule, so nobody is ever locked out of reporting entirely.
+  const banEnforced = usable >= (lineup?.config.bringToMatch ?? 4);
+
   const starters: Starter[] =
     lineup?.starters.map((row) => ({
       slug: row.pokemonSlug,
@@ -45,6 +66,7 @@ export default async function MatchesPage({ params }: { params: Promise<{ id: st
       tier: row.pokemon.tier,
       iconUrl: row.pokemon.iconUrl,
       homeUrl: row.pokemon.homeUrl,
+      barredBy: reasons.get(row.pokemonSlug),
     })) ?? [];
 
   const paidThisRound = myTeam
@@ -65,7 +87,7 @@ export default async function MatchesPage({ params }: { params: Promise<{ id: st
 
   return (
     <div className="flex flex-col gap-5">
-      <NavTabs leagueId={id} active="matches" />
+      <NavTabs leagueId={id} active="matches" pendingEvent={Boolean(pending)} />
 
       {myTeam && (
         <Panel title="Your ladder rank">
@@ -83,7 +105,29 @@ export default async function MatchesPage({ params }: { params: Promise<{ id: st
         </Panel>
       )}
 
-      {myTeam && canReport && (
+      {/*
+        A pending decision replaces the form rather than sitting beside it. Reporting is blocked
+        server-side anyway; showing the form would only let someone fill it in and be refused.
+      */}
+      {myTeam && canReport && pending && (
+        <Panel title="A decision is waiting">
+          <p className="mb-3 text-sm text-muted">
+            <strong className="text-ink">{pending.title}.</strong> {pending.description}
+          </p>
+          <Link
+            href={`/league/${id}/events`}
+            className="inline-block rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-ink"
+          >
+            Deal with it
+          </Link>
+          <p className="mt-2 text-xs text-muted">
+            You can report again as soon as it&rsquo;s answered. If you&rsquo;d rather not think
+            about it, your assistant will pick for you.
+          </p>
+        </Panel>
+      )}
+
+      {myTeam && canReport && !pending && (
         <ReportForm
           leagueId={id}
           myTeamId={myTeam.id}
@@ -95,6 +139,16 @@ export default async function MatchesPage({ params }: { params: Promise<{ id: st
           tierKey={myTeam.tierKey}
           tierName={getTier(myTeam.tierKey).name}
           streak={streak}
+          banEnforced={banEnforced}
+          constraints={effects.map((effect) => ({
+            id: effect.id,
+            label: effect.label,
+            attested: effect.attested,
+            matchesLeft: effect.matchesLeft,
+          }))}
+          attestations={effects
+            .filter((effect) => effect.attested)
+            .map((effect) => ({ id: effect.id, label: effect.label }))}
         />
       )}
 
@@ -118,6 +172,7 @@ export default async function MatchesPage({ params }: { params: Promise<{ id: st
               tierName: match.tierKey ? getTier(match.tierKey).name : null,
               reward: match.reward,
               streak: match.streak,
+              constraints: parseConstraints(match.constraints),
               valueChanges: match.valueChanges.map((change) => ({
                 pokemonSlug: change.pokemonSlug,
                 delta: change.delta,

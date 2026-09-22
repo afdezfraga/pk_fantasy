@@ -3,8 +3,11 @@ import { notFound, redirect } from 'next/navigation';
 import { getSessionUser } from '../../../../lib/auth/session.ts';
 import { money } from '../../../../lib/format.ts';
 import { getClubPage } from '../../../../lib/services/clubpage.ts';
+import { activeEffects } from '../../../../lib/services/effects.ts';
+import { pendingEvent } from '../../../../lib/services/events.ts';
 import { getLeagueContext } from '../../../../lib/services/league.ts';
 import { Awards } from '../../../components/Awards.tsx';
+import { Constraints } from '../../../components/Constraints.tsx';
 import { ClubHeader } from '../../../components/ClubHeader.tsx';
 import { crestOf } from '../../../components/ClubCrest.tsx';
 import { Empty, NavTabs, Panel } from '../../../components/ui.tsx';
@@ -37,9 +40,24 @@ export default async function ClubPage({ params }: { params: Promise<{ id: strin
   if (!club) notFound();
   const { team, cards, stats, awards, captain, tierName, config } = club;
 
+  const [effects, pending] = await Promise.all([
+    activeEffects(id, myTeam.id),
+    pendingEvent(id, myTeam.id),
+  ]);
+
   return (
     <div className="flex flex-col gap-5">
-      <NavTabs leagueId={id} active="squad" />
+      <NavTabs leagueId={id} active="squad" pendingEvent={Boolean(pending)} />
+
+      {/* Above the board, because this is where you pick who plays. */}
+      <Constraints
+        constraints={effects.map((effect) => ({
+          id: effect.id,
+          label: effect.label,
+          attested: effect.attested,
+          matchesLeft: effect.matchesLeft,
+        }))}
+      />
 
       <ClubHeader
         crest={crestOf(team)}

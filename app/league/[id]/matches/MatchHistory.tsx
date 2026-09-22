@@ -4,6 +4,8 @@ import { useActionState, useState } from 'react';
 
 import { deleteMatchAction, type ActionState } from '../../../actions/market.ts';
 import { money, signedMoney } from '../../../../lib/format.ts';
+import type { MatchConstraint } from '../../../../lib/services/effects.ts';
+import { PlayedUnder } from '../../../components/Constraints.tsx';
 import { PokemonIcon } from '../../../components/PokemonImage.tsx';
 import { Button } from '../../../components/ui.tsx';
 
@@ -23,6 +25,8 @@ export interface MatchRow {
   tierName: string | null;
   reward: number;
   streak: number;
+  /** What was in force when this was played, frozen onto the row at report time. */
+  constraints: MatchConstraint[];
   valueChanges: { pokemonSlug: string; delta: number; pct: number }[];
   stats: {
     pokemonSlug: string;
@@ -71,6 +75,8 @@ export function MatchHistory({
                     <span className={!homeWon ? 'font-semibold' : 'text-muted'}>{match.awayName}</span>
                   </span>
                   {match.note && <span className="block truncate text-xs text-muted">{match.note}</span>}
+                  {/* A result means something different if it was won under a handicap. */}
+                  <PlayedUnder constraints={match.constraints} />
                 </span>
                 <span className="shrink-0 text-right">
                   <span className="tabular block text-sm font-bold">

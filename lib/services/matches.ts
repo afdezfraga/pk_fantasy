@@ -19,6 +19,8 @@ import {
   chargeForEvent,
   enforce,
   payoutMultiplier,
+  restorePledges,
+  settlePledges,
   tickEffects,
   valueMultiplier,
   type LiveEffect,
@@ -316,6 +318,15 @@ export async function reportMatch(input: ReportInput) {
       });
     }
 
+    // A wager is settled before the countdowns move, because its window is not a countdown: it
+    // is over the moment the result makes the answer certain, either way.
+    await settlePledges(tx, {
+      leagueId: input.leagueId,
+      teamId: input.homeTeamId,
+      round: league.round,
+      won: homeWon,
+    });
+
     // Restrictions are counted down in matches played, and the ones that lift say so out loud.
     const lifted = await tickEffects(tx, {
       leagueId: input.leagueId,
@@ -450,6 +461,11 @@ export async function deleteMatch(input: { matchId: string; actorUserId: string 
     await tx.activeEffect.updateMany({
       where: { leagueId: match.leagueId, teamId: match.homeTeamId, matchesLeft: { gt: 0 } },
       data: { matchesLeft: { increment: 1 } },
+    });
+    await restorePledges(tx, {
+      leagueId: match.leagueId,
+      teamId: match.homeTeamId,
+      won: homeWon,
     });
     await tx.team.update({
       where: { id: match.homeTeamId },

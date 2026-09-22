@@ -6,6 +6,7 @@
  */
 
 import { db } from '../db.ts';
+import { assertTransfersOpen } from './effects.ts';
 import { audit, postEntry } from './money.ts';
 import { OwnershipConflict, RosterRuleViolation, parseConfig } from './ownership.ts';
 
@@ -30,6 +31,9 @@ export async function proposeTrade(input: {
   actorUserId: string;
 }) {
   if (input.fromTeamId === input.toTeamId) throw new TradeError('You cannot trade with yourself.');
+  // Both clubs have to be free to deal — an offer nobody could accept is worse than no offer.
+  await assertTransfersOpen(db, input.leagueId, input.fromTeamId);
+  await assertTransfersOpen(db, input.leagueId, input.toTeamId);
   if (input.givePokemon.length === 0 && input.getPokemon.length === 0 && input.cash === 0) {
     throw new TradeError('A trade needs at least one Pokémon or some cash.');
   }
@@ -113,6 +117,11 @@ export async function respondToTrade(input: {
     }
 
     if (input.teamId !== offer.toTeamId) throw new TradeError('Only the recipient can accept.');
+
+    // Declining is always allowed; it is completing the deal that a freeze stops. An offer made
+    // before a freeze landed is still on the table, and still cannot go through.
+    await assertTransfersOpen(tx, offer.leagueId, offer.fromTeamId);
+    await assertTransfersOpen(tx, offer.leagueId, offer.toTeamId);
 
     const league = await tx.league.findUniqueOrThrow({ where: { id: offer.leagueId } });
     const config = parseConfig(league.config);

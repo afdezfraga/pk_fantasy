@@ -23,7 +23,10 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import type { Prisma } from '@prisma/client';
+
 import { roundTo } from '../../config/economy.ts';
+import { winReward } from '../../config/scoring.ts';
 import { db } from '../db.ts';
 import { money, pokemonLabel } from '../format.ts';
 import {
@@ -38,7 +41,7 @@ import {
   type EffectParams,
 } from './effects.ts';
 import { audit } from './money.ts';
-import { parseConfig } from './ownership.ts';
+import { claimFreeAgent, parseConfig, releaseToMarket } from './ownership.ts';
 import { buildContext, fires, meetsRequires, type EventContext, type Requires, type Trigger } from './triggers.ts';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '../..');
@@ -80,6 +83,25 @@ export interface EffectSpecJson {
   min?: number;
   type?: string;
   item?: string;
+  /** SWAP_OFFER: how far from the leaving Pokémon's value the arrival may be, as a percentage. */
+  band?: number;
+  /** PLEDGE: the wager. */
+  wins?: number;
+  outOf?: number;
+  reward?: number;
+  penalty?: number;
+  /** ESCROW: what comes back, as a percentage of what went in. */
+  returnPct?: number;
+  /**
+   * Money priced in wins rather than Pokédollars.
+   *
+   * A win is worth ₽1,000 in the beginner tier and ₽100,000 in Champion, so any flat figure is
+   * either pocket change or a season's earnings depending on who drew it. Pricing a wager in
+   * what the club's own matches are worth is the only way one number reads the same to everyone.
+   */
+  amountWins?: number;
+  rewardWins?: number;
+  penaltyWins?: number;
   label?: string;
   liftedMessage?: string;
 }
@@ -91,6 +113,17 @@ export interface OptionSpec {
   default?: boolean;
   requires?: Requires;
   cost?: CostSpec;
+  /**
+   * Turns one authored option into one option per candidate Pokémon, each fully resolved.
+   *
+   * This is how a club picks *which* Pokémon an event takes without the app needing a second
+   * kind of answer: "release Garchomp" and "release Ferrothorn" are two ordinary options, so a
+   * decision is still just a key, and delegation, freezing and the commissioner's fallback all
+   * keep working unchanged.
+   */
+  repeat?: '@starters';
+  /** How many to offer. Three is enough to span the squad without burying the alternative. */
+  repeatMax?: number;
   effects: EffectSpecJson[];
 }
 
@@ -163,6 +196,11 @@ export function validateDeck(deck: EventTemplate[]): string[] {
     if (defaults[0] && (defaults[0].cost || defaults[0].requires)) {
       problems.push(`${where}: the default option must be unconditional`);
     }
+    // A repeating option offers one branch per Pokémon, so it offers none to a club with no
+    // starters. The fallback every event is required to have must not be able to vanish.
+    if (defaults[0]?.repeat) {
+      problems.push(`${where}: the default option cannot repeat over the squad`);
+    }
 
     for (const option of template.options) {
       if (option.cost && option.cost.min === undefined) {
@@ -191,9 +229,35 @@ function checkEffect(effect: EffectSpecJson, where: string): string[] {
   if (!isInstant(effect.kind)) {
     if (!effect.label) problems.push(`${where}: effect ${effect.kind} needs a label`);
     if (!effect.liftedMessage) problems.push(`${where}: effect ${effect.kind} needs a liftedMessage`);
-    if (!effect.matches && !effect.rounds) {
+    // A wager's window is its duration; saying it twice is a way for the two to disagree.
+    if (!effect.matches && !effect.rounds && effect.kind !== 'PLEDGE') {
       problems.push(`${where}: effect ${effect.kind} needs a duration in matches or rounds`);
     }
+  }
+
+  // The parameters each of these is useless without. A wager with no target, a swap with no
+  // band and a bond with nothing to return are all events that would draw and then do nothing.
+  if (effect.kind === 'PLEDGE') {
+    if (!effect.wins || !effect.outOf || effect.wins > effect.outOf) {
+      problems.push(`${where}: PLEDGE needs wins and outOf, with wins no greater than outOf`);
+    }
+    if (!effect.reward && !effect.penalty && !effect.rewardWins && !effect.penaltyWins) {
+      problems.push(`${where}: PLEDGE needs a reward, a penalty, or both`);
+    }
+  }
+  if (effect.kind === 'ESCROW') {
+    if (effect.pct !== undefined && effect.min === undefined) {
+      problems.push(`${where}: ESCROW priced as a percentage needs a "min" floor`);
+    }
+    if ((!effect.amount && !effect.amountWins && !effect.pct) || !effect.returnPct || !effect.rounds) {
+      problems.push(`${where}: ESCROW needs an amount, a returnPct and a duration in rounds`);
+    }
+  }
+  if (effect.kind === 'SWAP_OFFER' && !effect.band) {
+    problems.push(`${where}: SWAP_OFFER needs a band, or "of similar value" means nothing`);
+  }
+  if (effect.kind === 'RELEASE_FOR_TWO' && (!effect.pct || !effect.count)) {
+    problems.push(`${where}: RELEASE_FOR_TWO needs a pct of the leaver's value and a count`);
   }
   return problems;
 }
@@ -289,8 +353,55 @@ function render(text: string, vars: Record<string, string>): string {
 }
 
 function labelFor(context: EventContext, slug: string | null): string {
-  const member = context.squad.find((candidate) => candidate.pokemonSlug === slug);
+  const member =
+    context.squad.find((candidate) => candidate.pokemonSlug === slug) ??
+    context.freeAgents.find((candidate) => candidate.pokemonSlug === slug);
   return member ? pokemonLabel(member) : 'The squad';
+}
+
+/**
+ * Which Pokémon a repeating option offers, spread across the squad by value.
+ *
+ * Offering the three cheapest would make "release one, sign two" a decision about nobody. The
+ * best, the middle and the worst is the smallest set that still asks a real question: how much
+ * quality are you willing to trade for depth?
+ */
+function repeatTargets(
+  option: OptionSpec,
+  context: EventContext,
+  subject: string | null,
+): (string | null)[] {
+  if (option.repeat !== '@starters') return [subject];
+
+  // `context.squad` arrives sorted by value, richest first.
+  const starters = context.squad.filter((member) => member.starter);
+  if (starters.length === 0) return [];
+
+  const wanted = Math.max(1, Math.min(option.repeatMax ?? 3, starters.length));
+  const picks = new Set<string>();
+  for (let i = 0; i < wanted; i += 1) {
+    const at = wanted === 1 ? 0 : Math.round((i * (starters.length - 1)) / (wanted - 1));
+    picks.add(starters[at].pokemonSlug);
+  }
+  return [...picks];
+}
+
+/** Free agents this club could actually be handed, cheapest decision first. */
+function withinBand(context: EventContext, value: number, band: number): string[] {
+  const reach = (value * band) / 100;
+  return context.freeAgents
+    .filter((agent) => Math.abs(agent.marketValue - value) <= reach)
+    .sort((a, b) => Math.abs(a.marketValue - value) - Math.abs(b.marketValue - value))
+    .map((agent) => agent.pokemonSlug);
+}
+
+/** The best free agents at or under a ceiling — what a fraction of a Pokémon's value buys. */
+function underCeiling(context: EventContext, ceiling: number, count: number): string[] {
+  return context.freeAgents
+    .filter((agent) => agent.marketValue <= ceiling)
+    .sort((a, b) => b.marketValue - a.marketValue)
+    .slice(0, count)
+    .map((agent) => agent.pokemonSlug);
 }
 
 function valueOf(context: EventContext, slug: string | null): number {
@@ -325,52 +436,163 @@ export function materialise(
     ...(templateType ? { type: templateType } : {}),
   };
 
-  const options: StoredOption[] = template.options.map((option) => {
-    const cost = costOf(context, option, subject);
-    const available = meetsRequires(context, option.requires);
-    const vars = { ...baseVars, cost: money(cost) };
-
-    const effects: StoredEffect[] = option.effects.map((effect) => {
-      const slug = effect.target
-        ? resolveTarget(context, effect.target, triggerSubject, random)
-        : subject;
-      const type = resolveType(context, effect.type, random);
-      const effectVars = { ...vars, pokemon: labelFor(context, slug), ...(type ? { type } : {}) };
-
-      const params: EffectParams = {};
-      if (effect.pct !== undefined) params.pct = effect.pct;
-      if (effect.times !== undefined) params.times = effect.times;
-      if (effect.count !== undefined) params.count = effect.count;
-      if (effect.amount !== undefined) params.amount = effect.amount;
-      if (effect.min !== undefined) params.min = effect.min;
-      if (effect.item !== undefined) params.item = effect.item;
-      if (type) params.type = type;
-
-      return {
-        kind: effect.kind as EffectKind,
-        // Team-wide effects carry no slug even when the event is about one Pokémon.
-        pokemonSlug: effect.kind === 'TYPE_BAN' || effect.kind === 'TYPE_VALUE_SHIFT' ? null : slug,
-        params,
-        matches: effect.matches ?? 0,
-        rounds: effect.rounds ?? 0,
-        label: render(effect.label ?? '', effectVars),
-        liftedMessage: render(effect.liftedMessage ?? '', effectVars),
-      };
-    });
-
-    return {
-      key: option.key,
-      label: option.label,
-      detail: render(option.detail, vars),
-      default: option.default === true,
-      available,
-      ...(available ? {} : { unavailableReason: 'Not available to your club right now.' }),
-      cost,
-      effects,
-    };
+  const options = template.options.flatMap((option) => {
+    const targets = repeatTargets(option, context, subject);
+    return targets
+      .map((optionSubject) => offerOption(option, context, optionSubject, triggerSubject, baseVars, random))
+      .filter((offered): offered is StoredOption => offered !== null);
   });
 
   return { description: render(template.description, baseVars), subject, options };
+}
+
+
+/**
+ * One option as this club sees it: text rendered, cost settled, arrivals named.
+ *
+ * Effects are resolved before the wording is, because an option that hands over a Pokémon can
+ * only describe itself once it knows which Pokémon — "swap him for Ferrothorn" is the offer, and
+ * "swap him for someone" is not.
+ */
+function offerOption(
+  option: OptionSpec,
+  context: EventContext,
+  subject: string | null,
+  triggerSubject: string | null,
+  baseVars: Record<string, string>,
+  random: () => number,
+): StoredOption | null {
+  const cost = costOf(context, option, subject);
+  const vars: Record<string, string> = {
+    ...baseVars,
+    pokemon: subject ? labelFor(context, subject) : baseVars.pokemon,
+    cost: money(cost),
+  };
+
+  let shortfall: string | null = null;
+
+  const effects: StoredEffect[] = option.effects.map((effect) => {
+    const slug = effect.target
+      ? resolveTarget(context, effect.target, triggerSubject, random)
+      : subject;
+    const type = resolveType(context, effect.type, random);
+    const effectVars: Record<string, string> = {
+      ...vars,
+      pokemon: labelFor(context, slug),
+      ...(type ? { type } : {}),
+    };
+
+    const params: EffectParams = {};
+    if (effect.pct !== undefined) params.pct = effect.pct;
+    if (effect.times !== undefined) params.times = effect.times;
+    if (effect.count !== undefined) params.count = effect.count;
+    if (effect.amount !== undefined) params.amount = effect.amount;
+    if (effect.min !== undefined) params.min = effect.min;
+    if (effect.item !== undefined) params.item = effect.item;
+    if (effect.band !== undefined) params.band = effect.band;
+    if (effect.wins !== undefined) params.wins = effect.wins;
+    if (effect.outOf !== undefined) params.outOf = effect.outOf;
+    if (effect.reward !== undefined) params.reward = effect.reward;
+    if (effect.penalty !== undefined) params.penalty = effect.penalty;
+    if (effect.returnPct !== undefined) params.returnPct = effect.returnPct;
+    if (type) params.type = type;
+
+    // Who arrives is settled here, named in the offer, and frozen onto the row. A pinned
+    // arrival can still be signed by somebody else before this is answered, which the apply
+    // step handles by substituting — but the club is told a name, not a value bracket.
+    // Amounts priced in wins settle here, against the tier this club is actually playing in.
+    const perWin = winReward(context.tierKey, 1);
+    if (effect.amountWins !== undefined) params.amount = roundTo(perWin * effect.amountWins, 100);
+    if (effect.rewardWins !== undefined) params.reward = roundTo(perWin * effect.rewardWins, 100);
+    if (effect.penaltyWins !== undefined) {
+      params.penalty = roundTo(perWin * effect.penaltyWins, 100);
+    }
+    // Money locked away is a share of the balance, floored, like every other charge in the deck.
+    if (effect.kind === 'ESCROW' && effect.pct !== undefined) {
+      params.amount = cashCost(context.cash, { pct: effect.pct, min: effect.min });
+    }
+    effectVars.amount = money(params.amount ?? 0);
+    effectVars.reward = money(params.reward ?? 0);
+    effectVars.penalty = money(params.penalty ?? 0);
+    effectVars.back = money(
+      Math.round(((params.amount ?? 0) * (params.returnPct ?? 100)) / 100),
+    );
+
+    const worth = valueOf(context, slug);
+    if (effect.kind === 'SWAP_OFFER') {
+      const candidates = withinBand(context, worth, effect.band ?? 25);
+      if (candidates.length === 0) shortfall = 'Nobody of comparable value is available.';
+      params.slug = candidates[0];
+      params.amount = worth;
+      effectVars.incoming = labelFor(context, candidates[0] ?? null);
+    }
+    if (effect.kind === 'RELEASE_FOR_TWO') {
+      const count = effect.count ?? 2;
+      const ceiling = Math.round((worth * (effect.pct ?? 40)) / 100);
+      const candidates = underCeiling(context, ceiling, count);
+      if (candidates.length < count) {
+        shortfall = `The market has only ${candidates.length} free agent${candidates.length === 1 ? '' : 's'} in range.`;
+      }
+      params.slugs = candidates;
+      params.amount = ceiling;
+      effectVars.incoming = listOf(candidates.map((candidate) => labelFor(context, candidate)));
+    }
+
+    return {
+      kind: effect.kind as EffectKind,
+      // Team-wide effects carry no slug even when the event is about one Pokémon.
+      pokemonSlug: effect.kind === 'TYPE_BAN' || effect.kind === 'TYPE_VALUE_SHIFT' ? null : slug,
+      params,
+      // A wager lasts exactly as long as the window it names.
+      matches: effect.kind === 'PLEDGE' ? (effect.outOf ?? 0) : (effect.matches ?? 0),
+      rounds: effect.rounds ?? 0,
+      label: render(effect.label ?? '', effectVars),
+      liftedMessage: render(effect.liftedMessage ?? '', effectVars),
+    };
+  });
+
+  // An option about a Pokémon that does not exist is not an option at all.
+  if (option.repeat && !subject) return null;
+
+  const incoming = effects.find((effect) => effect.params.slug || effect.params.slugs);
+  const money0 = effects.find(
+    (effect) => effect.params.amount || effect.params.reward || effect.params.penalty,
+  )?.params;
+  const vars2 = {
+    ...vars,
+    incoming: incoming
+      ? incoming.params.slugs
+        ? listOf(incoming.params.slugs.map((slug) => labelFor(context, slug)))
+        : labelFor(context, incoming.params.slug ?? null)
+      : '',
+    amount: money(money0?.amount ?? 0),
+    reward: money(money0?.reward ?? 0),
+    penalty: money(money0?.penalty ?? 0),
+    back: money(Math.round(((money0?.amount ?? 0) * (money0?.returnPct ?? 100)) / 100)),
+  };
+
+  const unmet = !meetsRequires(context, option.requires);
+  return {
+    key: option.repeat && subject ? `${option.key}:${subject}` : option.key,
+    label: render(option.label, vars2),
+    detail: render(option.detail, vars2),
+    default: option.default === true,
+    available: !unmet && shortfall === null,
+    ...(unmet
+      ? { unavailableReason: 'Not available to your club right now.' }
+      : shortfall
+        ? { unavailableReason: shortfall }
+        : {}),
+    cost,
+    effects,
+  };
+}
+
+/** "A", "A and B", "A, B and C" — for naming what arrives without reading like a database. */
+function listOf(items: string[]): string {
+  if (items.length === 0) return 'nobody';
+  if (items.length === 1) return items[0];
+  return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
 }
 
 // --- drawing ------------------------------------------------------------------------------------
@@ -610,6 +832,45 @@ export async function drawLeagueEvent(
 
 // --- answering ----------------------------------------------------------------------------------
 
+/**
+ * Makes sure the Pokémon an event promised are actually still there to hand over.
+ *
+ * An offer is frozen at draw time but the free agent market is not, so between reading "swap him
+ * for Ferrothorn" and clicking it, somebody else can have signed Ferrothorn. Rather than fail —
+ * which would punish a manager for thinking about it — the nearest equivalent is substituted and
+ * the swap goes through. What was promised was a Pokémon of that standing, and that is what
+ * arrives.
+ */
+async function secureArrivals(
+  tx: Prisma.TransactionClient,
+  input: { leagueId: string; wanted: string[]; count: number; near?: number; under?: number },
+): Promise<string[]> {
+  const pool = await tx.ownership.findMany({
+    where: { leagueId: input.leagueId, teamId: null, pokemon: { legal: true } },
+    select: { pokemonSlug: true, marketValue: true },
+  });
+  const free = new Map(pool.map((row) => [row.pokemonSlug, row.marketValue]));
+
+  const taken = input.wanted.filter((slug) => free.has(slug)).slice(0, input.count);
+  if (taken.length >= input.count) return taken;
+
+  const chosen = new Set(taken);
+  const substitutes = pool
+    .filter((row) => !chosen.has(row.pokemonSlug))
+    .filter((row) => (input.under === undefined ? true : row.marketValue <= input.under))
+    .sort((a, b) =>
+      input.near === undefined
+        ? b.marketValue - a.marketValue
+        : Math.abs(a.marketValue - input.near) - Math.abs(b.marketValue - input.near),
+    );
+
+  for (const row of substitutes) {
+    if (chosen.size >= input.count) break;
+    chosen.add(row.pokemonSlug);
+  }
+  return [...chosen];
+}
+
 async function applyEffect(
   tx: Parameters<typeof addEffect>[0],
   input: { leagueId: string; teamId: string; round: number; eventId: string },
@@ -653,6 +914,69 @@ async function applyEffect(
           });
         }
         return;
+      case 'SWAP_OFFER': {
+        const leaving = effect.pokemonSlug;
+        if (!leaving) return;
+        const [incoming] = await secureArrivals(tx, {
+          leagueId: input.leagueId,
+          wanted: effect.params.slug ? [effect.params.slug] : [],
+          count: 1,
+          near: effect.params.amount,
+        });
+        if (!incoming) {
+          throw new EventError('There is nobody left in the market to take. Choose another way.');
+        }
+        // Release first: the squad is never actually short, because the arrival lands in the
+        // same transaction, and going the other way round would need room this club may not have.
+        await releaseToMarket(tx, {
+          leagueId: input.leagueId,
+          teamId: input.teamId,
+          pokemonSlug: leaving,
+          proceeds: 0,
+          type: 'EVENT',
+          skipSquadMin: true,
+        });
+        await claimFreeAgent(tx, {
+          leagueId: input.leagueId,
+          teamId: input.teamId,
+          pokemonSlug: incoming,
+          price: 0,
+          type: 'EVENT',
+        });
+        return;
+      }
+      case 'RELEASE_FOR_TWO': {
+        const leaving = effect.pokemonSlug;
+        if (!leaving) return;
+        const count = effect.params.count ?? 2;
+        const arrivals = await secureArrivals(tx, {
+          leagueId: input.leagueId,
+          wanted: effect.params.slugs ?? [],
+          count,
+          under: effect.params.amount,
+        });
+        if (arrivals.length < count) {
+          throw new EventError('The market has dried up since this was offered. Choose another way.');
+        }
+        await releaseToMarket(tx, {
+          leagueId: input.leagueId,
+          teamId: input.teamId,
+          pokemonSlug: leaving,
+          proceeds: 0,
+          type: 'EVENT',
+          skipSquadMin: true,
+        });
+        for (const slug of arrivals) {
+          await claimFreeAgent(tx, {
+            leagueId: input.leagueId,
+            teamId: input.teamId,
+            pokemonSlug: slug,
+            price: 0,
+            type: 'EVENT',
+          });
+        }
+        return;
+      }
       case 'TYPE_VALUE_SHIFT':
         if (effect.params.type) {
           await moveTypeValue(tx, {
@@ -669,12 +993,29 @@ async function applyEffect(
     }
   }
 
+  // Locked money leaves now and comes back when the round it names closes.
+  if (effect.kind === 'ESCROW') {
+    await chargeForEvent(tx, {
+      leagueId: input.leagueId,
+      teamId: input.teamId,
+      amount: -(effect.params.amount ?? 0),
+      description: effect.label || 'Event',
+      eventId: input.eventId,
+      round: input.round,
+    });
+  }
+
+  const params =
+    effect.kind === 'PLEDGE'
+      ? { ...effect.params, won: 0, note: effect.label }
+      : effect.params;
+
   await addEffect(tx, {
     leagueId: input.leagueId,
     teamId: input.teamId,
     pokemonSlug: effect.pokemonSlug,
     kind: effect.kind,
-    params: effect.params,
+    params,
     matches: effect.matches,
     round: input.round,
     untilRound: effect.rounds > 0 ? input.round + effect.rounds : null,

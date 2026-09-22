@@ -19,7 +19,7 @@ import type { Prisma } from '@prisma/client';
 
 import { applyPct, VALUE_RULES } from '../../config/economy.ts';
 import { db } from '../db.ts';
-import { parseTypes, pokemonLabel } from '../format.ts';
+import { money, parseTypes, pokemonLabel } from '../format.ts';
 import { postEntry } from './money.ts';
 import { recordValue } from './value.ts';
 
@@ -42,6 +42,10 @@ export const EFFECT_KINDS = {
   BRING_LIMIT: { attested: false, scope: 'team' },
   /** No buying, selling or trading while in force. */
   TRANSFER_FREEZE: { attested: false, scope: 'team' },
+  /** One Pokémon leaves, one named free agent arrives. No money changes hands. */
+  SWAP_OFFER: { attested: false, scope: 'pokemon', instant: true },
+  /** One Pokémon leaves, two cheaper free agents arrive. Depth in exchange for quality. */
+  RELEASE_FOR_TWO: { attested: false, scope: 'pokemon', instant: true },
 
   // Money and value — enforced, applied once unless noted.
   /** A share of the club's balance, with a floor so a broke club still feels it. */
@@ -60,6 +64,10 @@ export const EFFECT_KINDS = {
   VALUE_MULT: { attested: false, scope: 'team' },
   /** The club's captain cannot step into another event for a while. */
   CAPTAIN_SPENT: { attested: false, scope: 'team' },
+  /** Money locked away now and returned, with interest, when the round comes round. */
+  ESCROW: { attested: false, scope: 'team' },
+  /** A wager on results: win `wins` of the next `outOf` for `reward`, or pay `penalty`. */
+  PLEDGE: { attested: false, scope: 'team' },
 
   // The battle rules — attested. These are the ones that change how you actually play.
   NO_MEGA: { attested: true, scope: 'either' },
@@ -101,6 +109,20 @@ export interface EffectParams {
   type?: string;
   item?: string;
   returnPct?: number;
+  /** A wager's headline, kept so its label can be rewritten as the tally moves. */
+  note?: string;
+  /** The Pokémon coming the other way in a swap, pinned at draw time. */
+  slug?: string;
+  /** The Pokémon arriving in a release-for-two, pinned at draw time. */
+  slugs?: string[];
+  /** How far from the leaving Pokémon's value a substitute may be, if the pinned one is gone. */
+  band?: number;
+  // A wager, and its running tally.
+  wins?: number;
+  outOf?: number;
+  won?: number;
+  reward?: number;
+  penalty?: number;
 }
 
 /** An effect in force, with its JSON parameters already parsed. */
@@ -219,8 +241,36 @@ export function bringLimit(effects: LiveEffect[], configured: number): number {
   return Math.max(1, Math.min(configured, ...limits));
 }
 
+/**
+ * Whether this is something the club signed up to rather than something done to it.
+ *
+ * A sponsor target and a league bond sit in the same table as an injury and count down the same
+ * way, but showing them in the same red "in force" box would tell a manager their own wager is a
+ * punishment. They are shown apart, and they are the only two of their kind.
+ */
+export function isCommitment(kind: EffectKind): boolean {
+  return kind === 'PLEDGE' || kind === 'ESCROW';
+}
+
 export function transfersFrozen(effects: LiveEffect[]): boolean {
   return effects.some((effect) => effect.kind === 'TRANSFER_FREEZE');
+}
+
+/**
+ * Refuses a transfer while an event has the club's business frozen.
+ *
+ * Checked on the ownership paths a manager drives — signings, sales and trades — rather than on
+ * the draft or the commissioner's tools, which are not the club dealing.
+ */
+export async function assertTransfersOpen(
+  client: Prisma.TransactionClient | typeof db,
+  leagueId: string,
+  teamId: string,
+): Promise<void> {
+  const freeze = (await activeEffects(leagueId, teamId, client)).find(
+    (effect) => effect.kind === 'TRANSFER_FREEZE',
+  );
+  if (freeze) throw new EffectViolation(`${freeze.label} — you cannot deal until it lifts.`);
 }
 
 /** True while the captain is still recovering from stepping into a previous event. */
@@ -523,7 +573,14 @@ export async function tickEffects(
   input: { leagueId: string; teamId: string; round: number },
 ): Promise<LiveEffect[]> {
   const rows = await tx.activeEffect.findMany({
-    where: { leagueId: input.leagueId, teamId: input.teamId, matchesLeft: { gt: 0 } },
+    // A pledge counts its own window down in `settlePledges`, because it has to know whether the
+    // match was won before it can decide whether the wager is over.
+    where: {
+      leagueId: input.leagueId,
+      teamId: input.teamId,
+      matchesLeft: { gt: 0 },
+      kind: { not: 'PLEDGE' },
+    },
   });
 
   const lifted: LiveEffect[] = [];
@@ -544,6 +601,120 @@ export async function tickEffects(
   return lifted;
 }
 
+/**
+ * Settles every wager this club has running, given how the match it just reported went.
+ *
+ * A pledge is the one effect whose end is not a countdown: it is over the moment the answer is
+ * known. Hitting the target with matches to spare pays out there and then, and a target that can
+ * no longer be reached is finished whether or not its window is — being told at the fifth match
+ * that you failed at the third is a worse experience than being told at the third.
+ *
+ * Until then the label is rewritten each match, so the strip on the squad board reads "1 of 2
+ * wins" rather than a number the manager has to keep in their own head.
+ */
+export async function settlePledges(
+  tx: Prisma.TransactionClient,
+  input: { leagueId: string; teamId: string; round: number; won: boolean },
+): Promise<void> {
+  const rows = await tx.activeEffect.findMany({
+    where: {
+      leagueId: input.leagueId,
+      teamId: input.teamId,
+      kind: 'PLEDGE',
+      matchesLeft: { gt: 0 },
+    },
+  });
+
+  for (const row of rows) {
+    const params = parseParams(row.params);
+    const target = params.wins ?? 0;
+    const tally = (params.won ?? 0) + (input.won ? 1 : 0);
+    const left = row.matchesLeft - 1;
+    const headline = params.note ?? row.label;
+
+    const met = tally >= target;
+    if (!met && tally + left >= target) {
+      await tx.activeEffect.update({
+        where: { id: row.id },
+        data: {
+          matchesLeft: left,
+          params: JSON.stringify({ ...params, won: tally, note: headline }),
+          label: `${headline} — ${tally} of ${target} wins`,
+        },
+      });
+      continue;
+    }
+
+    const amount = met ? (params.reward ?? 0) : -(params.penalty ?? 0);
+    if (amount !== 0) {
+      await postEntry(
+        tx,
+        {
+          leagueId: input.leagueId,
+          teamId: input.teamId,
+          type: 'EVENT',
+          amount,
+          description: met ? `${headline} — target met` : `${headline} — target missed`,
+          relatedId: row.sourceEventId ?? undefined,
+          round: input.round,
+        },
+        // A club that backed itself and lost still has to be able to report its next match.
+        { allowNegative: true },
+      );
+    }
+
+    await tx.activeEffect.delete({ where: { id: row.id } });
+
+    const outcome = met
+      ? `${headline}: ${tally} of ${params.outOf ?? target} won. ${money(params.reward ?? 0)} paid.`
+      : `${headline}: ${tally} of ${target} wins. ${money(params.penalty ?? 0)} forfeited.`;
+    await tx.leagueEvent.create({
+      data: {
+        leagueId: input.leagueId,
+        teamId: input.teamId,
+        round: input.round,
+        templateKey: 'lifted:pledge',
+        title: met ? 'Target met' : 'Target missed',
+        description: `${outcome} ${row.liftedMessage}`.trim(),
+        detail: JSON.stringify({ kind: 'PLEDGE', met, wins: tally, target }),
+        status: 'NOTICE',
+      },
+    });
+  }
+}
+
+/**
+ * Takes a win back off every running wager, for a result that has been deleted.
+ *
+ * The generic restore in `deleteMatch` hands the match back to every countdown, which for a
+ * wager would return the match without returning the win and quietly make the target easier.
+ * A wager that has already settled is gone from this table and stays settled, the same way a
+ * decision already taken does.
+ */
+export async function restorePledges(
+  tx: Prisma.TransactionClient,
+  input: { leagueId: string; teamId: string; won: boolean },
+): Promise<void> {
+  if (!input.won) return;
+
+  const rows = await tx.activeEffect.findMany({
+    where: { leagueId: input.leagueId, teamId: input.teamId, kind: 'PLEDGE' },
+  });
+
+  for (const row of rows) {
+    const params = parseParams(row.params);
+    const tally = Math.max(0, (params.won ?? 0) - 1);
+    const headline = params.note ?? row.label;
+    await tx.activeEffect.update({
+      where: { id: row.id },
+      data: {
+        params: JSON.stringify({ ...params, won: tally }),
+        label: `${headline} — ${tally} of ${params.wins ?? 0} wins`,
+      },
+    });
+  }
+}
+
 /** The same, for effects measured in rounds rather than matches. Called when a round closes. */
 export async function expireByRound(
   tx: Prisma.TransactionClient,
@@ -558,6 +729,24 @@ export async function expireByRound(
     const live = toLive(row);
     if (!live) continue;
     byTeam.set(row.teamId, [...(byTeam.get(row.teamId) ?? []), live]);
+  }
+
+  // Locked money comes back before the row that locked it goes away.
+  for (const row of rows) {
+    const live = toLive(row);
+    if (live?.kind !== 'ESCROW') continue;
+    const returned = Math.round(((live.params.amount ?? 0) * (live.params.returnPct ?? 100)) / 100);
+    if (returned > 0) {
+      await postEntry(tx, {
+        leagueId: input.leagueId,
+        teamId: row.teamId,
+        type: 'EVENT',
+        amount: returned,
+        description: `${live.label} — returned`,
+        relatedId: row.sourceEventId ?? undefined,
+        round: input.round,
+      });
+    }
   }
 
   await tx.activeEffect.deleteMany({

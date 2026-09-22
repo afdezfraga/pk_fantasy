@@ -20,7 +20,18 @@
     "  - Every percentage-of-cash cost carries a `min`. Without a floor a broke club pays 12% of",
     "    nothing, and the event only bites the people who could afford it anyway.",
     "",
+    "LETTING THE CLUB CHOOSE WHO: an option with `repeat: \"@starters\"` becomes one option per",
+    "  Pokémon — 'Let Garchomp go', 'Let Ferrothorn go' — each fully resolved, spread across the",
+    "  squad by value. A decision is still just a key, so delegation and force-resolve keep",
+    "  working. The default option may not repeat: it has to exist for every club.",
+    "",
+    "MONEY THAT SCALES: a win is worth P1,000 in the beginner tier and P100,000 in Champion, so",
+    "  `amountWins` / `rewardWins` / `penaltyWins` price a sum in the club's own win rewards, and",
+    "  `pct` + `min` prices it against the balance. Flat `amount` only where neither makes sense.",
+    "",
     "PLACEHOLDERS: {pokemon} {team} {cost} {matches} {type}",
+    "               {incoming} — who arrives in a swap or a release-for-two",
+    "               {amount} {reward} {penalty} {back} — sums the effect settled at draw time",
     "TARGET MACROS: @mostValuableStarter @cheapestStarter @randomStarter @captain @trigger",
     "TYPE MACROS:   @mostOwnedType @randomOwnedType"
   ],
@@ -70,6 +81,20 @@
       "delegable": true,
       "trigger": { "everyMatchStreak": 10 },
       "target": "@trigger",
+      "virtueChance": 8,
+      "virtue": {
+        "title": "Some of them are built for it",
+        "description": "Ten from ten, and {pokemon} came in on its day off. The rest of {team} has noticed who sets the standard.",
+        "effects": [
+          {
+            "kind": "PAYOUT_MULT",
+            "times": 1.4,
+            "matches": 4,
+            "label": "{pokemon} setting the standard — win rewards up 40%",
+            "liftedMessage": "The lift {pokemon} gave everybody has levelled off. Rewards are back to normal."
+          }
+        ]
+      },
       "options": [
         {
           "key": "rest",
@@ -515,6 +540,17 @@
       "delegable": true,
       "requires": { "minStarters": 4 },
       "target": "@randomStarter",
+      "virtueChance": 9,
+      "virtue": {
+        "title": "Nothing in it",
+        "description": "{pokemon} walked into the scan laughing and walked out the same way. Whatever it was, it has gone, and it has spent the week training like something with a point to prove.",
+        "effects": [
+          {
+            "kind": "VALUE_MOVE",
+            "pct": 12
+          }
+        ]
+      },
       "options": [
         {
           "key": "treat",
@@ -614,6 +650,17 @@
       "delegable": true,
       "requires": { "minMatches": 8, "minStarters": 4 },
       "target": "@mostValuableStarter",
+      "virtueChance": 12,
+      "virtue": {
+        "title": "Charge dismissed",
+        "description": "The panel watched the footage twice and threw it out inside ten minutes. {pokemon} has come back from it with a reputation for being hard done by, which is worth something.",
+        "effects": [
+          {
+            "kind": "VALUE_MOVE",
+            "pct": 10
+          }
+        ]
+      },
       "options": [
         {
           "key": "fine",
@@ -862,6 +909,289 @@
               "matches": 3,
               "label": "Training disrupted — value moves reduced",
               "liftedMessage": "Training is back on track. Values move normally again."
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "key": "swap_offer",
+      "title": "A straight swap",
+      "description": "{pokemon} has made it plain it wants a move, and a club has come forward with somebody of the same standing. No money either way — just the two of them.",
+      "scope": "team",
+      "weight": 5,
+      "cooldown": 9,
+      "delegable": true,
+      "requires": { "minStarters": 4 },
+      "target": "@randomStarter",
+      "options": [
+        {
+          "key": "swap",
+          "label": "Take the swap",
+          "detail": "{pokemon} goes, {incoming} arrives. Nothing changes hands but the two of them.",
+          "effects": [
+            {
+              "kind": "SWAP_OFFER",
+              "band": 30,
+              "label": "Swapped {pokemon} for {incoming}"
+            }
+          ]
+        },
+        {
+          "key": "keep",
+          "label": "Keep {pokemon}",
+          "detail": "It stays, and it knows it was told no. Five matches with its training undone — run it with nothing invested.",
+          "default": true,
+          "effects": [
+            {
+              "kind": "ZERO_EVS",
+              "matches": 5,
+              "label": "{pokemon} — run with no EVs",
+              "liftedMessage": "{pokemon} has put the move behind it. Its EV spread is its own again."
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "key": "release_for_two",
+      "title": "Two for one",
+      "description": "The recruitment staff at {team} have a standing proposal. Give up one of the senior squad and they will bring in two from the free market with what it frees up — quality traded for depth, and they will let you choose who pays for it.",
+      "scope": "team",
+      "weight": 4,
+      "cooldown": 12,
+      "delegable": true,
+      "requires": { "minStarters": 5, "minSquadRoom": 1 },
+      "options": [
+        {
+          "key": "release",
+          "label": "Let {pokemon} go",
+          "repeat": "@starters",
+          "repeatMax": 3,
+          "detail": "{pokemon} leaves for nothing. {incoming} arrive in its place, on free transfers.",
+          "effects": [
+            {
+              "kind": "RELEASE_FOR_TWO",
+              "pct": 40,
+              "count": 2,
+              "label": "Released {pokemon}, signed {incoming}"
+            }
+          ]
+        },
+        {
+          "key": "decline",
+          "label": "Keep the squad together",
+          "detail": "The recruitment staff are overruled, and take it personally. No signings, sales or trades for a round.",
+          "default": true,
+          "effects": [
+            {
+              "kind": "TRANSFER_FREEZE",
+              "rounds": 1,
+              "label": "Recruitment frozen — no signings, sales or trades",
+              "liftedMessage": "The recruitment staff have got over it. {team} can deal again."
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "key": "sponsor_target",
+      "title": "Name your target",
+      "description": "The sponsor at {team} wants a headline with its name on it, and has left the size of the headline entirely to you. Set a target for the next five matches. Hit it and they pay. Miss it and they take the difference out of the fee.",
+      "scope": "team",
+      "weight": 5,
+      "cooldown": 12,
+      "delegable": true,
+      "tierLadder": true,
+      "requires": { "minMatches": 3 },
+      "options": [
+        {
+          "key": "modest",
+          "label": "Two wins in five",
+          "detail": "{reward} if you manage it. {penalty} if you don't.",
+          "effects": [
+            {
+              "kind": "PLEDGE",
+              "wins": 2,
+              "outOf": 5,
+              "rewardWins": 3,
+              "penaltyWins": 1,
+              "label": "Sponsor target — 2 wins from 5",
+              "liftedMessage": "The sponsor's books are closed on this one."
+            }
+          ]
+        },
+        {
+          "key": "bold",
+          "label": "Four wins in five",
+          "detail": "{reward} if you manage it. {penalty} if you don't.",
+          "effects": [
+            {
+              "kind": "PLEDGE",
+              "wins": 4,
+              "outOf": 5,
+              "rewardWins": 9,
+              "penaltyWins": 4,
+              "label": "Sponsor target — 4 wins from 5",
+              "liftedMessage": "The sponsor's books are closed on this one."
+            }
+          ]
+        },
+        {
+          "key": "reckless",
+          "label": "All five",
+          "detail": "{reward} if you manage it. {penalty} if you don't. They think you won't.",
+          "effects": [
+            {
+              "kind": "PLEDGE",
+              "wins": 5,
+              "outOf": 5,
+              "rewardWins": 20,
+              "penaltyWins": 9,
+              "label": "Sponsor target — 5 wins from 5",
+              "liftedMessage": "The sponsor's books are closed on this one."
+            }
+          ]
+        },
+        {
+          "key": "decline",
+          "label": "Turn the sponsor down",
+          "detail": "No target and no fee. They put their name on somebody else's shirt, and {team} plays six matches on reduced rewards.",
+          "default": true,
+          "effects": [
+            {
+              "kind": "PAYOUT_MULT",
+              "times": 0.7,
+              "matches": 6,
+              "label": "Unsponsored — win rewards at 70%",
+              "liftedMessage": "{team} has found a new sponsor. Win rewards are whole again."
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "key": "appearance_fee",
+      "title": "Fee or bonus",
+      "description": "The sponsor has come back with a simpler question. Would {team} rather be paid for turning up, or for winning?",
+      "scope": "team",
+      "weight": 4,
+      "cooldown": 10,
+      "delegable": true,
+      "requires": { "minMatches": 2 },
+      "options": [
+        {
+          "key": "fee",
+          "label": "Take the money up front",
+          "detail": "{amount} in the bank today. Win rewards halve for the next six matches.",
+          "effects": [
+            {
+              "kind": "CASH",
+              "amountWins": 4,
+              "label": "Appearance fee"
+            },
+            {
+              "kind": "PAYOUT_MULT",
+              "times": 0.5,
+              "matches": 6,
+              "label": "Appearance fee taken — win rewards halved",
+              "liftedMessage": "The appearance deal has run its course. {team}'s win rewards are whole again."
+            }
+          ]
+        },
+        {
+          "key": "bonus",
+          "label": "Back yourselves",
+          "detail": "Nothing today. Win rewards double for the next six matches.",
+          "default": true,
+          "effects": [
+            {
+              "kind": "PAYOUT_MULT",
+              "times": 2,
+              "matches": 6,
+              "label": "Win bonus — win rewards doubled",
+              "liftedMessage": "The win bonus is over. {team}'s rewards are back to normal."
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "key": "league_bond",
+      "title": "The league bond",
+      "description": "The league is raising money against next season's fixtures, and every club has been sent the same terms on the same morning.",
+      "scope": "league",
+      "weight": 4,
+      "cooldown": 8,
+      "delegable": true,
+      "options": [
+        {
+          "key": "buy",
+          "label": "Buy in",
+          "detail": "{amount} locked away now. {back} back when the round after next closes.",
+          "effects": [
+            {
+              "kind": "ESCROW",
+              "pct": 20,
+              "min": 20000,
+              "returnPct": 115,
+              "rounds": 2,
+              "label": "League bond — {amount} locked away",
+              "liftedMessage": "The league bond has matured. {team} has been paid out."
+            }
+          ]
+        },
+        {
+          "key": "pass",
+          "label": "Stay out of it",
+          "detail": "The league notices who didn't. Win rewards at 80% for four matches.",
+          "default": true,
+          "effects": [
+            {
+              "kind": "PAYOUT_MULT",
+              "times": 0.8,
+              "matches": 4,
+              "label": "Out of the bond — win rewards at 80%",
+              "liftedMessage": "The league has forgotten all about the bond. {team}'s rewards are whole again."
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "key": "the_book_on_you",
+      "title": "They have read the book on you",
+      "description": "Half the league has mapped out how {team} attacks. Everybody knows which attack is coming, and they have started switching into it on purpose.",
+      "scope": "team",
+      "weight": 5,
+      "cooldown": 8,
+      "delegable": true,
+      "requires": { "minMatches": 6 },
+      "options": [
+        {
+          "key": "rework",
+          "label": "Rebuild the sets",
+          "detail": "{cost} on analysts and practice time. The problem goes away before it costs you anything.",
+          "cost": { "kind": "CASH_PCT", "pct": 9, "min": 12000 },
+          "effects": []
+        },
+        {
+          "key": "improvise",
+          "label": "Beat them off-script",
+          "detail": "Three matches without a single same-type attack. Coverage moves only.",
+          "default": true,
+          "effects": [
+            {
+              "kind": "NO_STAB",
+              "matches": 3,
+              "label": "No same-type attacking moves",
+              "liftedMessage": "{team} has fresh sets ready. Same-type attacks are back on the menu."
             }
           ]
         }

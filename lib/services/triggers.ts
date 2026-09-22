@@ -20,6 +20,7 @@ import { db } from '../db.ts';
 import { parseTypes } from '../format.ts';
 import { activeEffects, captainSpent } from './effects.ts';
 import { sortByLadder } from './ladder.ts';
+import { parseConfig } from './ownership.ts';
 
 export interface ContextMember {
   pokemonSlug: string;
@@ -30,6 +31,14 @@ export interface ContextMember {
   marketValue: number;
   types: string[];
   hasMega: boolean;
+}
+
+/** An unowned Pokémon an event may offer. Carried on the context so `materialise` stays pure. */
+export interface FreeAgent {
+  pokemonSlug: string;
+  name: string;
+  form: string | null;
+  marketValue: number;
 }
 
 export interface EventContext {
@@ -48,6 +57,10 @@ export interface EventContext {
 
   squad: ContextMember[];
   squadSize: number;
+  /** How many more Pokémon this club may hold. An event that signs somebody needs at least one. */
+  squadRoom: number;
+  /** Unowned and legal, cheapest information an event needs to offer a real name. */
+  freeAgents: FreeAgent[];
   squadValue: number;
   ownedTypes: string[];
   hasCaptain: boolean;
@@ -122,7 +135,7 @@ export async function buildContext(leagueId: string, teamId: string): Promise<Ev
   const team = league?.teams.find((candidate) => candidate.id === teamId);
   if (!league || !team) return null;
 
-  const [ownerships, matches, effects] = await Promise.all([
+  const [ownerships, matches, effects, unowned] = await Promise.all([
     db.ownership.findMany({
       where: { leagueId, teamId },
       include: { pokemon: { select: { name: true, form: true, types: true, megas: true } } },
@@ -135,6 +148,11 @@ export async function buildContext(leagueId: string, teamId: string): Promise<Ev
       include: { stats: { select: { pokemonSlug: true, benched: true, teamId: true } } },
     }),
     activeEffects(leagueId, teamId),
+    db.ownership.findMany({
+      where: { leagueId, teamId: null, pokemon: { legal: true } },
+      include: { pokemon: { select: { name: true, form: true } } },
+      orderBy: { marketValue: 'desc' },
+    }),
   ]);
 
   const squad: ContextMember[] = ownerships.map((row) => ({
@@ -211,6 +229,7 @@ export async function buildContext(leagueId: string, teamId: string): Promise<Ev
   });
 
   const order = sortByLadder(league.teams);
+  const config = parseConfig(league.config);
 
   return {
     leagueId,
@@ -224,6 +243,13 @@ export async function buildContext(leagueId: string, teamId: string): Promise<Ev
     losingStreak,
     squad,
     squadSize: squad.length,
+    squadRoom: Math.max(0, config.squadMax - squad.length),
+    freeAgents: unowned.map((row) => ({
+      pokemonSlug: row.pokemonSlug,
+      name: row.pokemon.name,
+      form: row.pokemon.form,
+      marketValue: row.marketValue,
+    })),
     squadValue: squad.reduce((sum, member) => sum + member.marketValue, 0),
     ownedTypes: [...new Set(squad.flatMap((member) => member.types))],
     hasCaptain: squad.some((member) => member.captain),
@@ -244,6 +270,8 @@ export interface Requires {
   maxMatches?: number;
   minSquad?: number;
   minStarters?: number;
+  /** Room for this many more Pokémon. Gates the events that hand one over. */
+  minSquadRoom?: number;
   minCash?: number;
   minLosingStreak?: number;
   minWinStreak?: number;
@@ -263,6 +291,7 @@ export function meetsRequires(context: EventContext, requires: Requires | undefi
   if (requires.maxMatches !== undefined && context.matchesPlayed > requires.maxMatches) return false;
   if (requires.minSquad !== undefined && context.squadSize < requires.minSquad) return false;
   if (requires.minStarters !== undefined && starters < requires.minStarters) return false;
+  if (requires.minSquadRoom !== undefined && context.squadRoom < requires.minSquadRoom) return false;
   if (requires.minCash !== undefined && context.cash < requires.minCash) return false;
   if (requires.minLosingStreak !== undefined && context.losingStreak < requires.minLosingStreak) {
     return false;

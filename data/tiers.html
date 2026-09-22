@@ -1,0 +1,1583 @@
+<title>Champions Market</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap">
+<style>
+  /*
+   * Dark like the app it belongs to — this gets read on a phone, mid-draft. Print flips to
+   * ink on paper, because the other half of this document's life is a PDF before a draft.
+   */
+  :root {
+    --surface: #0f1117;
+    --panel: #171a23;
+    --panel-2: #1e222e;
+    --line: #2a2f3d;
+    --ink: #e8eaf0;
+    --muted: #949cb0;
+    --accent: #ffcb05;
+    --display: 'Barlow Condensed', 'Arial Narrow', system-ui, sans-serif;
+    --body: 'Barlow', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--surface);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  .page {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding-inline: 16px;
+    padding-block: 40px 64px;
+  }
+
+  .tabular { font-variant-numeric: tabular-nums; }
+
+  /* --- masthead ------------------------------------------------------------------------ */
+  .masthead { border-bottom: 2px solid var(--accent); padding-bottom: 20px; }
+
+  .eyebrow {
+    font-family: var(--display);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-size: 13px;
+    color: var(--accent);
+    margin: 0 0 4px;
+  }
+
+  h1 {
+    font-family: var(--display);
+    font-size: clamp(38px, 8vw, 62px);
+    font-weight: 700;
+    line-height: 0.95;
+    letter-spacing: -0.01em;
+    margin: 0;
+    text-wrap: balance;
+  }
+
+  .lede { color: var(--muted); margin: 12px 0 0; max-width: 62ch; }
+
+  .facts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px 24px;
+    margin-top: 24px;
+    padding: 0;
+    list-style: none;
+  }
+  .facts div { display: flex; flex-direction: column; gap: 2px; }
+  .facts dt {
+    font-family: var(--display);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .facts dd { margin: 0; font-size: 14px; }
+  .facts a { color: var(--ink); text-decoration-color: var(--line); }
+  .facts a:hover { text-decoration-color: var(--accent); }
+
+  /* --- the bands table ----------------------------------------------------------------- */
+  h2.section {
+    font-family: var(--display);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-size: 14px;
+    color: var(--muted);
+    margin: 48px 0 12px;
+  }
+
+  .bands-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; min-width: 480px; }
+  th, td { text-align: left; padding: 9px 12px 9px 0; border-bottom: 1px solid var(--line); }
+  thead th {
+    font-family: var(--display);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-size: 11px;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  tbody th { width: 52px; }
+
+  .chip {
+    display: inline-block;
+    min-width: 32px;
+    text-align: center;
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 14px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    color: #12141b;
+    background: var(--tier);
+  }
+
+  .share { width: 34%; }
+  .bar {
+    display: inline-block;
+    height: 7px;
+    width: var(--w);
+    background: var(--tier);
+    border-radius: 3px;
+    margin-right: 10px;
+    vertical-align: middle;
+    min-width: 3px;
+  }
+  td.price { color: var(--muted); white-space: nowrap; }
+
+  /* --- tier sections ------------------------------------------------------------------- */
+  .tier { margin-top: 40px; break-inside: avoid; }
+
+  .tier-head {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    flex-wrap: wrap;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--tier);
+  }
+  .tier-head h2 {
+    font-family: var(--display);
+    font-size: 34px;
+    font-weight: 700;
+    margin: 0;
+    color: var(--tier);
+    line-height: 1;
+  }
+  .tier-band { margin: 0; font-size: 14px; color: var(--ink); }
+  .tier-count { margin: 0 0 0 auto; font-size: 13px; color: var(--muted); }
+  .tier-count span { color: var(--muted); }
+
+  /*
+   * Hairlines come from the cells themselves, not a background showing through a 1px gap:
+   * a tier whose last row is short would otherwise end in a block of filled empty cells.
+   */
+  .mons {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  }
+
+  .mon {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas: 'name price' 'meta price';
+    align-items: center;
+    column-gap: 10px;
+    padding: 8px 10px;
+    background: var(--panel);
+    border-right: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+  .mon:nth-child(even) { background: var(--panel-2); }
+
+  .mon-name { grid-area: name; font-weight: 600; }
+  .mon-meta { grid-area: meta; font-size: 12px; color: var(--muted); }
+  .mon-price { grid-area: price; font-weight: 600; white-space: nowrap; }
+
+  .mega {
+    display: inline-block;
+    margin-left: 5px;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 0 4px;
+    border-radius: 3px;
+    background: var(--tier);
+    color: #12141b;
+    vertical-align: 1px;
+  }
+  .restricted { color: var(--muted); margin-left: 4px; }
+
+  footer {
+    margin-top: 56px;
+    padding-top: 16px;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 13px;
+  }
+  footer p { margin: 0 0 6px; }
+
+  /* --- print: the other half of this document's life ----------------------------------- */
+  @media print {
+    :root { --surface: #fff; --panel: #fff; --panel-2: #fafafa; --line: #d8d8d8; --ink: #111; --muted: #555; --accent: #b38f00; }
+    body { font-size: 10.5pt; }
+    .page { padding-block: 0; max-width: none; }
+    .mons { grid-template-columns: repeat(3, 1fr); }
+    .tier { break-inside: avoid; }
+    .chip { color: #111; border: 1px solid #0003; }
+    a { text-decoration: none; }
+    @page { margin: 14mm; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+
+<main class="page">
+  <header class="masthead">
+    <p class="eyebrow">Pokémon Champions · Fantasy League</p>
+    <h1>Champions Market</h1>
+    <p class="lede">
+      What every Pokémon costs to sign, by competitive tier. Prices come from the doubles
+      ladder, not raw stats — base stats only spread Pokémon out within a tier. Against a
+      ₽300,000 opening budget, one S-tier costs more than a whole starting balance.
+    </p>
+    <dl class="facts">
+      <div><dt>Tier source</dt><dd><a href="https://op.gg/pokemon-champions/tier">op.gg doubles ladder</a></dd></div>
+      <div><dt>Tiers captured</dt><dd>2026-09-22</dd></div>
+      <div><dt>Format</dt><dd>Doubles</dd></div>
+      <div><dt>Roster revision</dt><dd>Bulbapedia r4626176</dd></div>
+      <div><dt>Assets</dt><dd>247 tradable</dd></div>
+      <div><dt>Sheet generated</dt><dd>2026-09-22</dd></div>
+    </dl>
+  </header>
+
+  <h2 class="section">The bands</h2>
+  <div class="bands-wrap">
+    <table>
+      <thead>
+        <tr><th scope="col">Tier</th><th scope="col">Count</th><th scope="col">Share of roster</th><th scope="col">Price range</th></tr>
+      </thead>
+      <tbody>
+      <tr style="--tier:#ff5c5c">
+        <th scope="row"><span class="chip">S</span></th>
+        <td class="tabular">18</td>
+        <td class="share"><span class="bar" style="--w:7.3%"></span><span class="tabular">7.3%</span></td>
+        <td class="tabular price">₽316,000 – ₽400,000</td>
+      </tr>
+      <tr style="--tier:#ff9f43">
+        <th scope="row"><span class="chip">A+</span></th>
+        <td class="tabular">35</td>
+        <td class="share"><span class="bar" style="--w:14.2%"></span><span class="tabular">14.2%</span></td>
+        <td class="tabular price">₽178,000 – ₽250,000</td>
+      </tr>
+      <tr style="--tier:#ffd93d">
+        <th scope="row"><span class="chip">A</span></th>
+        <td class="tabular">35</td>
+        <td class="share"><span class="bar" style="--w:14.2%"></span><span class="tabular">14.2%</span></td>
+        <td class="tabular price">₽92,000 – ₽136,000</td>
+      </tr>
+      <tr style="--tier:#6bcb77">
+        <th scope="row"><span class="chip">B</span></th>
+        <td class="tabular">55</td>
+        <td class="share"><span class="bar" style="--w:22.3%"></span><span class="tabular">22.3%</span></td>
+        <td class="tabular price">₽40,000 – ₽80,000</td>
+      </tr>
+      <tr style="--tier:#4d96ff">
+        <th scope="row"><span class="chip">C</span></th>
+        <td class="tabular">52</td>
+        <td class="share"><span class="bar" style="--w:21.1%"></span><span class="tabular">21.1%</span></td>
+        <td class="tabular price">₽10,000 – ₽33,000</td>
+      </tr>
+      <tr style="--tier:#9b8fd6">
+        <th scope="row"><span class="chip">D</span></th>
+        <td class="tabular">52</td>
+        <td class="share"><span class="bar" style="--w:21.1%"></span><span class="tabular">21.1%</span></td>
+        <td class="tabular price">₽2,000 – ₽8,000</td>
+      </tr></tbody>
+    </table>
+  </div>
+
+  <h2 class="section">Every Pokémon, by tier</h2>
+  
+      <section class="tier" style="--tier:#ff5c5c">
+        <header class="tier-head">
+          <h2>S</h2>
+          <p class="tier-band tabular">₽316,000 – ₽400,000</p>
+          <p class="tier-count tabular">18 <span>· 7.3% of the roster</span></p>
+        </header>
+        <ul class="mons">
+          <li class="mon">
+            <span class="mon-name">Salamence<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Dragon / Flying · 700 BST</span>
+            <span class="mon-price tabular">₽400,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Garchomp<span class="mega" title="2 Mega Evolutions included">M</span></span>
+            <span class="mon-meta">Dragon / Ground · 700 BST</span>
+            <span class="mon-price tabular">₽400,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Charizard<span class="mega" title="2 Mega Evolutions included">M</span></span>
+            <span class="mon-meta">Fire / Flying · 634 BST</span>
+            <span class="mon-price tabular">₽394,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Golisopod<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Bug / Water · 630 BST</span>
+            <span class="mon-price tabular">₽392,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Gardevoir<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Psychic / Fairy · 618 BST</span>
+            <span class="mon-price tabular">₽387,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Archaludon</span>
+            <span class="mon-meta">Steel / Dragon · 600 BST</span>
+            <span class="mon-price tabular">₽380,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Raichu<span class="mega" title="2 Mega Evolutions included">M</span></span>
+            <span class="mon-meta">Electric · 585 BST</span>
+            <span class="mon-price tabular">₽374,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Hisuian Arcanine</span>
+            <span class="mon-meta">Fire / Rock · 555 BST</span>
+            <span class="mon-price tabular">₽362,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Kingambit</span>
+            <span class="mon-meta">Dark / Steel · 550 BST</span>
+            <span class="mon-price tabular">₽360,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Gholdengo</span>
+            <span class="mon-meta">Steel / Ghost · 550 BST</span>
+            <span class="mon-price tabular">₽360,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Milotic</span>
+            <span class="mon-meta">Water · 540 BST</span>
+            <span class="mon-price tabular">₽356,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Incineroar</span>
+            <span class="mon-meta">Fire / Dark · 530 BST</span>
+            <span class="mon-price tabular">₽352,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Rillaboom</span>
+            <span class="mon-meta">Grass · 530 BST</span>
+            <span class="mon-price tabular">₽352,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Basculegion</span>
+            <span class="mon-meta">Water / Ghost · 530 BST</span>
+            <span class="mon-price tabular">₽352,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Farigiraf</span>
+            <span class="mon-meta">Normal / Psychic · 520 BST</span>
+            <span class="mon-price tabular">₽348,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Sneasler</span>
+            <span class="mon-meta">Fighting / Poison · 510 BST</span>
+            <span class="mon-price tabular">₽344,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Indeedee</span>
+            <span class="mon-meta">Psychic / Normal · 475 BST</span>
+            <span class="mon-price tabular">₽330,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Pelipper</span>
+            <span class="mon-meta">Water / Flying · 440 BST</span>
+            <span class="mon-price tabular">₽316,000</span>
+          </li></ul>
+      </section>
+      <section class="tier" style="--tier:#ff9f43">
+        <header class="tier-head">
+          <h2>A+</h2>
+          <p class="tier-band tabular">₽178,000 – ₽250,000</p>
+          <p class="tier-count tabular">35 <span>· 14.2% of the roster</span></p>
+        </header>
+        <ul class="mons">
+          <li class="mon">
+            <span class="mon-name">Dragonite<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Dragon / Flying · 700 BST</span>
+            <span class="mon-price tabular">₽250,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Tyranitar<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Rock / Dark · 700 BST</span>
+            <span class="mon-price tabular">₽250,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Metagross<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Steel / Psychic · 700 BST</span>
+            <span class="mon-price tabular">₽250,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Eternal Flower Floette<span class="mega" title="1 Mega Evolution included">M</span><span class="restricted" title="On the roster but not catchable">·</span></span>
+            <span class="mon-meta">Fairy · 651 BST</span>
+            <span class="mon-price tabular">₽250,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Baxcalibur<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Dragon / Ice · 700 BST</span>
+            <span class="mon-price tabular">₽250,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Swampert<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Water / Ground · 635 BST</span>
+            <span class="mon-price tabular">₽244,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Delphox<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Fire / Psychic · 634 BST</span>
+            <span class="mon-price tabular">₽244,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Blastoise<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Water · 630 BST</span>
+            <span class="mon-price tabular">₽242,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Venusaur<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Grass / Poison · 625 BST</span>
+            <span class="mon-price tabular">₽240,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Lucario<span class="mega" title="2 Mega Evolutions included">M</span></span>
+            <span class="mon-meta">Fighting / Steel · 625 BST</span>
+            <span class="mon-price tabular">₽240,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Glimmora<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Rock / Poison · 625 BST</span>
+            <span class="mon-price tabular">₽240,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Aerodactyl<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Rock / Flying · 615 BST</span>
+            <span class="mon-price tabular">₽236,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Excadrill<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Ground / Steel · 608 BST</span>
+            <span class="mon-price tabular">₽233,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Gengar<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Ghost / Poison · 600 BST</span>
+            <span class="mon-price tabular">₽230,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Kommo-o</span>
+            <span class="mon-meta">Dragon / Fighting · 600 BST</span>
+            <span class="mon-price tabular">₽230,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Staraptor<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Normal / Flying · 585 BST</span>
+            <span class="mon-price tabular">₽224,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Froslass<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Ice / Ghost · 580 BST</span>
+            <span class="mon-price tabular">₽222,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Absol<span class="mega" title="2 Mega Evolutions included">M</span></span>
+            <span class="mon-meta">Dark · 565 BST</span>
+            <span class="mon-price tabular">₽216,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Volcarona</span>
+            <span class="mon-meta">Bug / Fire · 550 BST</span>
+            <span class="mon-price tabular">₽210,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Annihilape</span>
+            <span class="mon-meta">Fighting / Ghost · 535 BST</span>
+            <span class="mon-price tabular">₽204,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Primarina</span>
+            <span class="mon-meta">Water / Fairy · 530 BST</span>
+            <span class="mon-price tabular">₽202,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Sylveon</span>
+            <span class="mon-meta">Fairy · 525 BST</span>
+            <span class="mon-price tabular">₽200,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Armarouge</span>
+            <span class="mon-meta">Fire / Psychic · 525 BST</span>
+            <span class="mon-price tabular">₽200,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Hatterene</span>
+            <span class="mon-meta">Psychic / Fairy · 510 BST</span>
+            <span class="mon-price tabular">₽194,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Grimmsnarl</span>
+            <span class="mon-meta">Dark / Fairy · 510 BST</span>
+            <span class="mon-price tabular">₽194,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Sinistcha</span>
+            <span class="mon-meta">Grass / Ghost · 508 BST</span>
+            <span class="mon-price tabular">₽193,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Alolan Ninetales</span>
+            <span class="mon-meta">Ice / Fairy · 505 BST</span>
+            <span class="mon-price tabular">₽192,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Politoed</span>
+            <span class="mon-meta">Water · 500 BST</span>
+            <span class="mon-price tabular">₽190,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Talonflame</span>
+            <span class="mon-meta">Fire / Flying · 499 BST</span>
+            <span class="mon-price tabular">₽190,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Corviknight</span>
+            <span class="mon-meta">Flying / Steel · 495 BST</span>
+            <span class="mon-price tabular">₽188,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Pawmot</span>
+            <span class="mon-meta">Electric / Fighting · 490 BST</span>
+            <span class="mon-price tabular">₽186,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Sableye<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Dark / Ghost · 480 BST</span>
+            <span class="mon-price tabular">₽182,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Whimsicott</span>
+            <span class="mon-meta">Grass / Fairy · 480 BST</span>
+            <span class="mon-price tabular">₽182,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Torkoal</span>
+            <span class="mon-meta">Fire · 470 BST</span>
+            <span class="mon-price tabular">₽178,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Maushold</span>
+            <span class="mon-meta">Normal · 470 BST</span>
+            <span class="mon-price tabular">₽178,000</span>
+          </li></ul>
+      </section>
+      <section class="tier" style="--tier:#ffd93d">
+        <header class="tier-head">
+          <h2>A</h2>
+          <p class="tier-band tabular">₽92,000 – ₽136,000</p>
+          <p class="tier-count tabular">35 <span>· 14.2% of the roster</span></p>
+        </header>
+        <ul class="mons">
+          <li class="mon">
+            <span class="mon-name">Blaziken<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Fire / Fighting · 630 BST</span>
+            <span class="mon-price tabular">₽136,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Greninja<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Water / Dark · 630 BST</span>
+            <span class="mon-price tabular">₽136,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Meganium<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Grass · 625 BST</span>
+            <span class="mon-price tabular">₽135,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Gallade<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Psychic / Fighting · 618 BST</span>
+            <span class="mon-price tabular">₽134,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Chandelure<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Ghost / Fire · 620 BST</span>
+            <span class="mon-price tabular">₽134,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Alakazam<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Psychic · 600 BST</span>
+            <span class="mon-price tabular">₽130,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Scizor<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Bug / Steel · 600 BST</span>
+            <span class="mon-price tabular">₽130,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Hydreigon</span>
+            <span class="mon-meta">Dark / Dragon · 600 BST</span>
+            <span class="mon-price tabular">₽130,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Hisuian Goodra</span>
+            <span class="mon-meta">Steel / Dragon · 600 BST</span>
+            <span class="mon-price tabular">₽130,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Dragapult</span>
+            <span class="mon-meta">Dragon / Ghost · 600 BST</span>
+            <span class="mon-price tabular">₽130,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Clefable<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Fairy · 583 BST</span>
+            <span class="mon-price tabular">₽127,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Scovillain<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Grass / Fire · 586 BST</span>
+            <span class="mon-price tabular">₽127,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Malamar<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Dark / Psychic · 582 BST</span>
+            <span class="mon-price tabular">₽126,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Camerupt<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Fire / Ground · 560 BST</span>
+            <span class="mon-price tabular">₽122,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Hisuian Typhlosion</span>
+            <span class="mon-meta">Fire / Ghost · 534 BST</span>
+            <span class="mon-price tabular">₽117,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Empoleon</span>
+            <span class="mon-meta">Water / Steel · 530 BST</span>
+            <span class="mon-price tabular">₽116,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Mamoswine</span>
+            <span class="mon-meta">Ice / Ground · 530 BST</span>
+            <span class="mon-price tabular">₽116,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Cinderace</span>
+            <span class="mon-meta">Fire · 530 BST</span>
+            <span class="mon-price tabular">₽116,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Inteleon</span>
+            <span class="mon-meta">Water · 530 BST</span>
+            <span class="mon-price tabular">₽116,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Meowscarada</span>
+            <span class="mon-meta">Grass / Dark · 530 BST</span>
+            <span class="mon-price tabular">₽116,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Ceruledge</span>
+            <span class="mon-meta">Fire / Ghost · 525 BST</span>
+            <span class="mon-price tabular">₽115,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Rotom</span>
+            <span class="mon-meta">Electric / Ghost · 520 BST</span>
+            <span class="mon-price tabular">₽114,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Weavile</span>
+            <span class="mon-meta">Dark / Ice · 510 BST</span>
+            <span class="mon-price tabular">₽112,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Hisuian Zoroark</span>
+            <span class="mon-meta">Normal / Ghost · 510 BST</span>
+            <span class="mon-price tabular">₽112,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Tsareena</span>
+            <span class="mon-meta">Grass · 510 BST</span>
+            <span class="mon-price tabular">₽112,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Sirfetch'd</span>
+            <span class="mon-meta">Fighting · 507 BST</span>
+            <span class="mon-price tabular">₽111,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Aegislash</span>
+            <span class="mon-meta">Steel / Ghost · 500 BST</span>
+            <span class="mon-price tabular">₽110,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Toxtricity</span>
+            <span class="mon-meta">Electric / Poison · 502 BST</span>
+            <span class="mon-price tabular">₽110,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Kleavor</span>
+            <span class="mon-meta">Bug / Rock · 500 BST</span>
+            <span class="mon-price tabular">₽110,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Toxapex</span>
+            <span class="mon-meta">Poison / Water · 495 BST</span>
+            <span class="mon-price tabular">₽109,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Mawile<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Steel / Fairy · 480 BST</span>
+            <span class="mon-price tabular">₽106,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Espathra</span>
+            <span class="mon-meta">Psychic · 481 BST</span>
+            <span class="mon-price tabular">₽106,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Mimikyu</span>
+            <span class="mon-meta">Ghost / Fairy · 476 BST</span>
+            <span class="mon-price tabular">₽105,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Pincurchin</span>
+            <span class="mon-meta">Electric · 435 BST</span>
+            <span class="mon-price tabular">₽97,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Vivillon</span>
+            <span class="mon-meta">Bug / Flying · 411 BST</span>
+            <span class="mon-price tabular">₽92,000</span>
+          </li></ul>
+      </section>
+      <section class="tier" style="--tier:#6bcb77">
+        <header class="tier-head">
+          <h2>B</h2>
+          <p class="tier-band tabular">₽40,000 – ₽80,000</p>
+          <p class="tier-count tabular">55 <span>· 22.3% of the roster</span></p>
+        </header>
+        <ul class="mons">
+          <li class="mon">
+            <span class="mon-name">Palafin</span>
+            <span class="mon-meta">Water · 650 BST</span>
+            <span class="mon-price tabular">₽80,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Gyarados<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Water / Flying · 640 BST</span>
+            <span class="mon-price tabular">₽78,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Sceptile<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Grass · 630 BST</span>
+            <span class="mon-price tabular">₽77,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Aggron<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Steel / Rock · 630 BST</span>
+            <span class="mon-price tabular">₽77,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Chesnaught<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Grass / Fighting · 630 BST</span>
+            <span class="mon-price tabular">₽77,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Starmie<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Water / Psychic · 620 BST</span>
+            <span class="mon-price tabular">₽75,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Ampharos<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Electric · 610 BST</span>
+            <span class="mon-price tabular">₽74,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Steelix<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Steel / Ground · 610 BST</span>
+            <span class="mon-price tabular">₽74,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Eelektross<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Electric · 615 BST</span>
+            <span class="mon-price tabular">₽74,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Pyroar<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Fire / Normal · 607 BST</span>
+            <span class="mon-price tabular">₽73,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Houndoom<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Dark / Fire · 600 BST</span>
+            <span class="mon-price tabular">₽72,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Hawlucha<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Fighting / Flying · 600 BST</span>
+            <span class="mon-price tabular">₽72,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Abomasnow<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Grass / Ice · 594 BST</span>
+            <span class="mon-price tabular">₽71,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Dragalge<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Poison / Dragon · 594 BST</span>
+            <span class="mon-price tabular">₽71,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Slowbro<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Water / Psychic · 590 BST</span>
+            <span class="mon-price tabular">₽70,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Kangaskhan<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Normal · 590 BST</span>
+            <span class="mon-price tabular">₽70,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Altaria<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Dragon / Flying · 590 BST</span>
+            <span class="mon-price tabular">₽70,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Scrafty<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Dark / Fighting · 588 BST</span>
+            <span class="mon-price tabular">₽70,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Drampa<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Normal / Dragon · 585 BST</span>
+            <span class="mon-price tabular">₽70,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Lopunny<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Normal · 580 BST</span>
+            <span class="mon-price tabular">₽69,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Manectric<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Electric · 575 BST</span>
+            <span class="mon-price tabular">₽68,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Crabominable<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Fighting / Ice · 578 BST</span>
+            <span class="mon-price tabular">₽68,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Meowstic<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Psychic · 566 BST</span>
+            <span class="mon-price tabular">₽67,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Skarmory<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Steel / Flying · 565 BST</span>
+            <span class="mon-price tabular">₽66,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Arcanine</span>
+            <span class="mon-meta">Fire · 555 BST</span>
+            <span class="mon-price tabular">₽65,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Audino<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Normal · 545 BST</span>
+            <span class="mon-price tabular">₽63,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Snorlax</span>
+            <span class="mon-meta">Normal · 540 BST</span>
+            <span class="mon-price tabular">₽62,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Vanilluxe</span>
+            <span class="mon-meta">Ice · 535 BST</span>
+            <span class="mon-price tabular">₽62,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Noivern</span>
+            <span class="mon-meta">Flying / Dragon · 535 BST</span>
+            <span class="mon-price tabular">₽62,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Infernape</span>
+            <span class="mon-meta">Fire / Fighting · 534 BST</span>
+            <span class="mon-price tabular">₽61,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Skeledirge</span>
+            <span class="mon-meta">Fire / Ghost · 530 BST</span>
+            <span class="mon-price tabular">₽61,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Jolteon</span>
+            <span class="mon-meta">Electric · 525 BST</span>
+            <span class="mon-price tabular">₽60,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Umbreon</span>
+            <span class="mon-meta">Dark · 525 BST</span>
+            <span class="mon-price tabular">₽60,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Hisuian Samurott</span>
+            <span class="mon-meta">Water / Dark · 528 BST</span>
+            <span class="mon-price tabular">₽60,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Gliscor</span>
+            <span class="mon-meta">Ground / Flying · 510 BST</span>
+            <span class="mon-price tabular">₽58,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Overqwil</span>
+            <span class="mon-meta">Dark / Poison · 510 BST</span>
+            <span class="mon-price tabular">₽58,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Ninetales</span>
+            <span class="mon-meta">Fire · 505 BST</span>
+            <span class="mon-price tabular">₽57,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Conkeldurr</span>
+            <span class="mon-meta">Fighting · 505 BST</span>
+            <span class="mon-price tabular">₽57,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Tinkaton</span>
+            <span class="mon-meta">Fairy / Steel · 506 BST</span>
+            <span class="mon-price tabular">₽57,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Clawitzer</span>
+            <span class="mon-meta">Water · 500 BST</span>
+            <span class="mon-price tabular">₽56,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Bellibolt</span>
+            <span class="mon-meta">Electric · 495 BST</span>
+            <span class="mon-price tabular">₽55,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Alolan Raichu</span>
+            <span class="mon-meta">Electric / Psychic · 485 BST</span>
+            <span class="mon-price tabular">₽54,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Galarian Slowbro</span>
+            <span class="mon-meta">Poison / Psychic · 490 BST</span>
+            <span class="mon-price tabular">₽54,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Galarian Slowking</span>
+            <span class="mon-meta">Poison / Psychic · 490 BST</span>
+            <span class="mon-price tabular">₽54,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Spiritomb</span>
+            <span class="mon-meta">Ghost / Dark · 485 BST</span>
+            <span class="mon-price tabular">₽54,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Lycanroc</span>
+            <span class="mon-meta">Rock · 487 BST</span>
+            <span class="mon-price tabular">₽54,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Oranguru</span>
+            <span class="mon-meta">Normal / Psychic · 490 BST</span>
+            <span class="mon-price tabular">₽54,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Houndstone</span>
+            <span class="mon-meta">Ghost · 488 BST</span>
+            <span class="mon-price tabular">₽54,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Heliolisk</span>
+            <span class="mon-meta">Electric / Normal · 481 BST</span>
+            <span class="mon-price tabular">₽53,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Grapploct</span>
+            <span class="mon-meta">Fighting · 480 BST</span>
+            <span class="mon-price tabular">₽53,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Klefki</span>
+            <span class="mon-meta">Steel / Fairy · 470 BST</span>
+            <span class="mon-price tabular">₽51,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Araquanid</span>
+            <span class="mon-meta">Water / Bug · 454 BST</span>
+            <span class="mon-price tabular">₽49,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Perrserker</span>
+            <span class="mon-meta">Steel · 440 BST</span>
+            <span class="mon-price tabular">₽46,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Azumarill</span>
+            <span class="mon-meta">Water / Fairy · 420 BST</span>
+            <span class="mon-price tabular">₽43,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Ditto</span>
+            <span class="mon-meta">Normal · 288 BST</span>
+            <span class="mon-price tabular">₽40,000</span>
+          </li></ul>
+      </section>
+      <section class="tier" style="--tier:#4d96ff">
+        <header class="tier-head">
+          <h2>C</h2>
+          <p class="tier-band tabular">₽10,000 – ₽33,000</p>
+          <p class="tier-count tabular">52 <span>· 21.1% of the roster</span></p>
+        </header>
+        <ul class="mons">
+          <li class="mon">
+            <span class="mon-name">Feraligatr<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Water · 630 BST</span>
+            <span class="mon-price tabular">₽33,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Heracross<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Bug / Fighting · 600 BST</span>
+            <span class="mon-price tabular">₽30,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Scolipede<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Bug / Poison · 585 BST</span>
+            <span class="mon-price tabular">₽29,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Pidgeot<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Normal / Flying · 579 BST</span>
+            <span class="mon-price tabular">₽28,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Glalie<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Ice · 580 BST</span>
+            <span class="mon-price tabular">₽28,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Golurk<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Ground / Ghost · 583 BST</span>
+            <span class="mon-price tabular">₽28,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Banette<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Ghost · 555 BST</span>
+            <span class="mon-price tabular">₽26,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Rhyperior</span>
+            <span class="mon-meta">Ground / Rock · 535 BST</span>
+            <span class="mon-price tabular">₽24,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Hydrapple</span>
+            <span class="mon-meta">Grass / Dragon · 540 BST</span>
+            <span class="mon-price tabular">₽24,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Vaporeon</span>
+            <span class="mon-meta">Water · 525 BST</span>
+            <span class="mon-price tabular">₽23,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Typhlosion</span>
+            <span class="mon-meta">Fire · 534 BST</span>
+            <span class="mon-price tabular">₽23,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Espeon</span>
+            <span class="mon-meta">Psychic · 525 BST</span>
+            <span class="mon-price tabular">₽23,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Torterra</span>
+            <span class="mon-meta">Grass / Ground · 525 BST</span>
+            <span class="mon-price tabular">₽23,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Hippowdon</span>
+            <span class="mon-meta">Ground · 525 BST</span>
+            <span class="mon-price tabular">₽23,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Glaceon</span>
+            <span class="mon-meta">Ice · 525 BST</span>
+            <span class="mon-price tabular">₽23,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Serperior</span>
+            <span class="mon-meta">Grass · 528 BST</span>
+            <span class="mon-price tabular">₽23,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Gogoat</span>
+            <span class="mon-meta">Grass · 531 BST</span>
+            <span class="mon-price tabular">₽23,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Hisuian Decidueye</span>
+            <span class="mon-meta">Grass / Fighting · 530 BST</span>
+            <span class="mon-price tabular">₽23,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Wyrdeer</span>
+            <span class="mon-meta">Normal / Psychic · 525 BST</span>
+            <span class="mon-price tabular">₽23,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Quaquaval</span>
+            <span class="mon-meta">Water / Fighting · 530 BST</span>
+            <span class="mon-price tabular">₽23,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Krookodile</span>
+            <span class="mon-meta">Ground / Dark · 519 BST</span>
+            <span class="mon-price tabular">₽22,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Aurorus</span>
+            <span class="mon-meta">Rock / Ice · 521 BST</span>
+            <span class="mon-price tabular">₽22,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Mr. Rime</span>
+            <span class="mon-meta">Ice / Psychic · 520 BST</span>
+            <span class="mon-price tabular">₽22,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Machamp</span>
+            <span class="mon-meta">Fighting · 505 BST</span>
+            <span class="mon-price tabular">₽21,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Medicham<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Fighting / Psychic · 510 BST</span>
+            <span class="mon-price tabular">₽21,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Zoroark</span>
+            <span class="mon-meta">Dark · 510 BST</span>
+            <span class="mon-price tabular">₽21,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Arboliva</span>
+            <span class="mon-meta">Normal / Grass · 510 BST</span>
+            <span class="mon-price tabular">₽21,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Mabosstiff</span>
+            <span class="mon-meta">Dark · 505 BST</span>
+            <span class="mon-price tabular">₽21,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Beedrill<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Bug / Poison · 495 BST</span>
+            <span class="mon-price tabular">₽20,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Pangoro</span>
+            <span class="mon-meta">Fighting / Dark · 495 BST</span>
+            <span class="mon-price tabular">₽20,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Mudsdale</span>
+            <span class="mon-meta">Ground · 500 BST</span>
+            <span class="mon-price tabular">₽20,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Alcremie</span>
+            <span class="mon-meta">Fairy · 495 BST</span>
+            <span class="mon-price tabular">₽20,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Garganacl</span>
+            <span class="mon-meta">Rock · 500 BST</span>
+            <span class="mon-price tabular">₽20,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Vileplume</span>
+            <span class="mon-meta">Grass / Poison · 490 BST</span>
+            <span class="mon-price tabular">₽19,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Paldean (Aqua Breed) Tauros</span>
+            <span class="mon-meta">Fighting / Water · 490 BST</span>
+            <span class="mon-price tabular">₽19,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Paldean (Blaze Breed) Tauros</span>
+            <span class="mon-meta">Fighting / Fire · 490 BST</span>
+            <span class="mon-price tabular">₽19,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Slowking</span>
+            <span class="mon-meta">Water / Psychic · 490 BST</span>
+            <span class="mon-price tabular">₽19,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Toxicroak</span>
+            <span class="mon-meta">Poison / Fighting · 490 BST</span>
+            <span class="mon-price tabular">₽19,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Reuniclus</span>
+            <span class="mon-meta">Psychic · 490 BST</span>
+            <span class="mon-price tabular">₽19,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Cofagrigus</span>
+            <span class="mon-meta">Ghost · 483 BST</span>
+            <span class="mon-price tabular">₽18,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Salazzle</span>
+            <span class="mon-meta">Poison / Fire · 480 BST</span>
+            <span class="mon-price tabular">₽18,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Runerigus</span>
+            <span class="mon-meta">Ground / Ghost · 483 BST</span>
+            <span class="mon-price tabular">₽18,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Orthworm</span>
+            <span class="mon-meta">Steel · 480 BST</span>
+            <span class="mon-price tabular">₽18,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Mr. Mime</span>
+            <span class="mon-meta">Psychic / Fairy · 460 BST</span>
+            <span class="mon-price tabular">₽16,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Aromatisse</span>
+            <span class="mon-meta">Fairy · 462 BST</span>
+            <span class="mon-price tabular">₽16,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Thievul</span>
+            <span class="mon-meta">Dark · 455 BST</span>
+            <span class="mon-price tabular">₽16,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Liepard</span>
+            <span class="mon-meta">Dark · 446 BST</span>
+            <span class="mon-price tabular">₽15,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Wigglytuff</span>
+            <span class="mon-meta">Normal / Fairy · 435 BST</span>
+            <span class="mon-price tabular">₽14,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Alolan Persian</span>
+            <span class="mon-meta">Dark · 440 BST</span>
+            <span class="mon-price tabular">₽14,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Morpeko</span>
+            <span class="mon-meta">Electric / Dark · 436 BST</span>
+            <span class="mon-price tabular">₽14,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Squawkabilly</span>
+            <span class="mon-meta">Normal / Flying · 417 BST</span>
+            <span class="mon-price tabular">₽12,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Pikachu</span>
+            <span class="mon-meta">Electric · 320 BST</span>
+            <span class="mon-price tabular">₽10,000</span>
+          </li></ul>
+      </section>
+      <section class="tier" style="--tier:#9b8fd6">
+        <header class="tier-head">
+          <h2>D</h2>
+          <p class="tier-band tabular">₽2,000 – ₽8,000</p>
+          <p class="tier-count tabular">52 <span>· 21.1% of the roster</span></p>
+        </header>
+        <ul class="mons">
+          <li class="mon">
+            <span class="mon-name">Pinsir<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Bug · 600 BST</span>
+            <span class="mon-price tabular">₽8,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Emboar<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Fire / Fighting · 628 BST</span>
+            <span class="mon-price tabular">₽8,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Barbaracle<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Rock / Water · 600 BST</span>
+            <span class="mon-price tabular">₽8,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Goodra</span>
+            <span class="mon-meta">Dragon · 600 BST</span>
+            <span class="mon-price tabular">₽8,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Victreebel<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Grass / Poison · 590 BST</span>
+            <span class="mon-price tabular">₽7,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Falinks<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Fighting · 570 BST</span>
+            <span class="mon-price tabular">₽7,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Flareon</span>
+            <span class="mon-meta">Fire · 525 BST</span>
+            <span class="mon-price tabular">₽6,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Sharpedo<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Water / Dark · 560 BST</span>
+            <span class="mon-price tabular">₽6,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Chimecho<span class="mega" title="1 Mega Evolution included">M</span></span>
+            <span class="mon-meta">Psychic · 555 BST</span>
+            <span class="mon-price tabular">₽6,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Leafeon</span>
+            <span class="mon-meta">Grass · 525 BST</span>
+            <span class="mon-price tabular">₽6,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Samurott</span>
+            <span class="mon-meta">Water · 528 BST</span>
+            <span class="mon-price tabular">₽6,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Florges</span>
+            <span class="mon-meta">Fairy · 552 BST</span>
+            <span class="mon-price tabular">₽6,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Decidueye</span>
+            <span class="mon-meta">Grass / Ghost · 530 BST</span>
+            <span class="mon-price tabular">₽6,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Tauros</span>
+            <span class="mon-meta">Normal · 490 BST</span>
+            <span class="mon-price tabular">₽5,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Paldean (Combat Breed) Tauros</span>
+            <span class="mon-meta">Fighting · 490 BST</span>
+            <span class="mon-price tabular">₽5,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Luxray</span>
+            <span class="mon-meta">Electric · 523 BST</span>
+            <span class="mon-price tabular">₽5,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Roserade</span>
+            <span class="mon-meta">Grass / Poison · 515 BST</span>
+            <span class="mon-price tabular">₽5,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Rampardos</span>
+            <span class="mon-meta">Rock · 495 BST</span>
+            <span class="mon-price tabular">₽5,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Bastiodon</span>
+            <span class="mon-meta">Rock / Steel · 495 BST</span>
+            <span class="mon-price tabular">₽5,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Simisage</span>
+            <span class="mon-meta">Grass · 498 BST</span>
+            <span class="mon-price tabular">₽5,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Simisear</span>
+            <span class="mon-meta">Fire · 498 BST</span>
+            <span class="mon-price tabular">₽5,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Simipour</span>
+            <span class="mon-meta">Water · 498 BST</span>
+            <span class="mon-price tabular">₽5,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Beartic</span>
+            <span class="mon-meta">Ice · 505 BST</span>
+            <span class="mon-price tabular">₽5,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Tyrantrum</span>
+            <span class="mon-meta">Rock / Dragon · 521 BST</span>
+            <span class="mon-price tabular">₽5,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Gourgeist</span>
+            <span class="mon-meta">Ghost / Grass · 494 BST</span>
+            <span class="mon-price tabular">₽5,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Avalugg</span>
+            <span class="mon-meta">Ice · 514 BST</span>
+            <span class="mon-price tabular">₽5,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Hisuian Avalugg</span>
+            <span class="mon-meta">Ice / Rock · 514 BST</span>
+            <span class="mon-price tabular">₽5,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Passimian</span>
+            <span class="mon-meta">Fighting · 490 BST</span>
+            <span class="mon-price tabular">₽5,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Sandaconda</span>
+            <span class="mon-meta">Ground · 510 BST</span>
+            <span class="mon-price tabular">₽5,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Polteageist</span>
+            <span class="mon-meta">Ghost · 508 BST</span>
+            <span class="mon-price tabular">₽5,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Forretress</span>
+            <span class="mon-meta">Bug / Steel · 465 BST</span>
+            <span class="mon-price tabular">₽4,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Swalot</span>
+            <span class="mon-meta">Poison · 467 BST</span>
+            <span class="mon-price tabular">₽4,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Musharna</span>
+            <span class="mon-meta">Psychic · 487 BST</span>
+            <span class="mon-price tabular">₽4,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Garbodor</span>
+            <span class="mon-meta">Poison · 474 BST</span>
+            <span class="mon-price tabular">₽4,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Stunfisk</span>
+            <span class="mon-meta">Ground / Electric · 471 BST</span>
+            <span class="mon-price tabular">₽4,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Galarian Stunfisk</span>
+            <span class="mon-meta">Ground / Steel · 471 BST</span>
+            <span class="mon-price tabular">₽4,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Furfrou</span>
+            <span class="mon-meta">Normal · 472 BST</span>
+            <span class="mon-price tabular">₽4,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Slurpuff</span>
+            <span class="mon-meta">Fairy · 480 BST</span>
+            <span class="mon-price tabular">₽4,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Trevenant</span>
+            <span class="mon-meta">Ghost / Grass · 474 BST</span>
+            <span class="mon-price tabular">₽4,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Toucannon</span>
+            <span class="mon-meta">Normal / Flying · 485 BST</span>
+            <span class="mon-price tabular">₽4,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Flapple</span>
+            <span class="mon-meta">Grass / Dragon · 485 BST</span>
+            <span class="mon-price tabular">₽4,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Appletun</span>
+            <span class="mon-meta">Grass / Dragon · 485 BST</span>
+            <span class="mon-price tabular">₽4,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Arbok</span>
+            <span class="mon-meta">Poison · 448 BST</span>
+            <span class="mon-price tabular">₽3,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Persian</span>
+            <span class="mon-meta">Normal · 440 BST</span>
+            <span class="mon-price tabular">₽3,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Qwilfish</span>
+            <span class="mon-meta">Water / Poison · 440 BST</span>
+            <span class="mon-price tabular">₽3,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Castform</span>
+            <span class="mon-meta">Normal · 420 BST</span>
+            <span class="mon-price tabular">₽3,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Watchog</span>
+            <span class="mon-meta">Normal · 420 BST</span>
+            <span class="mon-price tabular">₽3,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Emolga</span>
+            <span class="mon-meta">Electric / Flying · 428 BST</span>
+            <span class="mon-price tabular">₽3,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Diggersby</span>
+            <span class="mon-meta">Normal / Ground · 423 BST</span>
+            <span class="mon-price tabular">₽3,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Dedenne</span>
+            <span class="mon-meta">Electric / Fairy · 431 BST</span>
+            <span class="mon-price tabular">₽3,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Farfetch'd</span>
+            <span class="mon-meta">Normal / Flying · 377 BST</span>
+            <span class="mon-price tabular">₽2,000</span>
+          </li>
+          <li class="mon">
+            <span class="mon-name">Ariados</span>
+            <span class="mon-meta">Bug / Poison · 400 BST</span>
+            <span class="mon-price tabular">₽2,000</span>
+          </li></ul>
+      </section>
+
+  <footer>
+    <p><strong>M</strong> marks a Pokémon whose Mega Evolutions come with it — owning the species grants them, and the price reflects that. <strong>·</strong> marks one that is on the roster but not catchable.</p>
+    <p>Tier source: op.gg Pokémon Champions doubles ranked ladder, 262 Pokémon by placement (Season 6, Regulation M-C), captured 2026-09-22.</p>
+    <p>Regenerate with <code>npm run tiers:doc</code>. Prices are set by <code>config/economy.ts</code>; the tier of each Pokémon by <code>data/tiers.json</code>.</p>
+  </footer>
+</main>

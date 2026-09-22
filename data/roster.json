@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-17T18:07:37.521Z",
+  "generatedAt": "2026-09-22T20:08:46.941Z",
   "source": {
     "page": "List of Pokémon in Pokémon Champions",
     "revisionId": 4626176,
@@ -65,9 +65,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "A",
+      "tier": "A+",
       "effectiveBst": 625,
-      "baseValue": 135000
+      "baseValue": 240000
     },
     {
       "slug": "charizard",
@@ -131,7 +131,7 @@
           "spriteUrl": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/10035.png",
           "iconUrl": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/10035.png",
           "homeUrl": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/home/10035.png",
-          "tier": "S"
+          "tier": "UR"
         }
       ],
       "alternateForms": [],
@@ -195,9 +195,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "A",
+      "tier": "A+",
       "effectiveBst": 630,
-      "baseValue": 136000
+      "baseValue": 242000
     },
     {
       "slug": "beedrill",
@@ -250,9 +250,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "C",
       "effectiveBst": 495,
-      "baseValue": 4000
+      "baseValue": 20000
     },
     {
       "slug": "pidgeot",
@@ -305,9 +305,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "C",
       "effectiveBst": 579,
-      "baseValue": 7000
+      "baseValue": 28000
     },
     {
       "slug": "arbok",
@@ -336,7 +336,7 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "D",
       "effectiveBst": 448,
       "baseValue": 3000
     },
@@ -367,9 +367,9 @@
       "restricted": false,
       "notes": "Regular form only",
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "C",
       "effectiveBst": 320,
-      "baseValue": 1000
+      "baseValue": 10000
     },
     {
       "slug": "raichu",
@@ -473,9 +473,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "B",
       "effectiveBst": 485,
-      "baseValue": 4000
+      "baseValue": 54000
     },
     {
       "slug": "clefable",
@@ -527,9 +527,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "C",
+      "tier": "A",
       "effectiveBst": 583,
-      "baseValue": 28000
+      "baseValue": 127000
     },
     {
       "slug": "ninetales",
@@ -558,9 +558,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "B",
       "effectiveBst": 505,
-      "baseValue": 5000
+      "baseValue": 57000
     },
     {
       "slug": "ninetales-alola",
@@ -622,9 +622,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.2.0",
-      "tier": "UR",
+      "tier": "C",
       "effectiveBst": 435,
-      "baseValue": 2000
+      "baseValue": 14000
     },
     {
       "slug": "vileplume",
@@ -654,9 +654,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.1.0",
-      "tier": "UR",
+      "tier": "C",
       "effectiveBst": 490,
-      "baseValue": 4000
+      "baseValue": 19000
     },
     {
       "slug": "persian",
@@ -685,9 +685,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.2.0",
-      "tier": "UR",
+      "tier": "D",
       "effectiveBst": 440,
-      "baseValue": 2000
+      "baseValue": 3000
     },
     {
       "slug": "persian-alola",
@@ -716,9 +716,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.2.0",
-      "tier": "UR",
+      "tier": "C",
       "effectiveBst": 440,
-      "baseValue": 2000
+      "baseValue": 14000
     },
     {
       "slug": "arcanine",
@@ -747,9 +747,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "B",
       "effectiveBst": 555,
-      "baseValue": 7000
+      "baseValue": 65000
     },
     {
       "slug": "arcanine-hisui",
@@ -779,9 +779,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "C",
+      "tier": "S",
       "effectiveBst": 555,
-      "baseValue": 26000
+      "baseValue": 362000
     },
     {
       "slug": "alakazam",
@@ -832,9 +832,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "A",
       "effectiveBst": 600,
-      "baseValue": 8000
+      "baseValue": 130000
     },
     {
       "slug": "machamp",
@@ -863,9 +863,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "C",
       "effectiveBst": 505,
-      "baseValue": 5000
+      "baseValue": 21000
     },
     {
       "slug": "victreebel",
@@ -918,9 +918,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "D",
       "effectiveBst": 590,
-      "baseValue": 8000
+      "baseValue": 7000
     },
     {
       "slug": "slowbro",
@@ -973,9 +973,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "B",
       "effectiveBst": 590,
-      "baseValue": 8000
+      "baseValue": 70000
     },
     {
       "slug": "slowbro-galar",
@@ -1005,9 +1005,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "B",
       "effectiveBst": 490,
-      "baseValue": 4000
+      "baseValue": 54000
     },
     {
       "slug": "farfetchd",
@@ -1037,9 +1037,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.2.0",
-      "tier": "UR",
+      "tier": "D",
       "effectiveBst": 377,
-      "baseValue": 1000
+      "baseValue": 2000
     },
     {
       "slug": "gengar",
@@ -1081,7 +1081,7 @@
           "spriteUrl": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/10038.png",
           "iconUrl": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/10038.png",
           "homeUrl": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/home/10038.png",
-          "tier": "S"
+          "tier": "UR"
         }
       ],
       "alternateForms": [],
@@ -1092,9 +1092,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "A",
+      "tier": "A+",
       "effectiveBst": 600,
-      "baseValue": 130000
+      "baseValue": 230000
     },
     {
       "slug": "kangaskhan",
@@ -1200,9 +1200,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "B",
       "effectiveBst": 620,
-      "baseValue": 9000
+      "baseValue": 75000
     },
     {
       "slug": "mr-mime",
@@ -1232,9 +1232,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.2.0",
-      "tier": "UR",
+      "tier": "C",
       "effectiveBst": 460,
-      "baseValue": 3000
+      "baseValue": 16000
     },
     {
       "slug": "pinsir",
@@ -1286,7 +1286,7 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "D",
       "effectiveBst": 600,
       "baseValue": 8000
     },
@@ -1317,16 +1317,16 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "D",
       "effectiveBst": 490,
-      "baseValue": 4000
+      "baseValue": 5000
     },
     {
       "slug": "tauros-paldea-aqua",
       "pokeapiSlug": "tauros-paldea-aqua-breed",
       "dex": 128,
       "name": "Tauros",
-      "form": "Paldean Form<br>(Aqua Breed)",
+      "form": "Paldean Form (Aqua Breed)",
       "types": [
         "Fighting",
         "Water"
@@ -1349,16 +1349,16 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "C",
       "effectiveBst": 490,
-      "baseValue": 4000
+      "baseValue": 19000
     },
     {
       "slug": "tauros-paldea-blaze",
       "pokeapiSlug": "tauros-paldea-blaze-breed",
       "dex": 128,
       "name": "Tauros",
-      "form": "Paldean Form<br>(Blaze Breed)",
+      "form": "Paldean Form (Blaze Breed)",
       "types": [
         "Fighting",
         "Fire"
@@ -1381,16 +1381,16 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "C",
       "effectiveBst": 490,
-      "baseValue": 4000
+      "baseValue": 19000
     },
     {
       "slug": "tauros-paldea-combat",
       "pokeapiSlug": "tauros-paldea-combat-breed",
       "dex": 128,
       "name": "Tauros",
-      "form": "Paldean Form<br>(Combat Breed)",
+      "form": "Paldean Form (Combat Breed)",
       "types": [
         "Fighting"
       ],
@@ -1412,9 +1412,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "D",
       "effectiveBst": 490,
-      "baseValue": 4000
+      "baseValue": 5000
     },
     {
       "slug": "gyarados",
@@ -1467,9 +1467,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "C",
+      "tier": "B",
       "effectiveBst": 640,
-      "baseValue": 34000
+      "baseValue": 78000
     },
     {
       "slug": "ditto",
@@ -1498,9 +1498,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "B",
       "effectiveBst": 288,
-      "baseValue": 1000
+      "baseValue": 40000
     },
     {
       "slug": "vaporeon",
@@ -1529,9 +1529,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "C",
       "effectiveBst": 525,
-      "baseValue": 6000
+      "baseValue": 23000
     },
     {
       "slug": "jolteon",
@@ -1560,9 +1560,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "B",
       "effectiveBst": 525,
-      "baseValue": 6000
+      "baseValue": 60000
     },
     {
       "slug": "flareon",
@@ -1591,7 +1591,7 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "D",
       "effectiveBst": 525,
       "baseValue": 6000
     },
@@ -1677,9 +1677,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "B",
       "effectiveBst": 540,
-      "baseValue": 6000
+      "baseValue": 62000
     },
     {
       "slug": "dragonite",
@@ -1732,9 +1732,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "A",
+      "tier": "A+",
       "effectiveBst": 700,
-      "baseValue": 140000
+      "baseValue": 250000
     },
     {
       "slug": "meganium",
@@ -1786,9 +1786,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "C",
+      "tier": "A",
       "effectiveBst": 625,
-      "baseValue": 33000
+      "baseValue": 135000
     },
     {
       "slug": "typhlosion",
@@ -1817,9 +1817,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "C",
       "effectiveBst": 534,
-      "baseValue": 6000
+      "baseValue": 23000
     },
     {
       "slug": "typhlosion-hisui",
@@ -1849,9 +1849,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "C",
+      "tier": "A",
       "effectiveBst": 534,
-      "baseValue": 23000
+      "baseValue": 117000
     },
     {
       "slug": "feraligatr",
@@ -1903,9 +1903,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "C",
       "effectiveBst": 630,
-      "baseValue": 9000
+      "baseValue": 33000
     },
     {
       "slug": "ariados",
@@ -1935,9 +1935,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "D",
       "effectiveBst": 400,
-      "baseValue": 1000
+      "baseValue": 2000
     },
     {
       "slug": "ampharos",
@@ -1989,9 +1989,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "B",
       "effectiveBst": 610,
-      "baseValue": 9000
+      "baseValue": 74000
     },
     {
       "slug": "azumarill",
@@ -2021,9 +2021,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "B",
       "effectiveBst": 420,
-      "baseValue": 2000
+      "baseValue": 43000
     },
     {
       "slug": "politoed",
@@ -2052,9 +2052,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "A",
+      "tier": "A+",
       "effectiveBst": 500,
-      "baseValue": 110000
+      "baseValue": 190000
     },
     {
       "slug": "espeon",
@@ -2083,9 +2083,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "C",
       "effectiveBst": 525,
-      "baseValue": 6000
+      "baseValue": 23000
     },
     {
       "slug": "umbreon",
@@ -2114,9 +2114,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "B",
       "effectiveBst": 525,
-      "baseValue": 6000
+      "baseValue": 60000
     },
     {
       "slug": "slowking",
@@ -2146,9 +2146,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "C",
       "effectiveBst": 490,
-      "baseValue": 4000
+      "baseValue": 19000
     },
     {
       "slug": "slowking-galar",
@@ -2178,9 +2178,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "B",
       "effectiveBst": 490,
-      "baseValue": 4000
+      "baseValue": 54000
     },
     {
       "slug": "forretress",
@@ -2210,9 +2210,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "D",
       "effectiveBst": 465,
-      "baseValue": 3000
+      "baseValue": 4000
     },
     {
       "slug": "steelix",
@@ -2265,9 +2265,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "B",
       "effectiveBst": 610,
-      "baseValue": 9000
+      "baseValue": 74000
     },
     {
       "slug": "qwilfish",
@@ -2297,9 +2297,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.1.0",
-      "tier": "UR",
+      "tier": "D",
       "effectiveBst": 440,
-      "baseValue": 2000
+      "baseValue": 3000
     },
     {
       "slug": "scizor",
@@ -2352,9 +2352,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "B",
+      "tier": "A",
       "effectiveBst": 600,
-      "baseValue": 72000
+      "baseValue": 130000
     },
     {
       "slug": "heracross",
@@ -2407,9 +2407,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "C",
       "effectiveBst": 600,
-      "baseValue": 8000
+      "baseValue": 30000
     },
     {
       "slug": "skarmory",
@@ -2462,9 +2462,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "B",
       "effectiveBst": 565,
-      "baseValue": 7000
+      "baseValue": 66000
     },
     {
       "slug": "houndoom",
@@ -2517,9 +2517,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "B",
       "effectiveBst": 600,
-      "baseValue": 8000
+      "baseValue": 72000
     },
     {
       "slug": "tyranitar",
@@ -2572,9 +2572,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "A",
+      "tier": "A+",
       "effectiveBst": 700,
-      "baseValue": 140000
+      "baseValue": 250000
     },
     {
       "slug": "sceptile",
@@ -2626,9 +2626,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.1.0",
-      "tier": "C",
+      "tier": "B",
       "effectiveBst": 630,
-      "baseValue": 33000
+      "baseValue": 77000
     },
     {
       "slug": "blaziken",
@@ -2681,9 +2681,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.1.0",
-      "tier": "B",
+      "tier": "A",
       "effectiveBst": 630,
-      "baseValue": 77000
+      "baseValue": 136000
     },
     {
       "slug": "swampert",
@@ -2823,9 +2823,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "B",
+      "tier": "S",
       "effectiveBst": 618,
-      "baseValue": 75000
+      "baseValue": 387000
     },
     {
       "slug": "sableye",
@@ -2933,9 +2933,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.1.0",
-      "tier": "A+",
+      "tier": "A",
       "effectiveBst": 480,
-      "baseValue": 182000
+      "baseValue": 106000
     },
     {
       "slug": "aggron",
@@ -2987,9 +2987,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "B",
       "effectiveBst": 630,
-      "baseValue": 9000
+      "baseValue": 77000
     },
     {
       "slug": "medicham",
@@ -3042,9 +3042,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "C",
       "effectiveBst": 510,
-      "baseValue": 5000
+      "baseValue": 21000
     },
     {
       "slug": "manectric",
@@ -3095,9 +3095,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "B",
       "effectiveBst": 575,
-      "baseValue": 7000
+      "baseValue": 68000
     },
     {
       "slug": "swalot",
@@ -3126,9 +3126,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.2.0",
-      "tier": "UR",
+      "tier": "D",
       "effectiveBst": 467,
-      "baseValue": 3000
+      "baseValue": 4000
     },
     {
       "slug": "sharpedo",
@@ -3181,9 +3181,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "D",
       "effectiveBst": 560,
-      "baseValue": 7000
+      "baseValue": 6000
     },
     {
       "slug": "camerupt",
@@ -3236,9 +3236,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "A",
       "effectiveBst": 560,
-      "baseValue": 7000
+      "baseValue": 122000
     },
     {
       "slug": "torkoal",
@@ -3267,9 +3267,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "A",
+      "tier": "A+",
       "effectiveBst": 470,
-      "baseValue": 104000
+      "baseValue": 178000
     },
     {
       "slug": "altaria",
@@ -3322,9 +3322,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "B",
       "effectiveBst": 590,
-      "baseValue": 8000
+      "baseValue": 70000
     },
     {
       "slug": "milotic",
@@ -3353,9 +3353,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "A",
+      "tier": "S",
       "effectiveBst": 540,
-      "baseValue": 118000
+      "baseValue": 356000
     },
     {
       "slug": "castform",
@@ -3409,9 +3409,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "D",
       "effectiveBst": 420,
-      "baseValue": 2000
+      "baseValue": 3000
     },
     {
       "slug": "banette",
@@ -3462,9 +3462,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "C",
       "effectiveBst": 555,
-      "baseValue": 7000
+      "baseValue": 26000
     },
     {
       "slug": "chimecho",
@@ -3516,9 +3516,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "D",
       "effectiveBst": 555,
-      "baseValue": 7000
+      "baseValue": 6000
     },
     {
       "slug": "absol",
@@ -3591,9 +3591,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "A+",
       "effectiveBst": 565,
-      "baseValue": 7000
+      "baseValue": 216000
     },
     {
       "slug": "glalie",
@@ -3644,9 +3644,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "C",
       "effectiveBst": 580,
-      "baseValue": 7000
+      "baseValue": 28000
     },
     {
       "slug": "salamence",
@@ -3699,9 +3699,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.2.0",
-      "tier": "UR",
+      "tier": "S",
       "effectiveBst": 700,
-      "baseValue": 10000
+      "baseValue": 400000
     },
     {
       "slug": "metagross",
@@ -3743,7 +3743,7 @@
           "spriteUrl": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/10076.png",
           "iconUrl": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/10076.png",
           "homeUrl": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/home/10076.png",
-          "tier": "S"
+          "tier": "UR"
         }
       ],
       "alternateForms": [],
@@ -3786,9 +3786,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "C",
       "effectiveBst": 525,
-      "baseValue": 6000
+      "baseValue": 23000
     },
     {
       "slug": "infernape",
@@ -3818,9 +3818,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "B",
       "effectiveBst": 534,
-      "baseValue": 6000
+      "baseValue": 61000
     },
     {
       "slug": "empoleon",
@@ -3850,9 +3850,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "A",
       "effectiveBst": 530,
-      "baseValue": 6000
+      "baseValue": 116000
     },
     {
       "slug": "staraptor",
@@ -3894,7 +3894,7 @@
           "spriteUrl": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/10308.png",
           "iconUrl": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/10308.png",
           "homeUrl": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/home/10308.png",
-          "tier": "S"
+          "tier": "UR"
         }
       ],
       "alternateForms": [],
@@ -3905,9 +3905,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.1.0",
-      "tier": "S",
+      "tier": "A+",
       "effectiveBst": 585,
-      "baseValue": 374000
+      "baseValue": 224000
     },
     {
       "slug": "luxray",
@@ -3936,7 +3936,7 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "D",
       "effectiveBst": 523,
       "baseValue": 5000
     },
@@ -3968,7 +3968,7 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "D",
       "effectiveBst": 515,
       "baseValue": 5000
     },
@@ -3999,9 +3999,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "D",
       "effectiveBst": 495,
-      "baseValue": 4000
+      "baseValue": 5000
     },
     {
       "slug": "bastiodon",
@@ -4031,9 +4031,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "D",
       "effectiveBst": 495,
-      "baseValue": 4000
+      "baseValue": 5000
     },
     {
       "slug": "lopunny",
@@ -4085,9 +4085,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "B",
       "effectiveBst": 580,
-      "baseValue": 7000
+      "baseValue": 69000
     },
     {
       "slug": "spiritomb",
@@ -4117,9 +4117,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "B",
       "effectiveBst": 485,
-      "baseValue": 4000
+      "baseValue": 54000
     },
     {
       "slug": "garchomp",
@@ -4270,9 +4270,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "D",
+      "tier": "A+",
       "effectiveBst": 625,
-      "baseValue": 8000
+      "baseValue": 240000
     },
     {
       "slug": "hippowdon",
@@ -4301,9 +4301,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "C",
       "effectiveBst": 525,
-      "baseValue": 6000
+      "baseValue": 23000
     },
     {
       "slug": "toxicroak",
@@ -4333,9 +4333,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "C",
       "effectiveBst": 490,
-      "baseValue": 4000
+      "baseValue": 19000
     },
     {
       "slug": "abomasnow",
@@ -4388,9 +4388,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "B",
       "effectiveBst": 594,
-      "baseValue": 8000
+      "baseValue": 71000
     },
     {
       "slug": "weavile",
@@ -4420,9 +4420,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "D",
+      "tier": "A",
       "effectiveBst": 510,
-      "baseValue": 5000
+      "baseValue": 112000
     },
     {
       "slug": "rhyperior",
@@ -4452,9 +4452,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "C",
       "effectiveBst": 535,
-      "baseValue": 6000
+      "baseValue": 24000
     },
     {
       "slug": "leafeon",
@@ -4483,7 +4483,7 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "D",
       "effectiveBst": 525,
       "baseValue": 6000
     },
@@ -4514,9 +4514,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "C",
       "effectiveBst": 525,
-      "baseValue": 6000
+      "baseValue": 23000
     },
     {
       "slug": "gliscor",
@@ -4546,9 +4546,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "B",
       "effectiveBst": 510,
-      "baseValue": 5000
+      "baseValue": 58000
     },
     {
       "slug": "mamoswine",
@@ -4578,9 +4578,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "C",
+      "tier": "A",
       "effectiveBst": 530,
-      "baseValue": 23000
+      "baseValue": 116000
     },
     {
       "slug": "gallade",
@@ -4633,9 +4633,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "C",
+      "tier": "A",
       "effectiveBst": 618,
-      "baseValue": 32000
+      "baseValue": 134000
     },
     {
       "slug": "froslass",
@@ -4688,9 +4688,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "A",
+      "tier": "A+",
       "effectiveBst": 580,
-      "baseValue": 126000
+      "baseValue": 222000
     },
     {
       "slug": "rotom",
@@ -4766,9 +4766,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "C",
+      "tier": "A",
       "effectiveBst": 520,
-      "baseValue": 22000
+      "baseValue": 114000
     },
     {
       "slug": "serperior",
@@ -4797,9 +4797,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "C",
       "effectiveBst": 528,
-      "baseValue": 6000
+      "baseValue": 23000
     },
     {
       "slug": "emboar",
@@ -4852,9 +4852,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "D",
       "effectiveBst": 628,
-      "baseValue": 9000
+      "baseValue": 8000
     },
     {
       "slug": "samurott",
@@ -4883,7 +4883,7 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "D",
       "effectiveBst": 528,
       "baseValue": 6000
     },
@@ -4915,9 +4915,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "D",
+      "tier": "B",
       "effectiveBst": 528,
-      "baseValue": 6000
+      "baseValue": 60000
     },
     {
       "slug": "watchog",
@@ -4946,9 +4946,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "D",
       "effectiveBst": 420,
-      "baseValue": 2000
+      "baseValue": 3000
     },
     {
       "slug": "liepard",
@@ -4977,9 +4977,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "C",
       "effectiveBst": 446,
-      "baseValue": 3000
+      "baseValue": 15000
     },
     {
       "slug": "simisage",
@@ -5008,7 +5008,7 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "D",
       "effectiveBst": 498,
       "baseValue": 5000
     },
@@ -5039,7 +5039,7 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "D",
       "effectiveBst": 498,
       "baseValue": 5000
     },
@@ -5070,7 +5070,7 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "D",
       "effectiveBst": 498,
       "baseValue": 5000
     },
@@ -5101,7 +5101,7 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.1.0",
-      "tier": "UR",
+      "tier": "D",
       "effectiveBst": 487,
       "baseValue": 4000
     },
@@ -5156,9 +5156,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "B",
+      "tier": "A+",
       "effectiveBst": 608,
-      "baseValue": 73000
+      "baseValue": 233000
     },
     {
       "slug": "audino",
@@ -5210,9 +5210,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "B",
       "effectiveBst": 545,
-      "baseValue": 6000
+      "baseValue": 63000
     },
     {
       "slug": "conkeldurr",
@@ -5241,9 +5241,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "B",
       "effectiveBst": 505,
-      "baseValue": 5000
+      "baseValue": 57000
     },
     {
       "slug": "scolipede",
@@ -5296,9 +5296,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.1.0",
-      "tier": "UR",
+      "tier": "C",
       "effectiveBst": 585,
-      "baseValue": 8000
+      "baseValue": 29000
     },
     {
       "slug": "whimsicott",
@@ -5328,9 +5328,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "S",
+      "tier": "A+",
       "effectiveBst": 480,
-      "baseValue": 332000
+      "baseValue": 182000
     },
     {
       "slug": "krookodile",
@@ -5360,9 +5360,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "C",
       "effectiveBst": 519,
-      "baseValue": 5000
+      "baseValue": 22000
     },
     {
       "slug": "scrafty",
@@ -5404,7 +5404,7 @@
           "spriteUrl": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/10289.png",
           "iconUrl": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/10289.png",
           "homeUrl": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/home/10289.png",
-          "tier": "S"
+          "tier": "UR"
         }
       ],
       "alternateForms": [],
@@ -5446,9 +5446,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "C",
       "effectiveBst": 483,
-      "baseValue": 4000
+      "baseValue": 18000
     },
     {
       "slug": "garbodor",
@@ -5477,7 +5477,7 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "D",
       "effectiveBst": 474,
       "baseValue": 4000
     },
@@ -5508,9 +5508,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "C",
       "effectiveBst": 510,
-      "baseValue": 5000
+      "baseValue": 21000
     },
     {
       "slug": "zoroark-hisui",
@@ -5540,9 +5540,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "D",
+      "tier": "A",
       "effectiveBst": 510,
-      "baseValue": 5000
+      "baseValue": 112000
     },
     {
       "slug": "reuniclus",
@@ -5571,9 +5571,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "C",
       "effectiveBst": 490,
-      "baseValue": 4000
+      "baseValue": 19000
     },
     {
       "slug": "vanilluxe",
@@ -5602,9 +5602,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "D",
+      "tier": "B",
       "effectiveBst": 535,
-      "baseValue": 6000
+      "baseValue": 62000
     },
     {
       "slug": "emolga",
@@ -5634,9 +5634,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "D",
       "effectiveBst": 428,
-      "baseValue": 2000
+      "baseValue": 3000
     },
     {
       "slug": "eelektross",
@@ -5676,7 +5676,7 @@
           "spriteUrl": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/10290.png",
           "iconUrl": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/10290.png",
           "homeUrl": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/home/10290.png",
-          "tier": "S"
+          "tier": "UR"
         }
       ],
       "alternateForms": [],
@@ -5742,9 +5742,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "A",
       "effectiveBst": 620,
-      "baseValue": 9000
+      "baseValue": 134000
     },
     {
       "slug": "beartic",
@@ -5773,7 +5773,7 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "D",
       "effectiveBst": 505,
       "baseValue": 5000
     },
@@ -5805,7 +5805,7 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "D",
       "effectiveBst": 471,
       "baseValue": 4000
     },
@@ -5837,7 +5837,7 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "D",
       "effectiveBst": 471,
       "baseValue": 4000
     },
@@ -5892,9 +5892,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "C",
       "effectiveBst": 583,
-      "baseValue": 8000
+      "baseValue": 28000
     },
     {
       "slug": "hydreigon",
@@ -5956,9 +5956,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "C",
+      "tier": "A+",
       "effectiveBst": 550,
-      "baseValue": 25000
+      "baseValue": 210000
     },
     {
       "slug": "chesnaught",
@@ -6011,9 +6011,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "B",
       "effectiveBst": 630,
-      "baseValue": 9000
+      "baseValue": 77000
     },
     {
       "slug": "delphox",
@@ -6066,9 +6066,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "A",
+      "tier": "A+",
       "effectiveBst": 634,
-      "baseValue": 137000
+      "baseValue": 244000
     },
     {
       "slug": "greninja",
@@ -6121,9 +6121,9 @@
       "restricted": false,
       "notes": "Regular form only",
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "A",
       "effectiveBst": 630,
-      "baseValue": 9000
+      "baseValue": 136000
     },
     {
       "slug": "diggersby",
@@ -6153,9 +6153,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "D",
       "effectiveBst": 423,
-      "baseValue": 2000
+      "baseValue": 3000
     },
     {
       "slug": "talonflame",
@@ -6185,9 +6185,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "A",
+      "tier": "A+",
       "effectiveBst": 499,
-      "baseValue": 110000
+      "baseValue": 190000
     },
     {
       "slug": "vivillon-high-plains",
@@ -6389,9 +6389,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "B",
+      "tier": "A",
       "effectiveBst": 411,
-      "baseValue": 42000
+      "baseValue": 92000
     },
     {
       "slug": "pyroar",
@@ -6496,7 +6496,7 @@
           "spriteUrl": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/10296.png",
           "iconUrl": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/10296.png",
           "homeUrl": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/home/10296.png",
-          "tier": "S"
+          "tier": "UR"
         }
       ],
       "alternateForms": [],
@@ -6571,7 +6571,7 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "D",
       "effectiveBst": 552,
       "baseValue": 6000
     },
@@ -6602,9 +6602,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.2.0",
-      "tier": "UR",
+      "tier": "C",
       "effectiveBst": 531,
-      "baseValue": 6000
+      "baseValue": 23000
     },
     {
       "slug": "pangoro",
@@ -6634,9 +6634,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "C",
       "effectiveBst": 495,
-      "baseValue": 4000
+      "baseValue": 20000
     },
     {
       "slug": "furfrou",
@@ -6738,7 +6738,7 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "D",
       "effectiveBst": 472,
       "baseValue": 4000
     },
@@ -6793,9 +6793,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "B",
       "effectiveBst": 566,
-      "baseValue": 7000
+      "baseValue": 67000
     },
     {
       "slug": "aegislash",
@@ -6835,9 +6835,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "C",
+      "tier": "A",
       "effectiveBst": 500,
-      "baseValue": 20000
+      "baseValue": 110000
     },
     {
       "slug": "aromatisse",
@@ -6866,9 +6866,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "C",
       "effectiveBst": 462,
-      "baseValue": 3000
+      "baseValue": 16000
     },
     {
       "slug": "slurpuff",
@@ -6897,7 +6897,7 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "D",
       "effectiveBst": 480,
       "baseValue": 4000
     },
@@ -6952,9 +6952,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.1.0",
-      "tier": "C",
+      "tier": "A",
       "effectiveBst": 582,
-      "baseValue": 28000
+      "baseValue": 126000
     },
     {
       "slug": "barbaracle",
@@ -7007,7 +7007,7 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.1.0",
-      "tier": "UR",
+      "tier": "D",
       "effectiveBst": 600,
       "baseValue": 8000
     },
@@ -7062,9 +7062,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.1.0",
-      "tier": "C",
+      "tier": "B",
       "effectiveBst": 594,
-      "baseValue": 29000
+      "baseValue": 71000
     },
     {
       "slug": "clawitzer",
@@ -7093,9 +7093,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "B",
       "effectiveBst": 500,
-      "baseValue": 5000
+      "baseValue": 56000
     },
     {
       "slug": "heliolisk",
@@ -7125,9 +7125,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "D",
+      "tier": "B",
       "effectiveBst": 481,
-      "baseValue": 4000
+      "baseValue": 53000
     },
     {
       "slug": "tyrantrum",
@@ -7157,7 +7157,7 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "D",
       "effectiveBst": 521,
       "baseValue": 5000
     },
@@ -7189,9 +7189,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "C",
       "effectiveBst": 521,
-      "baseValue": 5000
+      "baseValue": 22000
     },
     {
       "slug": "sylveon",
@@ -7275,9 +7275,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "B",
       "effectiveBst": 600,
-      "baseValue": 8000
+      "baseValue": 72000
     },
     {
       "slug": "dedenne",
@@ -7307,9 +7307,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "D",
       "effectiveBst": 431,
-      "baseValue": 2000
+      "baseValue": 3000
     },
     {
       "slug": "goodra",
@@ -7338,7 +7338,7 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "D",
       "effectiveBst": 600,
       "baseValue": 8000
     },
@@ -7370,9 +7370,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "A",
       "effectiveBst": 600,
-      "baseValue": 8000
+      "baseValue": 130000
     },
     {
       "slug": "klefki",
@@ -7402,9 +7402,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "B",
       "effectiveBst": 470,
-      "baseValue": 4000
+      "baseValue": 51000
     },
     {
       "slug": "trevenant",
@@ -7434,7 +7434,7 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "D",
       "effectiveBst": 474,
       "baseValue": 4000
     },
@@ -7494,9 +7494,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "D",
       "effectiveBst": 494,
-      "baseValue": 4000
+      "baseValue": 5000
     },
     {
       "slug": "avalugg",
@@ -7525,7 +7525,7 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "D",
       "effectiveBst": 514,
       "baseValue": 5000
     },
@@ -7557,7 +7557,7 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "D",
       "effectiveBst": 514,
       "baseValue": 5000
     },
@@ -7589,9 +7589,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "B",
       "effectiveBst": 535,
-      "baseValue": 6000
+      "baseValue": 62000
     },
     {
       "slug": "decidueye",
@@ -7621,7 +7621,7 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "D",
       "effectiveBst": 530,
       "baseValue": 6000
     },
@@ -7653,9 +7653,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "C",
       "effectiveBst": 530,
-      "baseValue": 6000
+      "baseValue": 23000
     },
     {
       "slug": "incineroar",
@@ -7717,9 +7717,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "B",
+      "tier": "A+",
       "effectiveBst": 530,
-      "baseValue": 61000
+      "baseValue": 202000
     },
     {
       "slug": "toucannon",
@@ -7749,7 +7749,7 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "D",
       "effectiveBst": 485,
       "baseValue": 4000
     },
@@ -7804,9 +7804,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "B",
       "effectiveBst": 578,
-      "baseValue": 7000
+      "baseValue": 68000
     },
     {
       "slug": "lycanroc",
@@ -7860,9 +7860,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "D",
+      "tier": "B",
       "effectiveBst": 487,
-      "baseValue": 4000
+      "baseValue": 54000
     },
     {
       "slug": "toxapex",
@@ -7892,9 +7892,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "D",
+      "tier": "A",
       "effectiveBst": 495,
-      "baseValue": 5000
+      "baseValue": 109000
     },
     {
       "slug": "mudsdale",
@@ -7923,9 +7923,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "C",
       "effectiveBst": 500,
-      "baseValue": 5000
+      "baseValue": 20000
     },
     {
       "slug": "araquanid",
@@ -7955,9 +7955,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "B",
       "effectiveBst": 454,
-      "baseValue": 3000
+      "baseValue": 49000
     },
     {
       "slug": "salazzle",
@@ -7987,9 +7987,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "C",
       "effectiveBst": 480,
-      "baseValue": 4000
+      "baseValue": 18000
     },
     {
       "slug": "tsareena",
@@ -8050,9 +8050,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "D",
+      "tier": "B",
       "effectiveBst": 490,
-      "baseValue": 5000
+      "baseValue": 54000
     },
     {
       "slug": "passimian",
@@ -8081,9 +8081,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "D",
       "effectiveBst": 490,
-      "baseValue": 4000
+      "baseValue": 5000
     },
     {
       "slug": "golisopod",
@@ -8136,9 +8136,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.2.0",
-      "tier": "UR",
+      "tier": "S",
       "effectiveBst": 630,
-      "baseValue": 9000
+      "baseValue": 392000
     },
     {
       "slug": "mimikyu",
@@ -8168,9 +8168,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "A",
       "effectiveBst": 476,
-      "baseValue": 4000
+      "baseValue": 105000
     },
     {
       "slug": "drampa",
@@ -8223,9 +8223,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "B",
       "effectiveBst": 585,
-      "baseValue": 8000
+      "baseValue": 70000
     },
     {
       "slug": "kommo-o",
@@ -8255,9 +8255,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "B",
+      "tier": "A+",
       "effectiveBst": 600,
-      "baseValue": 72000
+      "baseValue": 230000
     },
     {
       "slug": "rillaboom",
@@ -8317,9 +8317,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.2.0",
-      "tier": "UR",
+      "tier": "A",
       "effectiveBst": 530,
-      "baseValue": 6000
+      "baseValue": 116000
     },
     {
       "slug": "inteleon",
@@ -8348,9 +8348,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.2.0",
-      "tier": "UR",
+      "tier": "A",
       "effectiveBst": 530,
-      "baseValue": 6000
+      "baseValue": 116000
     },
     {
       "slug": "corviknight",
@@ -8380,9 +8380,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "B",
+      "tier": "A+",
       "effectiveBst": 495,
-      "baseValue": 55000
+      "baseValue": 188000
     },
     {
       "slug": "thievul",
@@ -8411,9 +8411,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.2.0",
-      "tier": "UR",
+      "tier": "C",
       "effectiveBst": 455,
-      "baseValue": 3000
+      "baseValue": 16000
     },
     {
       "slug": "flapple",
@@ -8443,7 +8443,7 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "D",
       "effectiveBst": 485,
       "baseValue": 4000
     },
@@ -8475,7 +8475,7 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "D",
       "effectiveBst": 485,
       "baseValue": 4000
     },
@@ -8506,7 +8506,7 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "D",
       "effectiveBst": 510,
       "baseValue": 5000
     },
@@ -8548,9 +8548,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.2.0",
-      "tier": "UR",
+      "tier": "A",
       "effectiveBst": 502,
-      "baseValue": 5000
+      "baseValue": 110000
     },
     {
       "slug": "grapploct",
@@ -8579,9 +8579,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.2.0",
-      "tier": "UR",
+      "tier": "B",
       "effectiveBst": 480,
-      "baseValue": 4000
+      "baseValue": 53000
     },
     {
       "slug": "polteageist",
@@ -8610,7 +8610,7 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "D",
       "effectiveBst": 508,
       "baseValue": 5000
     },
@@ -8642,9 +8642,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "C",
+      "tier": "A+",
       "effectiveBst": 510,
-      "baseValue": 21000
+      "baseValue": 194000
     },
     {
       "slug": "grimmsnarl",
@@ -8705,9 +8705,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.2.0",
-      "tier": "UR",
+      "tier": "B",
       "effectiveBst": 440,
-      "baseValue": 2000
+      "baseValue": 46000
     },
     {
       "slug": "sirfetchd",
@@ -8736,9 +8736,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.2.0",
-      "tier": "UR",
+      "tier": "A",
       "effectiveBst": 507,
-      "baseValue": 5000
+      "baseValue": 111000
     },
     {
       "slug": "mr-rime",
@@ -8768,9 +8768,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "C",
       "effectiveBst": 520,
-      "baseValue": 5000
+      "baseValue": 22000
     },
     {
       "slug": "runerigus",
@@ -8800,9 +8800,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "C",
       "effectiveBst": 483,
-      "baseValue": 4000
+      "baseValue": 18000
     },
     {
       "slug": "alcremie",
@@ -8896,9 +8896,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "C",
       "effectiveBst": 495,
-      "baseValue": 4000
+      "baseValue": 20000
     },
     {
       "slug": "falinks",
@@ -8949,7 +8949,7 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.1.0",
-      "tier": "UR",
+      "tier": "D",
       "effectiveBst": 570,
       "baseValue": 7000
     },
@@ -8980,9 +8980,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.2.0",
-      "tier": "UR",
+      "tier": "A",
       "effectiveBst": 435,
-      "baseValue": 2000
+      "baseValue": 97000
     },
     {
       "slug": "indeedee",
@@ -9022,9 +9022,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.2.0",
-      "tier": "A+",
+      "tier": "S",
       "effectiveBst": 475,
-      "baseValue": 180000
+      "baseValue": 330000
     },
     {
       "slug": "morpeko",
@@ -9064,9 +9064,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "C",
       "effectiveBst": 436,
-      "baseValue": 2000
+      "baseValue": 14000
     },
     {
       "slug": "dragapult",
@@ -9096,9 +9096,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "A",
       "effectiveBst": 600,
-      "baseValue": 8000
+      "baseValue": 130000
     },
     {
       "slug": "wyrdeer",
@@ -9128,9 +9128,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "C",
       "effectiveBst": 525,
-      "baseValue": 6000
+      "baseValue": 23000
     },
     {
       "slug": "kleavor",
@@ -9160,9 +9160,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "D",
+      "tier": "A",
       "effectiveBst": 500,
-      "baseValue": 5000
+      "baseValue": 110000
     },
     {
       "slug": "basculegion",
@@ -9234,9 +9234,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "A+",
+      "tier": "S",
       "effectiveBst": 510,
-      "baseValue": 194000
+      "baseValue": 344000
     },
     {
       "slug": "overqwil",
@@ -9266,9 +9266,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.1.0",
-      "tier": "D",
+      "tier": "B",
       "effectiveBst": 510,
-      "baseValue": 5000
+      "baseValue": 58000
     },
     {
       "slug": "meowscarada",
@@ -9298,9 +9298,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "B",
+      "tier": "A",
       "effectiveBst": 530,
-      "baseValue": 61000
+      "baseValue": 116000
     },
     {
       "slug": "skeledirge",
@@ -9330,9 +9330,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "B",
       "effectiveBst": 530,
-      "baseValue": 6000
+      "baseValue": 61000
     },
     {
       "slug": "quaquaval",
@@ -9362,9 +9362,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "C",
       "effectiveBst": 530,
-      "baseValue": 6000
+      "baseValue": 23000
     },
     {
       "slug": "pawmot",
@@ -9394,9 +9394,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "A+",
       "effectiveBst": 490,
-      "baseValue": 4000
+      "baseValue": 186000
     },
     {
       "slug": "maushold",
@@ -9434,9 +9434,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "A+",
       "effectiveBst": 470,
-      "baseValue": 4000
+      "baseValue": 178000
     },
     {
       "slug": "arboliva",
@@ -9466,9 +9466,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.2.0",
-      "tier": "UR",
+      "tier": "C",
       "effectiveBst": 510,
-      "baseValue": 5000
+      "baseValue": 21000
     },
     {
       "slug": "squawkabilly",
@@ -9526,9 +9526,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.2.0",
-      "tier": "UR",
+      "tier": "C",
       "effectiveBst": 417,
-      "baseValue": 2000
+      "baseValue": 12000
     },
     {
       "slug": "garganacl",
@@ -9557,9 +9557,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "C",
       "effectiveBst": 500,
-      "baseValue": 5000
+      "baseValue": 20000
     },
     {
       "slug": "armarouge",
@@ -9589,9 +9589,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "A+",
       "effectiveBst": 525,
-      "baseValue": 6000
+      "baseValue": 200000
     },
     {
       "slug": "ceruledge",
@@ -9621,9 +9621,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "B",
+      "tier": "A",
       "effectiveBst": 525,
-      "baseValue": 60000
+      "baseValue": 115000
     },
     {
       "slug": "bellibolt",
@@ -9652,9 +9652,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "B",
       "effectiveBst": 495,
-      "baseValue": 4000
+      "baseValue": 55000
     },
     {
       "slug": "mabosstiff",
@@ -9683,9 +9683,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.2.0",
-      "tier": "UR",
+      "tier": "C",
       "effectiveBst": 505,
-      "baseValue": 5000
+      "baseValue": 21000
     },
     {
       "slug": "scovillain",
@@ -9738,9 +9738,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "B",
+      "tier": "A",
       "effectiveBst": 586,
-      "baseValue": 70000
+      "baseValue": 127000
     },
     {
       "slug": "espathra",
@@ -9769,9 +9769,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "D",
+      "tier": "A",
       "effectiveBst": 481,
-      "baseValue": 4000
+      "baseValue": 106000
     },
     {
       "slug": "tinkaton",
@@ -9801,9 +9801,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "D",
+      "tier": "B",
       "effectiveBst": 506,
-      "baseValue": 5000
+      "baseValue": 57000
     },
     {
       "slug": "palafin",
@@ -9841,9 +9841,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "B",
       "effectiveBst": 650,
-      "baseValue": 10000
+      "baseValue": 80000
     },
     {
       "slug": "orthworm",
@@ -9872,9 +9872,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "C",
       "effectiveBst": 480,
-      "baseValue": 4000
+      "baseValue": 18000
     },
     {
       "slug": "glimmora",
@@ -9927,9 +9927,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "A",
+      "tier": "A+",
       "effectiveBst": 625,
-      "baseValue": 135000
+      "baseValue": 240000
     },
     {
       "slug": "houndstone",
@@ -9958,9 +9958,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.1.0",
-      "tier": "UR",
+      "tier": "B",
       "effectiveBst": 488,
-      "baseValue": 4000
+      "baseValue": 54000
     },
     {
       "slug": "annihilape",
@@ -10022,9 +10022,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "A+",
+      "tier": "S",
       "effectiveBst": 520,
-      "baseValue": 198000
+      "baseValue": 348000
     },
     {
       "slug": "kingambit",
@@ -10109,9 +10109,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.2.0",
-      "tier": "UR",
+      "tier": "A+",
       "effectiveBst": 700,
-      "baseValue": 10000
+      "baseValue": 250000
     },
     {
       "slug": "gholdengo",
@@ -10141,9 +10141,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.1.0",
-      "tier": "A+",
+      "tier": "S",
       "effectiveBst": 550,
-      "baseValue": 210000
+      "baseValue": 360000
     },
     {
       "slug": "sinistcha",
@@ -10173,9 +10173,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "S",
+      "tier": "A+",
       "effectiveBst": 508,
-      "baseValue": 343000
+      "baseValue": 193000
     },
     {
       "slug": "archaludon",
@@ -10205,9 +10205,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "A+",
+      "tier": "S",
       "effectiveBst": 600,
-      "baseValue": 230000
+      "baseValue": 380000
     },
     {
       "slug": "hydrapple",
@@ -10237,9 +10237,9 @@
       "restricted": false,
       "notes": null,
       "versionAdded": "1.0.2",
-      "tier": "UR",
+      "tier": "C",
       "effectiveBst": 540,
-      "baseValue": 6000
+      "baseValue": 24000
     }
   ]
 }

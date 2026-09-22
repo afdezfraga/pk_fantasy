@@ -43,7 +43,7 @@ All the league's data lives in `prisma/dev.db` — back that file up.
 |---|---|
 | [Bulbapedia](https://bulbapedia.bulbagarden.net/wiki/List_of_Pok%C3%A9mon_in_Pok%C3%A9mon_Champions) (MediaWiki API) | Which Pokémon are legal in Champions, their forms, Megas, and when each was added |
 | [PokéAPI](https://pokeapi.co/) | Base stats and official artwork |
-| `data/tiers.json` (hand-maintained) | Competitive tiers, which drive price |
+| `data/tiers.json` (hand-maintained, banded from the [op.gg doubles ladder](https://op.gg/pokemon-champions/tier)) | Competitive tiers, which drive price |
 
 Output is **committed to git**, so a roster rotation shows up as a reviewable diff rather than a
 silent change under a running league. Add `-- --sprites` to also cache artwork into
@@ -67,13 +67,13 @@ spread Pokémon out *within* a tier so the market isn't full of identical price 
 
 | Tier | Price | Count |
 |---|---|---|
-| S | ₽316,000 – ₽400,000 | 11 |
-| A+ | ₽180,000 – ₽250,000 | 15 |
-| A | ₽104,000 – ₽140,000 | 14 |
-| B | ₽42,000 – ₽77,000 | 15 |
-| C | ₽20,000 – ₽34,000 | 14 |
-| D | ₽4,000 – ₽8,000 | 13 |
-| UR | ₽1,000 – ₽10,000 | 165 |
+| S | ₽316,000 – ₽400,000 | 18 |
+| A+ | ₽178,000 – ₽250,000 | 35 |
+| A | ₽92,000 – ₽136,000 | 35 |
+| B | ₽40,000 – ₽80,000 | 55 |
+| C | ₽10,000 – ₽33,000 | 52 |
+| D | ₽2,000 – ₽8,000 | 52 |
+| UR | ₽1,000 – ₽10,000 | 0 |
 
 The scale is deliberately steep against the ₽300,000 opening budget: an S-tier costs more than
 a whole starting balance, so early on the choice is a good squad or nearly one star, and the top
@@ -81,11 +81,36 @@ of the market only opens up to a club that keeps winning.
 
 `UR` means the tier list doesn't rank it — that's *missing data*, not proof it's weak, so
 unranked Pokémon are priced on base stats across a wide band. Otherwise Palafin (650 BST once it
-transforms, unranked) would be free money.
+transforms, unranked) would be free money. **It is empty today**: the current source ranks the
+whole ladder, so every asset has a real tier. It stays as the landing place for a Pokémon that a
+future roster rotation adds before the tier list catches up.
 
 **Tiers are for DOUBLES (VGC)**, since that's how Champions is played. This matters enormously:
-Incineroar is S in doubles and mid-table in singles, and Hisuian Samurott is the reverse. To run
-a singles league, replace the lists in `data/tiers.json` — nothing else changes.
+Incineroar is S in doubles and mid-table in singles, and Hisuian Samurott is the reverse. The
+source ranks the two formats separately — Salamence is #1 in singles but #3 in doubles, where
+Rillaboom leads — so a singles league just needs the other list in `data/tiers.json`; nothing
+else changes.
+
+Because the source publishes one ordered ladder rather than letter tiers, the tiers above are cut
+by rank position (`bands` in `data/tiers.json`), as a **share of the roster** rather than a fixed
+count — so the shape of the market survives Champions adding Pokémon. Two wrinkles are worth
+knowing, since both were silently mispricing Pokémon before:
+
+- **Forms collapse to the tradable asset, best rank wins.** Wash Rotom (#68) and Fan Rotom (#249)
+  are one asset here, so Rotom is priced on Wash.
+- **Regional forms must be told apart by slug, not display name.** op.gg shows Hisuian forms under
+  the bare species name: "Arcanine" is both #18 (`arcanine-hisui`) and #112 (`arcanine`). They are
+  separate assets, and matching on the name swaps them.
+
+`npm run tiers:fetch` does all of this; `npm run market:update` chains it with the rebuild, the
+reseed and the sheet below.
+
+### The price sheet
+
+`npm run tiers:doc` writes `data/tiers.html` — every Pokémon by tier with price, types and BST,
+and each tier's share of the roster. One self-contained file: open it in a browser, or print to
+PDF to hand round before a draft. Regenerate it after every repricing; it stamps the tier source,
+the capture date and the Bulbapedia revision, so an old sheet always says what it was built from.
 
 ### Tuning the economy
 

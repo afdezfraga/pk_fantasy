@@ -122,23 +122,27 @@ export function Empty({ children }: { children: React.ReactNode }) {
   return <p className="py-6 text-center text-sm text-muted">{children}</p>;
 }
 
-export type NavKey = 'home' | 'market' | 'squad' | 'draft' | 'matches' | 'trades';
+export type NavKey = 'home' | 'market' | 'squad' | 'draft' | 'matches' | 'trades' | 'events';
 
 export function NavTabs({
   leagueId,
   active,
   showDraft = false,
+  pendingEvent = false,
 }: {
   leagueId: string;
   active: NavKey;
   /** The draft tab only earns its place while there is a draft to look at. */
   showDraft?: boolean;
+  /** A decision is outstanding, and nothing else can be reported until it is answered. */
+  pendingEvent?: boolean;
 }) {
   const tabs = [
     { key: 'home', href: `/league/${leagueId}`, label: 'League' },
     { key: 'squad', href: `/league/${leagueId}/squad`, label: 'Club' },
     { key: 'market', href: `/league/${leagueId}/market`, label: 'Market' },
     { key: 'matches', href: `/league/${leagueId}/matches`, label: 'Matches' },
+    { key: 'events', href: `/league/${leagueId}/events`, label: 'Events' },
     { key: 'trades', href: `/league/${leagueId}/trades`, label: 'Trades' },
     ...(showDraft || active === 'draft'
       ? [{ key: 'draft' as const, href: `/league/${leagueId}/draft`, label: 'Draft' }]
@@ -151,11 +155,17 @@ export function NavTabs({
         <Link
           key={tab.key}
           href={tab.href}
-          className={`whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium transition ${
+          className={`relative whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium transition ${
             active === tab.key ? 'bg-accent text-accent-ink' : 'text-muted hover:bg-panel-2 hover:text-ink'
           }`}
         >
           {tab.label}
+          {tab.key === 'events' && pendingEvent && (
+            <span
+              className="ml-1.5 inline-block h-1.5 w-1.5 rounded-full bg-negative align-middle"
+              aria-label="A decision is waiting"
+            />
+          )}
         </Link>
       ))}
     </nav>

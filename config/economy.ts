@@ -103,6 +103,33 @@ export const LEAGUE_DEFAULTS = {
 
   /** Rounds a newly-freed Pokémon sits on waivers before hitting the open market. */
   waiverHoldRounds: 1,
+
+  /**
+   * Random events: problems a manager answers, drawn every few matches. See data/events.json.
+   *
+   * Set to 0 for a league that just wants to grind the ladder — nothing else changes, and a
+   * league already running picks the default up through `parseConfig`.
+   */
+  eventsEnabled: 1,
+  /**
+   * Matches a club reports between events.
+   *
+   * Counted per club rather than per round, because rounds close whenever the commissioner
+   * gets round to it while matches are the clock every manager actually feels. It also means
+   * the player logging forty matches a week meets more crises than the one logging five,
+   * which pulls the same direction as `PAYOUTS.paidMatchesPerRound`.
+   */
+  eventEveryMatches: 5,
+  /** Spread either side of that, so the timing can't be counted and played around. */
+  eventJitter: 1,
+  /**
+   * Percentage scaler on every event cost and penalty.
+   *
+   * The deck is tuned to take things away, and a season is the only way to find out whether
+   * that reads as tense or as miserable. This is the dial to turn when you find out, without
+   * editing twenty events.
+   */
+  eventSeverity: 100,
 } as const;
 
 /**

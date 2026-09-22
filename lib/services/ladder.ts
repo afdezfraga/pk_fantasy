@@ -131,10 +131,13 @@ export async function updateStanding(input: {
         newRungs * LADDER.promotionBonus.rank +
         (crossedTier ? LADDER.promotionBonus.tier : 0);
 
+      // Its own ledger type: `EVENT` means a random event now that those are decisions clubs
+      // make, and the feed exists to explain surprise money. Rows written before this split
+      // keep saying EVENT — the ledger balances either way.
       await postEntry(tx, {
         leagueId: input.leagueId,
         teamId: input.teamId,
-        type: 'EVENT',
+        type: 'PROMOTION',
         amount: bonus,
         description: `Promoted to ${formatStanding(input.standing)}`,
       });

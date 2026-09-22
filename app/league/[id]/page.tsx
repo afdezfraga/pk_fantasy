@@ -5,7 +5,7 @@ import { getSessionUser } from '../../../lib/auth/session.ts';
 import { db } from '../../../lib/db.ts';
 import { money, pokemonLabel, signedMoney } from '../../../lib/format.ts';
 import { getLeagueContext } from '../../../lib/services/league.ts';
-import { getEvents } from '../../../lib/services/events.ts';
+import { ensurePendingEvent, getEvents, pendingEvent } from '../../../lib/services/events.ts';
 import { getRankEvents, sortByLadder, standingOf } from '../../../lib/services/ladder.ts';
 import { ClubCrest, crestOf } from '../../components/ClubCrest.tsx';
 import { PokemonIcon } from '../../components/PokemonImage.tsx';
@@ -50,6 +50,13 @@ export default async function LeagueHome({ params }: { params: Promise<{ id: str
 
   const matchesByTeam = new Map(matchCounts.map((row) => [row.homeTeamId, row._count._all]));
 
+  // The league hub is the page people land on, so it is the likeliest place for a due event to
+  // arrive. The draw is idempotent and guarded, so doing it here costs nothing.
+  if (myTeam && league.status === 'ACTIVE' && config.eventsEnabled) {
+    await ensurePendingEvent(id, myTeam.id);
+  }
+  const pending = myTeam ? await pendingEvent(id, myTeam.id) : null;
+
   const squadByTeam = new Map(
     squadRows.map((row) => [
       row.teamId,
@@ -76,7 +83,12 @@ export default async function LeagueHome({ params }: { params: Promise<{ id: str
 
   return (
     <div className="flex flex-col gap-5">
-      <NavTabs leagueId={id} active="home" showDraft={Boolean(league.draft)} />
+      <NavTabs
+        leagueId={id}
+        active="home"
+        showDraft={Boolean(league.draft)}
+        pendingEvent={Boolean(pending)}
+      />
 
       {myTeam && (
         <Panel
@@ -153,12 +165,43 @@ export default async function LeagueHome({ params }: { params: Promise<{ id: str
         </Panel>
       )}
 
+      {myTeam && pending && (
+        <Panel title="A decision is waiting">
+          <p className="mb-3 text-sm text-muted">
+            <strong className="text-ink">{pending.title}.</strong> {pending.description}
+          </p>
+          <Link
+            href={`/league/${id}/events`}
+            className="inline-block rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-ink"
+          >
+            Deal with it
+          </Link>
+          <p className="mt-2 text-xs text-muted">
+            Nothing else can be reported until this is answered.
+          </p>
+        </Panel>
+      )}
+
       {events.length > 0 && (
         <Panel title="League news">
           <ul className="flex flex-col gap-2">
             {events.map((event) => (
-              <li key={event.id} className="rounded-lg border border-line bg-panel-2 px-3 py-2">
-                <div className="text-xs font-semibold text-accent">{event.title}</div>
+              <li
+                key={event.id}
+                className={`rounded-lg border px-3 py-2 ${
+                  // A restriction lifting is good news, and reads as such.
+                  event.status === 'NOTICE'
+                    ? 'border-positive/40 bg-positive/10'
+                    : 'border-line bg-panel-2'
+                }`}
+              >
+                <div
+                  className={`text-xs font-semibold ${
+                    event.status === 'NOTICE' ? 'text-positive' : 'text-accent'
+                  }`}
+                >
+                  {event.title}
+                </div>
                 <div className="text-sm text-muted">{event.description}</div>
               </li>
             ))}

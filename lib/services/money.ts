@@ -14,7 +14,10 @@ export type TransactionType =
   | 'TRADE'
   | 'MATCH_PAYOUT'
   | 'SALARY'
+  /** A random event a club answered — see lib/services/events.ts. */
   | 'EVENT'
+  /** A ladder promotion bonus. Shared `EVENT` with the above until events became decisions. */
+  | 'PROMOTION'
   | 'ADJUSTMENT';
 
 export interface PostEntry {
@@ -26,6 +29,11 @@ export interface PostEntry {
   amount: number;
   description: string;
   relatedId?: string;
+  /**
+   * The league round this belongs to. Looked up when not given, so no caller can forget it and
+   * leave a row that can't be attributed to a round.
+   */
+  round?: number;
 }
 
 export class InsufficientFunds extends Error {
@@ -61,10 +69,20 @@ export async function postEntry(
     throw new Error(`Ledger amounts must be whole Pokédollars, got ${entry.amount}.`);
   }
 
+  // Rounds are the app's clock, so every ledger row carries one. Callers that already hold the
+  // league pass it; the rest get it looked up here rather than being trusted to remember.
+  const round =
+    entry.round ??
+    (await tx.league.findUniqueOrThrow({
+      where: { id: entry.leagueId },
+      select: { round: true },
+    })).round;
+  const row = { ...entry, round };
+
   // The league bank is unbounded and has no cached balance to keep.
   if (entry.teamId === null) {
     await tx.transaction.create({
-      data: { ...entry, teamId: null, balanceAfter: 0 },
+      data: { ...row, teamId: null, balanceAfter: 0 },
     });
     return 0;
   }
@@ -93,7 +111,7 @@ export async function postEntry(
     select: { cash: true },
   });
 
-  await tx.transaction.create({ data: { ...entry, balanceAfter: team.cash } });
+  await tx.transaction.create({ data: { ...row, balanceAfter: team.cash } });
   return team.cash;
 }
 

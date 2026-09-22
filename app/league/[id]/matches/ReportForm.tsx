@@ -8,6 +8,7 @@ import { SCORING, scoreTeam, streakMultiplier } from '../../../../config/scoring
 import { money } from '../../../../lib/format.ts';
 import { deriveScore } from '../../../../lib/match.ts';
 import { reportMatchAction, type ActionState } from '../../../actions/market.ts';
+import { Constraints, type ConstraintView } from '../../../components/Constraints.tsx';
 import { PokemonArt } from '../../../components/PokemonImage.tsx';
 import { Button, Field, TierBadge, inputClass } from '../../../components/ui.tsx';
 
@@ -17,17 +18,27 @@ export interface Starter {
   tier: string;
   iconUrl: string | null;
   homeUrl: string | null;
+  /** Why an event says this one can't play, if it does. */
+  barredBy?: string;
+}
+
+export interface Attestation {
+  id: string;
+  label: string;
 }
 
 interface Line {
   kos: number;
   fainted: boolean;
+  /** Brought to the match but never sent out. */
+  benched: boolean;
 }
 
-const EMPTY: Line = { kos: 0, fainted: false };
+const EMPTY: Line = { kos: 0, fainted: false, benched: false };
 
 /** Points a line is worth, mirrored from config/scoring.ts so the form can show it live. */
 function linePoints(line: Line): number {
+  if (line.benched) return SCORING.benched;
   return line.kos * SCORING.koLanded + (line.fainted ? SCORING.fainted : SCORING.survived);
 }
 
@@ -77,6 +88,9 @@ export function ReportForm({
   tierKey,
   tierName,
   streak,
+  constraints = [],
+  attestations = [],
+  banEnforced = true,
 }: {
   leagueId: string;
   myTeamId: string;
@@ -90,18 +104,38 @@ export function ReportForm({
   tierName: string;
   /** Wins in a row going into this match. */
   streak: number;
+  /** Everything in force, shown above the picker so nothing is a surprise. */
+  constraints?: ConstraintView[];
+  /** The honour-based ones, which the app can't check and so has to ask about. */
+  attestations?: Attestation[];
+  /**
+   * False once the club is down to the bare minimum — a ban must never leave anyone unable to
+   * field a match, so below that line a barred Pokémon may be taken, benched.
+   */
+  banEnforced?: boolean;
 }) {
   const [won, setWon] = useState(true);
   const [lines, setLines] = useState<Record<string, Line>>({});
+  const [ticked, setTicked] = useState<Record<string, boolean>>({});
   const [state, action] = useActionState<ActionState, FormData>(reportMatchAction, {});
 
   const brought = Object.keys(lines);
   const full = brought.length >= bringToMatch;
+  const allTicked = attestations.every((entry) => ticked[entry.id]);
+
+  // Bringing a barred Pokémon is only possible at all when the club has no legal four without
+  // it — and then it has to stay benched, because sending it out forfeits the match.
+  const barredAndPlaying = brought.some(
+    (slug) => starters.find((entry) => entry.slug === slug)?.barredBy && !lines[slug].benched,
+  );
 
   const toggle = (slug: string) => {
     const next = { ...lines };
     if (slug in next) delete next[slug];
-    else if (!full) next[slug] = EMPTY;
+    else if (!full) {
+      const barred = Boolean(starters.find((entry) => entry.slug === slug)?.barredBy);
+      next[slug] = barred ? { ...EMPTY, benched: true } : EMPTY;
+    }
     setLines(next);
   };
 
@@ -139,6 +173,35 @@ export function ReportForm({
         <input type="hidden" name="leagueId" value={leagueId} />
         <input type="hidden" name="homeTeamId" value={myTeamId} />
         <input type="hidden" name="won" value={won ? '1' : '0'} />
+
+        {/* First thing on the form, because a restriction you don't see is one you'll break. */}
+        <Constraints constraints={constraints} title="Constraints in force" />
+
+        {attestations.length > 0 && (
+          <div className="rounded-lg border border-line bg-panel-2 px-3 py-2.5">
+            <p className="mb-2 text-xs text-muted">
+              These aren&rsquo;t things the app can check. Confirm how you actually played — the
+              answers go in the league feed next to your result.
+            </p>
+            <div className="flex flex-col gap-2">
+              {attestations.map((entry) => (
+                <label key={entry.id} className="flex items-start gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    name="attested"
+                    value={entry.id}
+                    checked={Boolean(ticked[entry.id])}
+                    onChange={(event) =>
+                      setTicked({ ...ticked, [entry.id]: event.target.checked })
+                    }
+                    className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--color-accent)]"
+                  />
+                  <span className="text-ink">{entry.label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-2">
           <button
@@ -185,7 +248,11 @@ export function ReportForm({
               {starters.map((entry) => {
                 const line = lines[entry.slug];
                 const selected = line !== undefined;
-                const dimmed = full && !selected;
+                // A barred Pokémon is unpickable while the club has cover, and merely marked
+                // while it doesn't — it stays on the board either way, because it's still yours.
+                const barred = Boolean(entry.barredBy);
+                const locked = barred && banEnforced;
+                const dimmed = (full && !selected) || locked;
 
                 return (
                   <li key={entry.slug} className="border-b border-line last:border-0">
@@ -201,6 +268,12 @@ export function ReportForm({
                       <TierBadge tier={entry.tier} />
                       <span className="min-w-0 flex-1 truncate text-sm font-medium">
                         {entry.label}
+                        {barred && (
+                          <span className="block truncate text-[11px] font-normal text-negative">
+                            {entry.barredBy}
+                            {!banEnforced && ' — bench only'}
+                          </span>
+                        )}
                       </span>
                       {selected ? (
                         <span
@@ -241,10 +314,21 @@ export function ReportForm({
                           />
                           Fainted
                         </label>
+                        <label className="flex items-center gap-1.5 text-xs text-muted">
+                          <input
+                            type="checkbox"
+                            checked={line.benched}
+                            onChange={(event) =>
+                              update(entry.slug, { benched: event.target.checked })
+                            }
+                            className="h-4 w-4 accent-[var(--color-accent)]"
+                          />
+                          Never sent out
+                        </label>
                         <input
                           type="hidden"
                           name={`line:${myTeamId}:${entry.slug}`}
-                          value={`${line.kos},${line.fainted ? 1 : 0},0`}
+                          value={`${line.kos},${line.fainted ? 1 : 0},${line.benched ? 1 : 0}`}
                         />
                       </div>
                     )}
@@ -300,6 +384,14 @@ export function ReportForm({
           <input name="note" className={inputClass} placeholder="Came back from 0–2 down" />
         </Field>
 
+        {barredAndPlaying && (
+          <p className="rounded-lg border border-negative/40 bg-negative/10 px-3 py-2 text-xs text-negative">
+            You&rsquo;ve sent out a Pokémon that isn&rsquo;t allowed to play. That&rsquo;s a
+            forfeit — this will be recorded as a loss whatever you tap above. Mark it{' '}
+            <strong>never sent out</strong> to bring it as cover instead.
+          </p>
+        )}
+
         {state.error && (
           <p className="rounded-lg border border-negative/40 bg-negative/10 px-3 py-2 text-sm text-negative">
             {state.error}
@@ -311,7 +403,7 @@ export function ReportForm({
           </p>
         )}
 
-        <Submit disabled={brought.length === 0} />
+        <Submit disabled={brought.length === 0 || !allTicked} />
       </form>
     </section>
   );

@@ -1,0 +1,15 @@
+# The entire TLS story. Caddy answers the ACME challenge on port 80, installs the certificate,
+# and renews it before it expires. Nothing to schedule, nothing to remember.
+
+{
+	# Let's Encrypt uses this only to warn about expiry.
+	email {$ACME_EMAIL}
+}
+
+{$DUCKDNS_DOMAIN} {
+	encode zstd gzip
+
+	# reverse_proxy passes the original Host upstream, which is what keeps Next's server-action
+	# origin check happy. See DEPLOY.md if forms start returning 403.
+	reverse_proxy app:3000
+}

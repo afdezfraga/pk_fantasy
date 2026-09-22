@@ -1,0 +1,27 @@
+# Without this the build context carries ~950 MB that the image rebuilds anyway.
+node_modules/
+.next/
+out/
+build/
+*.tsbuildinfo
+
+# Regenerable PokéAPI cache, 44 MB, only used by `npm run roster:build`.
+.cache/
+
+.git/
+.github/
+
+# Next loads .env.production in production too, so nothing env-shaped is ever baked in. The
+# server's .env is read by Docker Compose from the checkout, not from inside the image.
+.env*
+!.env.example
+!.env.deploy.example
+
+# Local league data — the container gets its own database on a volume.
+prisma/dev.db*
+prisma/test.db*
+
+# public/sprites/ is deliberately NOT excluded: it only exists if you ran
+# `npm run roster:build -- --sprites`, and if you did, you want it in the image.
+
+.DS_Store

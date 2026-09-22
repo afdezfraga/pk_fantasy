@@ -12,7 +12,8 @@ streak multiplies it. Your Pokémon gain and lose value with every match they pl
 market and player-to-player trades do the rest.
 
 > **Status: playable.** Club pages and crests, a drag-and-drop squad board, draft, market,
-> trades, ladder ranks, match reporting and streak rewards all work. Solo play is supported.
+> trades, ladder ranks, match reporting, streak rewards and random events all work. Solo play is
+> supported.
 
 ## Quick start
 
@@ -29,10 +30,20 @@ joined, the commissioner starts the draft.
 
 ### Hosting it for the league
 
-`npm run build && npm run start` serves it properly. It's plain HTTP over your LAN out of the
-box; put it behind a TLS-terminating proxy if you expose it to the internet, since session
-cookies are marked `secure` in production (set `ALLOW_INSECURE_COOKIE=1` to override on a LAN).
-All the league's data lives in `prisma/dev.db` — back that file up.
+On your own machine, `npm run build && npm run start` serves it properly. That's plain HTTP over
+your LAN; session cookies are marked `secure` in production, so set `ALLOW_INSECURE_COOKIE=1` if
+there's no TLS in front. All the league's data lives in `prisma/dev.db` — back that file up.
+
+To reach it from anywhere, **[DEPLOY.md](DEPLOY.md)** puts it on a free Oracle Cloud VM with real
+HTTPS in about an hour:
+
+```bash
+cp .env.deploy.example .env   # your DuckDNS subdomain
+docker compose up -d --build
+```
+
+One SQLite file means one process and one disk — so a VM, not a serverless platform. DEPLOY.md
+explains why, and what bites.
 
 ## The roster pipeline
 
@@ -42,7 +53,7 @@ All the league's data lives in `prisma/dev.db` — back that file up.
 |---|---|
 | [Bulbapedia](https://bulbapedia.bulbagarden.net/wiki/List_of_Pok%C3%A9mon_in_Pok%C3%A9mon_Champions) (MediaWiki API) | Which Pokémon are legal in Champions, their forms, Megas, and when each was added |
 | [PokéAPI](https://pokeapi.co/) | Base stats and official artwork |
-| `data/tiers.json` (hand-maintained) | Competitive tiers, which drive price |
+| `data/tiers.json` (hand-maintained, banded from the [op.gg doubles ladder](https://op.gg/pokemon-champions/tier)) | Competitive tiers, which drive price |
 
 Output is **committed to git**, so a roster rotation shows up as a reviewable diff rather than a
 silent change under a running league. Add `-- --sprites` to also cache artwork into
@@ -66,13 +77,13 @@ spread Pokémon out *within* a tier so the market isn't full of identical price 
 
 | Tier | Price | Count |
 |---|---|---|
-| S | ₽316,000 – ₽400,000 | 11 |
-| A+ | ₽180,000 – ₽250,000 | 15 |
-| A | ₽104,000 – ₽140,000 | 14 |
-| B | ₽42,000 – ₽77,000 | 15 |
-| C | ₽20,000 – ₽34,000 | 14 |
-| D | ₽4,000 – ₽8,000 | 13 |
-| UR | ₽1,000 – ₽10,000 | 165 |
+| S | ₽316,000 – ₽400,000 | 18 |
+| A+ | ₽178,000 – ₽250,000 | 35 |
+| A | ₽92,000 – ₽136,000 | 35 |
+| B | ₽40,000 – ₽80,000 | 55 |
+| C | ₽10,000 – ₽33,000 | 52 |
+| D | ₽2,000 – ₽8,000 | 52 |
+| UR | ₽1,000 – ₽10,000 | 0 |
 
 The scale is deliberately steep against the ₽300,000 opening budget: an S-tier costs more than
 a whole starting balance, so early on the choice is a good squad or nearly one star, and the top
@@ -80,11 +91,36 @@ of the market only opens up to a club that keeps winning.
 
 `UR` means the tier list doesn't rank it — that's *missing data*, not proof it's weak, so
 unranked Pokémon are priced on base stats across a wide band. Otherwise Palafin (650 BST once it
-transforms, unranked) would be free money.
+transforms, unranked) would be free money. **It is empty today**: the current source ranks the
+whole ladder, so every asset has a real tier. It stays as the landing place for a Pokémon that a
+future roster rotation adds before the tier list catches up.
 
 **Tiers are for DOUBLES (VGC)**, since that's how Champions is played. This matters enormously:
-Incineroar is S in doubles and mid-table in singles, and Hisuian Samurott is the reverse. To run
-a singles league, replace the lists in `data/tiers.json` — nothing else changes.
+Incineroar is S in doubles and mid-table in singles, and Hisuian Samurott is the reverse. The
+source ranks the two formats separately — Salamence is #1 in singles but #3 in doubles, where
+Rillaboom leads — so a singles league just needs the other list in `data/tiers.json`; nothing
+else changes.
+
+Because the source publishes one ordered ladder rather than letter tiers, the tiers above are cut
+by rank position (`bands` in `data/tiers.json`), as a **share of the roster** rather than a fixed
+count — so the shape of the market survives Champions adding Pokémon. Two wrinkles are worth
+knowing, since both were silently mispricing Pokémon before:
+
+- **Forms collapse to the tradable asset, best rank wins.** Wash Rotom (#68) and Fan Rotom (#249)
+  are one asset here, so Rotom is priced on Wash.
+- **Regional forms must be told apart by slug, not display name.** op.gg shows Hisuian forms under
+  the bare species name: "Arcanine" is both #18 (`arcanine-hisui`) and #112 (`arcanine`). They are
+  separate assets, and matching on the name swaps them.
+
+`npm run tiers:fetch` does all of this; `npm run market:update` chains it with the rebuild, the
+reseed and the sheet below.
+
+### The price sheet
+
+`npm run tiers:doc` writes `data/tiers.html` — every Pokémon by tier with price, types and BST,
+and each tier's share of the roster. One self-contained file: open it in a browser, or print to
+PDF to hand round before a draft. Regenerate it after every repricing; it stamps the tier source,
+the capture date and the Bulbapedia revision, so an old sheet always says what it was built from.
 
 ### Tuning the economy
 
@@ -202,6 +238,110 @@ you'll skip your remaining picks and play with a tiny squad. That's allowed: the
 anyone who can't afford what's left, and the commissioner can end it early. There are no wages or
 upkeep, so nothing bleeds you — but nothing tops you up either until you start winning.
 
+## Events
+
+Every few matches something goes wrong at your club, and you decide what to do about it. **You
+can't report another match until you have.** That's the whole shape of it: an event is a problem
+with two or three answers, none of them free.
+
+The best ones cost no money at all. A sulking star has to be run at zero EVs for five matches; the
+pitch is being relaid so you can't set weather or terrain; the coach has a philosophy and you're
+attacking with STAB moves only until they get over it. Those change how you actually play, which
+is worth more than another number moving. A flight doesn't land and you take three into a match
+instead of four, or drive everyone through the night and watch a fortnight of development go
+nowhere. Somebody complains about how you play and you spend four matches without a protection
+move.
+
+Some ask something bigger. A club offers a straight swap for one of yours — take it and you get a
+named Pokémon of the same standing, refuse and yours plays five matches with its training undone.
+Recruitment offers two free agents for one of your best, and lets you pick which of your best. A
+sponsor asks how many of your next five you think you'll win, and pays — or charges — on what you
+said. The league wants your money locked away for two rounds at 15%.
+
+**One lands the moment the draft ends**, before your first match, and then roughly every five
+matches you report — jittered, so you can't count the timing and plan around it. Closing a round
+draws a league-wide one that every club answers for itself.
+
+### What the app can and can't check
+
+The app never watches a battle, so consequences come in two kinds and it's honest about which:
+
+- **Enforced.** "Charizard is out injured" — it's greyed out in the match picker and the report
+  is refused. So are type bans, bring limits, transfer freezes, money and value. A freeze stops
+  signings, sales and trades alike, and lifts when the round turns.
+- **On your word.** "No Mega Evolution for four matches" — the app can't tell, so it asks. You
+  tick a box when you report, and what you claimed is stored on the result and shown in the feed
+  next to it. That's the same honour system the scoreline already runs on.
+
+Anything you *agreed to* — a sponsor target, a league bond — is shown apart from the things done
+to you, and a target counts up as you play: *"Sponsor target — 1 of 2 wins"*. A wager settles the
+moment the answer is certain rather than when its window runs out, so a run you can no longer
+rescue is called at the match it died, not three matches later.
+
+Whatever's in force is shown on your club page, above the report form, and on every result it
+affected — and when it ends you're told, in the league feed and on the page: *"Kangaskhan has been
+cleared to play again."* A restriction you forget about is worse than no restriction.
+
+### Nothing can lock you out
+
+Because reporting is blocked, an event you can't answer would be a dead league. Four things stop
+that:
+
+- **Your assistant will handle it.** One click on nearly every event; they pick at random from
+  whatever's open. It costs you control, not money, and it's always available.
+- **A bill you can't pay puts you in the red.** Event charges are the only thing in the app that
+  may push a balance negative. Debt is then its own punishment — you can't sign anyone until you've
+  sold or won your way back into the black.
+- **A ban never stops you fielding a match.** Down to exactly four usable Pokémon, a barred one
+  can still be *brought* — but only benched. Send it out and the match is recorded as a loss,
+  because that's a forfeit.
+- **The commissioner can force one through**, and `eventsEnabled: 0` turns the system off.
+
+### Writing your own
+
+`data/events.json` is the deck, and adding to it needs no code — only `kind` is referenced by
+name, and it must be one of the vocabulary in `lib/services/effects.ts`. `npm test` validates the
+deck on every run and fails if a template has no option a broke club could click, if a percentage
+cost has no floor, or if a lasting restriction doesn't say how it ends.
+`npx tsx scripts/preview-events.ts` renders a template against a real club, which is the quickest
+way to find out whether what you wrote reads like anything.
+
+Two things worth knowing when you write one. An option marked `repeat: "@starters"` becomes one
+option per Pokémon — *"Let Garchomp go"*, *"Let Ferrothorn go"* — spread across the squad by value,
+which is how a club chooses *who* an event takes without a decision becoming more than a button.
+And a win is worth ₽1,000 in the beginner tier and ₽100,000 in Champion, so money is priced in
+win-rewards (`rewardWins`) or as a share of the balance (`pct` + `min`) rather than flat, or one
+figure is pocket change to one club and a season's earnings to another.
+
+Two dials in `config/economy.ts`: `eventEveryMatches` for pacing, and `eventSeverity` for when a
+season tells you the deck is too harsh — it scales what an option costs and how long its
+consequences last, the two quantities that unambiguously mean "worse" when they're bigger. Value
+percentages and one-off payments are left alone, since a scaler that can't tell a gain from a
+loss would make some events kinder the harsher you set the league.
+
+Upsetting the Pokémon the rest of the squad takes its lead from isn't a private matter. A template
+can carry `severityMult: { captain: 1.5 }`, so the same event costs more and lasts longer when it
+lands on your captain — and an effect can carry `spreadTo: "starters"`, which puts a milder copy
+on two others. Refuse your captain's transfer request and three of your six are sulking, not one.
+That's what makes choosing a captain a decision rather than a label.
+
+Some events aren't random at all. Name a Pokémon in your six and then leave it out of ten matches
+and it asks why; play the same four in all of your last ten and they burn out; make three market
+moves in a round and nobody knows where anybody is meant to be; sit bottom of the table and a
+backer nobody else would take a call from turns up. Those are drawn *ahead* of the deck — an event
+you caused beats one that was rolled — and they name the Pokémon that actually caused them.
+
+Both counts are measured from the Pokémon's own history, not the club's: a signing that arrived
+yesterday hasn't been ignored for a season, however long the club has been going.
+
+### Rounds are the clock
+
+There are no fixtures and no dates worth trusting, so **the round is how the app tells time**.
+A league is on round 1 from the moment it's created — through setup and the draft, and on into
+play — so nothing ever happens outside a round. Every match, event, restriction, value move and
+ledger entry records the round it happened in, which is what makes "what did this club do this
+round" a question with an answer.
+
 ## How ownership works
 
 This is the part worth understanding, because it's the league's one hard rule.
@@ -220,7 +360,10 @@ really do click at the same instant during a draft. Backing it up, `@@unique([le
 pokemonSlug])` means a Pokémon can only ever have one row in a league.
 
 Every acquisition path — draft, market, trade, auction, waiver — goes through
-`lib/services/ownership.ts`, and nothing else is allowed to write `Ownership.teamId`.
+`lib/services/ownership.ts`, and nothing else is allowed to write `Ownership.teamId`. Events that
+hand a Pokémon over need to release and sign inside one transaction, and SQLite won't nest one, so
+`claimFreeAgent` and `releaseToMarket` are the same guarded writes taking a caller's transaction
+rather than opening their own. `acquireFreeAgent` and `sellToMarket` are thin wrappers over them.
 
 Money works the same way: `Team.cash` is a cache, the `Transaction` ledger is the truth, and
 `verifyLedger()` asserts they agree. Debits are guarded on `cash >= amount` inside the UPDATE, so
@@ -247,7 +390,10 @@ data/roster.json           generated catalog (committed)
 data/roster.csv            same data, hand-editable
 data/tiers.json            competitive tiers — the balance lever
 data/ranks.json            the Champions ladder: tiers, gauges, promotion bonuses
-data/events.json           the random-event deck (parked until events return as decisions)
+data/events.json           the event deck — problems managers answer
+lib/services/events.ts     drawing an event, and answering it
+lib/services/effects.ts    what an event leaves behind, and how long it lasts
+lib/services/triggers.ts   the club's situation, and what it's done to deserve an event
 config/scoring.ts          points per KO/faint, win rewards by tier, streak multipliers
 lib/ladder.ts              rank ordering, formatting, gauge maths
 lib/roster/parse.ts        Bulbapedia wikitext parser (pure, tested)
@@ -259,7 +405,13 @@ lib/services/league.ts     creation, joining, invite codes
 prisma/schema.prisma       data model
 scripts/build-roster.ts    the roster pipeline
 scripts/seed.ts            roster.json -> database
+scripts/preview-events.ts  renders a template against a real club, for writing the deck
 app/                       Next.js App Router pages
+Dockerfile                 the deployed image: one process, one SQLite file
+docker-compose.yml         the app plus Caddy for automatic HTTPS
+deploy/entrypoint.sh       schema, WAL, seed-if-empty, then the server
+deploy/backup.sh           nightly hot backup of the league
+DEPLOY.md                  putting it on a free cloud VM
 ```
 
 ## Tests
@@ -268,11 +420,23 @@ app/                       Next.js App Router pages
 npm test
 ```
 
-127 tests. The ones that matter: four teams racing for the same Pokémon and exactly one winning
+221 tests. The ones that matter: four teams racing for the same Pokémon and exactly one winning
 *and only that one being charged*; the ledger balancing after a run of buys and sells; a win
 streak paying ₽10,000 → ₽30,000 → ₽50,000 and a deleted match giving all of it back along with
 the value it moved; the snake order reversing; and the ladder comparing gauges as fractions,
 since a tier's gauge size varies.
+
+On the events side: that the deck can never offer a club nothing it can afford, since reporting
+is blocked until an event is answered; that a club with ₽0 still gets to answer and lands in debt
+rather than stranded; that two page loads arriving together draw exactly one event; that a banned
+Pokémon is refused while there's cover, allowed benched when there isn't, and forfeits the match
+if it plays; and that a restriction ends on exactly the match it said it would. Also that a swap
+substitutes an equivalent when the Pokémon it named has been signed by somebody else in the
+meantime, that a wager settles the instant its answer is certain, and that a frozen club can
+neither sign, sell nor trade until the round turns, and that deleting a result gives a wager
+back its match and its win together. And that a decision refused in front of the squad puts the
+milder version in force on two others, each of which has to be confirmed before the club plays
+again.
 
 Integration tests build a throwaway SQLite database with a small fixed catalog, so they fail when
 the logic breaks rather than when Garchomp changes tier.
@@ -291,6 +455,7 @@ don't have a second server already holding port 3000.
 - [x] **Economy.** Market buy/sell, trades, ledger, value that moves with results.
 - [x] **Competition.** Ladder ranks, match logging, per-Pokémon scoring, streak rewards with a cap.
 - [x] **The club.** Crests, the squad board, honours, per-Pokémon stats, promotion bonuses.
+- [x] **Events.** Decisions with consequences, battle-rule restrictions, triggered events.
 - [ ] **Later.** Seasons and playoffs, contract expiry, auctions, FAAB waivers, value charts.
 
 ## Data sources

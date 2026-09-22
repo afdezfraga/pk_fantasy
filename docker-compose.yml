@@ -1,0 +1,74 @@
+# The whole deployment: the app, and Caddy in front of it for automatic HTTPS.
+#
+# The app publishes no host port on purpose — it is reachable only from Caddy on the private
+# compose network, so there is no way to reach it over plain HTTP by accident.
+#
+# Never `docker compose up --scale app=2`. One SQLite file, one writer: a second instance
+# doesn't share the lock discipline the ownership rules depend on, and will corrupt the league.
+
+# Pinned so the volume is always called pkfantasy_league, whatever the checkout directory is —
+# the restore command in DEPLOY.md names it.
+name: pkfantasy
+
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    # Reap zombies left by the seed subprocess.
+    init: true
+    # Long enough for SQLite to check the WAL back into the database rather than be SIGKILLed.
+    stop_grace_period: 30s
+    environment:
+      NODE_ENV: production
+      # Absolute, because it points into the mounted volume rather than next to schema.prisma.
+      # A relative file: path would resolve from the generated client's own directory, which is
+      # nowhere anybody expects.
+      DATABASE_URL: "file:/data/league.db"
+      # So dates rendered on the server match what the league sees in the browser.
+      TZ: ${TZ:-Europe/Madrid}
+    volumes:
+      - league:/data
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      # Generous: the first start applies the schema and seeds 247 Pokémon before listening.
+      start_period: 120s
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      # Defaults are what a public deployment needs: Let's Encrypt answers its challenge on 80,
+      # so leave these alone on the server. Override them to try the stack on a machine that is
+      # already running a web server — HTTP_PORT=8080 HTTPS_PORT=8443 docker compose up.
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+      # HTTP/3. Without it Caddy still works; clients just fall back to HTTP/2.
+      - "${HTTPS_PORT:-443}:443/udp"
+    environment:
+      DUCKDNS_DOMAIN: ${DUCKDNS_DOMAIN:?set DUCKDNS_DOMAIN in .env}
+      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL in .env}
+      TZ: ${TZ:-Europe/Madrid}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    # Deliberately not `condition: service_healthy` — Caddy should come up and get its
+    # certificate even when the app is failing, so you get a 502 you can read rather than
+    # a connection that hangs.
+    depends_on:
+      - app
+
+volumes:
+  # The league: accounts, ledger, results, crests. The only thing here worth backing up.
+  league:
+  # Issued certificates. Let's Encrypt allows five per domain per week, so destroying this
+  # volume repeatedly will lock you out for days. Never `docker compose down -v`.
+  caddy_data:
+  caddy_config:

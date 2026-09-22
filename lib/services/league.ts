@@ -141,6 +141,9 @@ async function createTeamRow(
       amount: config.startingCash,
       balanceAfter: config.startingCash,
       description: 'Opening balance',
+      // A league is on round 1 from the moment it is created — through setup and the draft, and
+      // on into play — so there is never a point where something happens outside a round.
+      round: 1,
     },
   });
 

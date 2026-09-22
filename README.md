@@ -30,10 +30,20 @@ joined, the commissioner starts the draft.
 
 ### Hosting it for the league
 
-`npm run build && npm run start` serves it properly. It's plain HTTP over your LAN out of the
-box; put it behind a TLS-terminating proxy if you expose it to the internet, since session
-cookies are marked `secure` in production (set `ALLOW_INSECURE_COOKIE=1` to override on a LAN).
-All the league's data lives in `prisma/dev.db` — back that file up.
+On your own machine, `npm run build && npm run start` serves it properly. That's plain HTTP over
+your LAN; session cookies are marked `secure` in production, so set `ALLOW_INSECURE_COOKIE=1` if
+there's no TLS in front. All the league's data lives in `prisma/dev.db` — back that file up.
+
+To reach it from anywhere, **[DEPLOY.md](DEPLOY.md)** puts it on a free Oracle Cloud VM with real
+HTTPS in about an hour:
+
+```bash
+cp .env.deploy.example .env   # your DuckDNS subdomain
+docker compose up -d --build
+```
+
+One SQLite file means one process and one disk — so a VM, not a serverless platform. DEPLOY.md
+explains why, and what bites.
 
 ## The roster pipeline
 
@@ -397,6 +407,11 @@ scripts/build-roster.ts    the roster pipeline
 scripts/seed.ts            roster.json -> database
 scripts/preview-events.ts  renders a template against a real club, for writing the deck
 app/                       Next.js App Router pages
+Dockerfile                 the deployed image: one process, one SQLite file
+docker-compose.yml         the app plus Caddy for automatic HTTPS
+deploy/entrypoint.sh       schema, WAL, seed-if-empty, then the server
+deploy/backup.sh           nightly hot backup of the league
+DEPLOY.md                  putting it on a free cloud VM
 ```
 
 ## Tests

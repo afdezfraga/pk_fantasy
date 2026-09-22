@@ -4,6 +4,8 @@ A self-hosted Pokémon Champions fantasy league. Next.js 15 App Router, Prisma +
 migrations (`prisma db push`). One process, one database file — SQLite takes a single writer and
 the ownership rules depend on it, so never run two instances against one database.
 
+Deployment lives in [DEPLOY.md](DEPLOY.md).
+
 ---
 
 ## Updating the market (repricing every Pokémon)

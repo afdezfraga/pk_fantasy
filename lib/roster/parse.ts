@@ -77,7 +77,10 @@ export function parseRow(line: string): RawRow | null {
     const named = /^(ig|form)=(.*)$/s.exec(part);
     if (named) {
       if (named[1] === 'ig') ig = named[2].trim() || null;
-      else form = named[2].trim() || null;
+      // The wiki writes multi-line form labels with a literal <br> ("Paldean Form<br>(Aqua
+      // Breed)"). Left in, it reaches the UI verbatim and defeats tier-list name matching,
+      // which strips punctuation and would read the tag as the word "br".
+      else form = named[2].replace(/<br\s*\/?>/gi, ' ').replace(/\s+/g, ' ').trim() || null;
     } else {
       positional.push(part);
     }

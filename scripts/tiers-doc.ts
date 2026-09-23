@@ -18,23 +18,9 @@ import { fileURLToPath } from 'node:url';
 
 import { LEAGUE_DEFAULTS, TIERS, type Tier } from '../config/economy.ts';
 import type { RosterFile } from '../lib/roster/types.ts';
+import { FONT_LINKS, TIER_COLOUR, TOKENS_CSS, escape, money } from './doc-kit.ts';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-
-/** The app's tier colours, so a Pokémon reads the same here as on the market page. */
-const TIER_COLOUR: Record<Tier, string> = {
-  S: '#ff5c5c',
-  'A+': '#ff9f43',
-  A: '#ffd93d',
-  B: '#6bcb77',
-  C: '#4d96ff',
-  D: '#9b8fd6',
-  UR: '#6b7280',
-};
-
-const money = (n: number) => `₽${n.toLocaleString('en-US')}`;
-const escape = (s: string) =>
-  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 interface Row {
   slug: string;
@@ -123,25 +109,13 @@ function build(): string {
     .join('');
 
   return `<title>Champions Market</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap">
+${FONT_LINKS}
 <style>
   /*
    * Dark like the app it belongs to — this gets read on a phone, mid-draft. Print flips to
    * ink on paper, because the other half of this document's life is a PDF before a draft.
    */
-  :root {
-    --surface: #0f1117;
-    --panel: #171a23;
-    --panel-2: #1e222e;
-    --line: #2a2f3d;
-    --ink: #e8eaf0;
-    --muted: #949cb0;
-    --accent: #ffcb05;
-    --display: 'Barlow Condensed', 'Arial Narrow', system-ui, sans-serif;
-    --body: 'Barlow', system-ui, -apple-system, 'Segoe UI', sans-serif;
-  }
+${TOKENS_CSS}
 
   * { box-sizing: border-box; }
 

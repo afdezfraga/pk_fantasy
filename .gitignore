@@ -21,3 +21,11 @@ prisma/dev.db*
 public/sprites/
 
 .DS_Store
+
+# draft report PDFs: regenerated on every reprice, so a binary diff each time is noise. The
+# committed record is data/draft-guide.html, next to its source data/draft-guide.json.
+reports/
+
+# the private scouting edition of the draft report, and its notes — one manager's plan, which
+# must never reach history the rest of the league can read
+private/

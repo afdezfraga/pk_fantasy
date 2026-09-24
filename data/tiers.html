@@ -18,6 +18,18 @@
     --display: 'Barlow Condensed', 'Arial Narrow', system-ui, sans-serif;
     --body: 'Barlow', system-ui, -apple-system, 'Segoe UI', sans-serif;
   }
+  .home {
+    display: inline-block;
+    margin-bottom: 14px;
+    font-family: var(--display);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-size: 12px;
+    color: var(--muted);
+    text-decoration: none;
+  }
+  .home:hover, .home:focus-visible { color: var(--accent); }
+  @media print { .home { display: none; } }
 
   * { box-sizing: border-box; }
 
@@ -367,6 +379,7 @@
 
 <main class="page">
   <header class="masthead">
+    <a class="home" href="index.html">← League home</a>
     <p class="eyebrow">Pokémon Champions · Fantasy League</p>
     <h1>Champions Market</h1>
     <p class="lede">
@@ -380,7 +393,7 @@
       <div><dt>Format</dt><dd>Doubles</dd></div>
       <div><dt>Roster revision</dt><dd>Bulbapedia r4626176</dd></div>
       <div><dt>Assets</dt><dd>247 tradable</dd></div>
-      <div><dt>Sheet generated</dt><dd>2026-09-22</dd></div>
+      <div><dt>Sheet generated</dt><dd>2026-09-24</dd></div>
     </dl>
   </header>
 
@@ -432,7 +445,7 @@
 
   <h2 class="section">Every Pokémon, by tier</h2>
   
-      <section class="tier" style="--tier:#ff5c5c">
+      <section class="tier" id="tier-s" style="--tier:#ff5c5c">
         <header class="tier-head">
           <h2>S</h2>
           <p class="tier-band tabular">₽316,000 – ₽400,000</p>
@@ -620,7 +633,7 @@
             </button>
           </li></ul>
       </section>
-      <section class="tier" style="--tier:#ff9f43">
+      <section class="tier" id="tier-aplus" style="--tier:#ff9f43">
         <header class="tier-head">
           <h2>A+</h2>
           <p class="tier-band tabular">₽178,000 – ₽250,000</p>
@@ -978,7 +991,7 @@
             </button>
           </li></ul>
       </section>
-      <section class="tier" style="--tier:#ffd93d">
+      <section class="tier" id="tier-a" style="--tier:#ffd93d">
         <header class="tier-head">
           <h2>A</h2>
           <p class="tier-band tabular">₽92,000 – ₽136,000</p>
@@ -1336,7 +1349,7 @@
             </button>
           </li></ul>
       </section>
-      <section class="tier" style="--tier:#6bcb77">
+      <section class="tier" id="tier-b" style="--tier:#6bcb77">
         <header class="tier-head">
           <h2>B</h2>
           <p class="tier-band tabular">₽40,000 – ₽80,000</p>
@@ -1894,7 +1907,7 @@
             </button>
           </li></ul>
       </section>
-      <section class="tier" style="--tier:#4d96ff">
+      <section class="tier" id="tier-c" style="--tier:#4d96ff">
         <header class="tier-head">
           <h2>C</h2>
           <p class="tier-band tabular">₽10,000 – ₽33,000</p>
@@ -2422,7 +2435,7 @@
             </button>
           </li></ul>
       </section>
-      <section class="tier" style="--tier:#9b8fd6">
+      <section class="tier" id="tier-d" style="--tier:#9b8fd6">
         <header class="tier-head">
           <h2>D</h2>
           <p class="tier-band tabular">₽2,000 – ₽8,000</p>

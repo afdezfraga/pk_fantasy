@@ -1,0 +1,507 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Champions Fantasy League</title>
+<meta name="description" content="A fantasy league for friends who play Pokémon Champions: draft a squad from one shared pool, climb the ranked doubles ladder, and get paid for winning.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap">
+<style>
+  /*
+   * The front door to the market sheet and the draft guide, so it wears their clothes: the same
+   * dark tokens, the same condensed display face, the same tier colours as the app.
+   */
+  :root {
+    --surface: #0f1117;
+    --panel: #171a23;
+    --panel-2: #1e222e;
+    --line: #2a2f3d;
+    --ink: #e8eaf0;
+    --muted: #949cb0;
+    --accent: #ffcb05;
+    --display: 'Barlow Condensed', 'Arial Narrow', system-ui, sans-serif;
+    --body: 'Barlow', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--surface);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 16px;
+    line-height: 1.55;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  .page { max-width: 1040px; margin: 0 auto; padding: 0 16px 64px; }
+  .tabular { font-variant-numeric: tabular-nums; }
+  .muted { color: var(--muted); }
+  a { color: var(--ink); text-decoration-color: var(--line); text-underline-offset: 3px; }
+  a:hover { text-decoration-color: var(--accent); }
+  a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+
+  /* --- hero ------------------------------------------------------------------------------ */
+  .hero {
+    padding: 56px 0 36px;
+    border-bottom: 2px solid var(--accent);
+    background: radial-gradient(90% 120% at 0% 0%, rgb(255 203 5 / 0.10), transparent 60%);
+  }
+  .eyebrow, h2 {
+    font-family: var(--display);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+    margin: 0 0 6px;
+  }
+  h1 {
+    font-family: var(--display);
+    font-size: clamp(42px, 9vw, 76px);
+    font-weight: 700;
+    line-height: 0.92;
+    letter-spacing: -0.01em;
+    margin: 0;
+    max-width: 14ch;
+    text-wrap: balance;
+  }
+  .lede { color: var(--muted); font-size: 18px; margin: 18px 0 0; max-width: 60ch; }
+  .lede strong { color: var(--ink); font-weight: 600; }
+
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 28px; }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--display);
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    text-decoration: none;
+    padding: 11px 20px;
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    background: var(--panel);
+    color: var(--ink);
+  }
+  .btn:hover { border-color: var(--accent); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #1b1d25; }
+  .btn.primary:hover { filter: brightness(1.08); }
+
+  .facts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 14px 24px;
+    margin: 36px 0 0;
+  }
+  .facts div { display: flex; flex-direction: column; gap: 2px; }
+  .facts dt {
+    font-family: var(--display);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .facts dd { margin: 0; font-family: var(--display); font-size: 24px; font-weight: 600; line-height: 1.1; }
+  .facts dd small { display: block; font-family: var(--body); font-size: 13px; font-weight: 400; color: var(--muted); }
+
+  section { margin-top: 56px; }
+  .section-lede { color: var(--muted); margin: 0 0 20px; max-width: 64ch; }
+
+  /* --- the three destinations ------------------------------------------------------------ */
+  .doors {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 14px;
+  }
+  .door {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 20px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-top: 3px solid var(--c);
+    border-radius: 8px;
+    text-decoration: none;
+  }
+  .door:hover { background: var(--panel-2); border-color: var(--c); }
+  .door .kicker {
+    font-family: var(--display);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-size: 12px;
+    color: var(--c);
+  }
+  .door h3 { font-family: var(--display); font-size: 30px; line-height: 1; margin: 6px 0 10px; }
+  .door p { margin: 0; color: var(--muted); font-size: 15px; }
+  .door .go {
+    margin-top: auto;
+    padding-top: 16px;
+    font-family: var(--display);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 14px;
+    color: var(--c);
+  }
+
+  /* --- how a season runs ----------------------------------------------------------------- */
+  .steps { list-style: none; margin: 0; padding: 0; counter-reset: step; display: grid; gap: 0; }
+  .steps > li {
+    counter-increment: step;
+    display: grid;
+    grid-template-columns: 52px 1fr;
+    column-gap: 16px;
+    padding: 18px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .steps > li::before {
+    content: counter(step, decimal-leading-zero);
+    font-family: var(--display);
+    font-size: 34px;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--accent);
+  }
+  .steps h3 { font-family: var(--display); font-size: 24px; line-height: 1.1; margin: 0 0 4px; }
+  .steps p { margin: 0; max-width: 72ch; }
+  .steps p + p { margin-top: 8px; }
+
+  /* --- the hard rule --------------------------------------------------------------------- */
+  .rule {
+    margin-top: 56px;
+    padding: 24px;
+    border-radius: 8px;
+    border: 1px solid rgb(255 203 5 / 0.45);
+    background:
+      radial-gradient(120% 160% at 50% -40%, rgb(255 203 5 / 0.16), transparent 60%),
+      var(--panel);
+  }
+  .rule p.big {
+    font-family: var(--display);
+    font-size: clamp(28px, 5vw, 40px);
+    font-weight: 700;
+    line-height: 1.05;
+    margin: 0 0 10px;
+  }
+  .rule p { margin: 0; max-width: 70ch; }
+
+  /* --- money ----------------------------------------------------------------------------- */
+  .split { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 28px 40px; }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; min-width: 420px; }
+  th, td { text-align: left; padding: 10px 12px 10px 0; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  thead th {
+    font-family: var(--display);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-size: 11px;
+    color: var(--muted);
+    font-weight: 600;
+    white-space: normal;
+  }
+  tbody th { font-weight: 600; }
+  .up { color: #4ade80; }
+  .down { color: #f87171; }
+  .notes { margin: 0; padding-left: 18px; }
+  .notes li { margin-bottom: 10px; }
+  .notes li::marker { color: var(--accent); }
+
+  /* --- the market strip ------------------------------------------------------------------ */
+  .strip {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+  }
+  .strip a {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 14px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--tier);
+    border-radius: 6px;
+    text-decoration: none;
+  }
+  .strip a:hover { background: var(--panel-2); }
+  .chip {
+    align-self: flex-start;
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 15px;
+    padding: 1px 9px;
+    border-radius: 4px;
+    color: #12141b;
+    background: var(--tier);
+  }
+  .strip .band { font-family: var(--display); font-size: 22px; font-weight: 600; }
+  .strip .count { font-size: 13px; color: var(--muted); }
+
+  /* --- squad sizes ----------------------------------------------------------------------- */
+  .sizes { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin: 0; }
+  .sizes > div { padding: 18px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; }
+  .sizes dt { font-family: var(--display); font-size: 48px; font-weight: 700; line-height: 1; color: var(--accent); }
+  .sizes dd { margin: 6px 0 0; }
+  .sizes dd strong { display: block; font-family: var(--display); font-size: 20px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .sizes dd span { color: var(--muted); font-size: 14.5px; }
+
+  .cta {
+    margin-top: 64px;
+    padding: 32px 24px;
+    text-align: center;
+    border-top: 2px solid var(--accent);
+  }
+  .cta p { font-family: var(--display); font-size: clamp(26px, 5vw, 36px); font-weight: 700; margin: 0 0 18px; }
+  .cta .actions { justify-content: center; margin: 0; }
+
+  footer {
+    margin-top: 40px;
+    padding-top: 16px;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 13px;
+  }
+  footer p { margin: 0 0 6px; }
+  footer a { color: var(--muted); }
+
+  @media (max-width: 520px) {
+    .hero { padding-top: 36px; }
+    .btn { flex: 1 1 100%; justify-content: center; }
+    .steps > li { grid-template-columns: 40px 1fr; column-gap: 12px; }
+    .steps > li::before { font-size: 26px; }
+  }
+</style>
+
+<main class="page">
+  <header class="hero">
+    <p class="eyebrow">Pokémon Champions · Fantasy League</p>
+    <h1>Build a club. Climb the ladder. Get paid to win.</h1>
+    <p class="lede">
+      A fantasy league for friends who play Pokémon Champions. Everyone drafts from <strong>one
+      shared pool, where each Pokémon can have only one owner</strong>, then takes that squad onto
+      the ranked doubles ladder. The league table is simply who has climbed highest.
+    </p>
+    <div class="actions">
+      <a class="btn primary" href="https://pokeleague.duckdns.org/">Play: log in or sign up →</a>
+      <a class="btn" href="tiers.html">The market</a>
+      <a class="btn" href="draft-guide.html">Draft guide</a>
+    </div>
+    <dl class="facts">
+      <div><dt>Opening budget</dt><dd class="tabular">₽300,000<small>for the whole draft</small></dd></div>
+      <div><dt>The draft</dt><dd>6 rounds<small>snake order, pay as you pick</small></dd></div>
+      <div><dt>The pool</dt><dd class="tabular">247 Pokémon<small>Megas come with their species</small></dd></div>
+      <div><dt>Format</dt><dd>Doubles<small>the Champions ranked ladder</small></dd></div>
+    </dl>
+  </header>
+
+  <section aria-labelledby="where">
+    <h2 id="where">Where to go</h2>
+    <ul class="doors">
+      <li>
+        <a class="door" href="https://pokeleague.duckdns.org/" style="--c:var(--accent)">
+          <span class="kicker">Play</span>
+          <h3>The league</h3>
+          <p>Create an account, start a league or join one with its invite code. This is where you draft, sign and trade, report matches and answer events.</p>
+          <span class="go">pokeleague.duckdns.org →</span>
+        </a>
+      </li>
+      <li>
+        <a class="door" href="tiers.html" style="--c:#ff5c5c">
+          <span class="kicker">Price it</span>
+          <h3>The market</h3>
+          <p>Every Pokémon by tier, with what it costs to sign. Tap Pokémon to build a shortlist and test a draft against the ₽300,000 budget before the real one starts.</p>
+          <span class="go">Open the market →</span>
+        </a>
+      </li>
+      <li>
+        <a class="door" href="draft-guide.html" style="--c:#4d96ff">
+          <span class="kicker">Plan it</span>
+          <h3>The draft guide</h3>
+          <p>The doubles roles that win matches (Fake Out, Intimidate, Tailwind, Trick Room, weather), the best Pokémon for each, and which ones are good value for the money.</p>
+          <span class="go">Read the guide →</span>
+        </a>
+      </li>
+    </ul>
+  </section>
+
+  <div class="rule">
+    <p class="eyebrow">The one hard rule</p>
+    <p class="big">Every Pokémon has exactly one owner.</p>
+    <p>If you have Incineroar, nobody else in your league does. A Pokémon changes hands through the
+    draft, the market, a listing, a trade or an event, and when two managers go for the same one at the
+    same moment, exactly one of them gets it. Draft night is a race.</p>
+  </div>
+
+  <section aria-labelledby="season">
+    <h2 id="season">How a season works</h2>
+    <ol class="steps">
+      <li><div>
+        <h3>Join a league</h3>
+        <p>Sign up at <a href="https://pokeleague.duckdns.org/">pokeleague.duckdns.org</a>, create a league or join one with its invite code, and design your club's crest. A league of one works too: the draft becomes picking your own squad.</p>
+      </div></li>
+      <li><div>
+        <h3>Draft</h3>
+        <p>6 rounds in snake order, randomised. You <strong>pay the shop price</strong> for every pick out of ₽300,000, and a single S-tier costs more than that. So early on the choice is a good squad or most of one star. Run out of money and you skip your remaining picks.</p>
+      </div></li>
+      <li><div>
+        <h3>Climb the ladder</h3>
+        <p>There are no league fixtures. You play Champions ranked doubles on your own, then report each match: won or lost, who you sent out, their KOs, who fainted, and your rank afterwards. Everyone starts at <strong>Poké Ball 4</strong>, and the table ranks the league by ladder position.</p>
+      </div></li>
+      <li><div>
+        <h3>Get paid for winning</h3>
+        <p>Money only comes from wins, and a win is worth more the higher you are. Streaks multiply it. Only the first 10 matches of a round pay, so grinding can't buy the market.</p>
+      </div></li>
+      <li><div>
+        <h3>Run the club</h3>
+        <p>Sign free agents, sell back to the market, put a Pokémon up on the board at your own price, or trade with another club. Set your starting six, and name a captain.</p>
+      </div></li>
+      <li><div>
+        <h3>Answer events</h3>
+        <p>Things go wrong at a club: a star sulks, a flight doesn't land, the coach decides it's STAB moves only. Most events go up on an <strong>event board</strong> where clubs bid what they'd want to be paid to take one on. The lowest bid wins the money and the problem. You can't report another match until you've answered.</p>
+      </div></li>
+      <li><div>
+        <h3>Start again</h3>
+        <p>When the season ends, everyone goes back to Poké Ball 4 and every Pokémon except each club's <strong>captain</strong> is sold back at its current value. Then there's a new draft. The captain is the one Pokémon you carry from season to season.</p>
+      </div></li>
+    </ol>
+  </section>
+
+  <section aria-labelledby="money">
+    <h2 id="money">Money and value</h2>
+    <p class="section-lede">Money is only for signing Pokémon. There are no wages and no upkeep, and nothing tops you up except winning.</p>
+    <div class="split">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th scope="col">Ladder tier</th><th scope="col">A win pays</th><th scope="col">First time there</th><th scope="col">Value per match, win / loss</th></tr>
+          </thead>
+          <tbody>
+          <tr>
+            <th scope="row">Poké Ball</th>
+            <td class="tabular">₽1,000</td>
+            <td class="tabular"><span class="muted">—</span></td>
+            <td class="tabular"><span class="up">+3%</span> / <span class="down">-3%</span></td>
+          </tr>
+          <tr>
+            <th scope="row">Great Ball</th>
+            <td class="tabular">₽2,000</td>
+            <td class="tabular">+₽20,000</td>
+            <td class="tabular"><span class="up">+4%</span> / <span class="down">-3%</span></td>
+          </tr>
+          <tr>
+            <th scope="row">Ultra Ball</th>
+            <td class="tabular">₽10,000</td>
+            <td class="tabular">+₽20,000</td>
+            <td class="tabular"><span class="up">+5%</span> / <span class="down">-2%</span></td>
+          </tr>
+          <tr>
+            <th scope="row">Master Ball</th>
+            <td class="tabular">₽25,000</td>
+            <td class="tabular">+₽20,000</td>
+            <td class="tabular"><span class="up">+6%</span> / <span class="down">-2%</span></td>
+          </tr>
+          <tr>
+            <th scope="row">Champion</th>
+            <td class="tabular">₽100,000</td>
+            <td class="tabular">+₽20,000</td>
+            <td class="tabular"><span class="up">+6%</span> / <span class="down">-2%</span></td>
+          </tr></tbody>
+        </table>
+      </div>
+      <ul class="notes">
+        <li><strong>Streaks multiply wins:</strong> <strong>×3</strong> from the 3rd, <strong>×5</strong> from the 5th straight win. A loss pays nothing, and never costs you money.</li>
+        <li><strong>Signing is a commitment.</strong> You pay the full shop price and the Pokémon is then worth 45% of it, which is what you'd get back for selling it. Buying just to sell at a profit loses money.</li>
+        <li><strong>Value is discovered by playing.</strong> Every match a Pokémon plays moves its value. Winning low barely helps and losing low hurts; at the top it's the other way round. It never falls below ₽1,000.</li>
+        <li><strong>Running out is allowed.</strong> Spend it all on one star and you'll play a small squad until the wins come in.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section aria-labelledby="squad">
+    <h2 id="squad">Squad, lineup, match</h2>
+    <p class="section-lede">Three numbers. Only a starter can appear in a reported match, so signing a twelfth Pokémon means benching one of your six.</p>
+    <dl class="sizes">
+      <div><dt>12</dt><dd><strong>Squad</strong><span>Everything you own. Reserves rotate in between matches.</span></dd></div>
+      <div><dt>6</dt><dd><strong>Starting lineup</strong><span>The match-eligible Pokémon, set by dragging cards on your club page.</span></dd></div>
+      <div><dt>4</dt><dd><strong>Brought to a match</strong><span>Who you actually took into the game you're reporting.</span></dd></div>
+    </dl>
+  </section>
+
+  <section aria-labelledby="market">
+    <h2 id="market">The market</h2>
+    <p class="section-lede">
+      Prices come from the <a href="https://op.gg/pokemon-champions/tier">op.gg doubles ladder</a>
+      (captured 2026-09-22), not raw stats: Incineroar is priced as the
+      doubles star it is. Base stats only spread Pokémon out within a tier. Tap a tier to see who's in it.
+    </p>
+    <ul class="strip">
+        <li style="--tier:#ff5c5c">
+          <a href="tiers.html#tier-s">
+            <span class="chip">S</span>
+            <span class="band tabular">₽316k–₽400k</span>
+            <span class="count tabular">18 Pokémon</span>
+          </a>
+        </li>
+        <li style="--tier:#ff9f43">
+          <a href="tiers.html#tier-aplus">
+            <span class="chip">A+</span>
+            <span class="band tabular">₽178k–₽250k</span>
+            <span class="count tabular">35 Pokémon</span>
+          </a>
+        </li>
+        <li style="--tier:#ffd93d">
+          <a href="tiers.html#tier-a">
+            <span class="chip">A</span>
+            <span class="band tabular">₽92k–₽136k</span>
+            <span class="count tabular">35 Pokémon</span>
+          </a>
+        </li>
+        <li style="--tier:#6bcb77">
+          <a href="tiers.html#tier-b">
+            <span class="chip">B</span>
+            <span class="band tabular">₽40k–₽80k</span>
+            <span class="count tabular">55 Pokémon</span>
+          </a>
+        </li>
+        <li style="--tier:#4d96ff">
+          <a href="tiers.html#tier-c">
+            <span class="chip">C</span>
+            <span class="band tabular">₽10k–₽33k</span>
+            <span class="count tabular">52 Pokémon</span>
+          </a>
+        </li>
+        <li style="--tier:#9b8fd6">
+          <a href="tiers.html#tier-d">
+            <span class="chip">D</span>
+            <span class="band tabular">₽2k–₽8k</span>
+            <span class="count tabular">52 Pokémon</span>
+          </a>
+        </li>
+    </ul>
+  </section>
+
+  <div class="cta">
+    <p>Ready for the draft?</p>
+    <div class="actions">
+      <a class="btn primary" href="https://pokeleague.duckdns.org/">Log in or create an account →</a>
+      <a class="btn" href="tiers.html">Test a draft on the market</a>
+    </div>
+  </div>
+
+  <footer>
+    <p>Rules and figures are read from the league's own configuration, generated 2026-09-24. Each league's commissioner can change some of them.</p>
+    <p>Source on <a href="https://github.com/afdezfraga/pk_fantasy">GitHub</a>. A private tool for a friends' league. Pokémon and Pokémon Champions are trademarks of Nintendo, Creatures Inc. and GAME FREAK.</p>
+  </footer>
+</main>
+</html>

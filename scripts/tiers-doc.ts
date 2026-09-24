@@ -18,7 +18,7 @@ import { fileURLToPath } from 'node:url';
 
 import { LEAGUE_DEFAULTS, TIERS, type Tier } from '../config/economy.ts';
 import type { RosterFile } from '../lib/roster/types.ts';
-import { FONT_LINKS, TIER_COLOUR, TOKENS_CSS, escape, money } from './doc-kit.ts';
+import { FONT_LINKS, HOME_CSS, HOME_LINK, TIER_COLOUR, TOKENS_CSS, escape, money, tierAnchor } from './doc-kit.ts';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -85,7 +85,7 @@ function build(): string {
         .join('');
 
       return `
-      <section class="tier" style="--tier:${TIER_COLOUR[tier]}">
+      <section class="tier" id="${tierAnchor(tier)}" style="--tier:${TIER_COLOUR[tier]}">
         <header class="tier-head">
           <h2>${tier}</h2>
           <p class="tier-band tabular">${money(band.low)} – ${money(band.high)}</p>
@@ -116,6 +116,7 @@ ${FONT_LINKS}
    * ink on paper, because the other half of this document's life is a PDF before a draft.
    */
 ${TOKENS_CSS}
+${HOME_CSS}
 
   * { box-sizing: border-box; }
 
@@ -465,6 +466,7 @@ ${TOKENS_CSS}
 
 <main class="page">
   <header class="masthead">
+    ${HOME_LINK}
     <p class="eyebrow">Pokémon Champions · Fantasy League</p>
     <h1>Champions Market</h1>
     <p class="lede">

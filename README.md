@@ -122,6 +122,10 @@ and each tier's share of the roster. One self-contained file: open it in a brows
 PDF to hand round before a draft. Regenerate it after every repricing; it stamps the tier source,
 the capture date and the Bulbapedia revision, so an old sheet always says what it was built from.
 
+Together with the draft guide (`npm run guide:doc`) and a landing page that sums up the rules
+(`npm run site:doc`), it's published to GitHub Pages whenever one of them changes on `main`, so
+the league can price a draft without an account.
+
 ### Tuning the economy
 
 Two levers, in order of how often you'll reach for them:

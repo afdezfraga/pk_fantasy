@@ -20,7 +20,7 @@ import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { LEAGUE_DEFAULTS } from '../config/economy.ts';
-import { FONT_LINKS, TIER_COLOUR, TOKENS_CSS, escape, money, moneyShort } from './doc-kit.ts';
+import { FONT_LINKS, HOME_CSS, HOME_LINK, TIER_COLOUR, TOKENS_CSS, escape, money, moneyShort } from './doc-kit.ts';
 import { ROOT, loadGuide, type CardEntry, type Category, type GuideModel, type ScoredMon } from './guide-model.ts';
 
 const LEARNSET_LABEL: Record<string, string> = {
@@ -255,6 +255,7 @@ ${FONT_LINKS}
    * one to decide, that one to price. Dark on screen, ink on paper.
    */
 ${TOKENS_CSS}
+${HOME_CSS}
   :root {
     --power: #ffcb05;
     --role: #ff7eb6;
@@ -576,6 +577,7 @@ ${TOKENS_CSS}
 
 <main class="page">
   <header class="masthead">
+    ${HOME_LINK}
     <p class="eyebrow">Pokémon Champions · Fantasy League</p>
     <h1>Draft Guide</h1>
     <p class="lede">

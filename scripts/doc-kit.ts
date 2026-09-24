@@ -42,3 +42,26 @@ export const TOKENS_CSS = `  :root {
     --display: 'Barlow Condensed', 'Arial Narrow', system-ui, sans-serif;
     --body: 'Barlow', system-ui, -apple-system, 'Segoe UI', sans-serif;
   }`;
+
+/** "tier-aplus" — the market sheet's anchor for a tier, so other pages can link straight to it. */
+export const tierAnchor = (tier: Tier) => `tier-${tier.toLowerCase().replace('+', 'plus')}`;
+
+/**
+ * The way back to the landing page (`site:doc`). The documents are published side by side, and
+ * also sit side by side in `data/`, so a relative link works in both places. Paper has nowhere to
+ * go back to, so it doesn't print.
+ */
+export const HOME_CSS = `  .home {
+    display: inline-block;
+    margin-bottom: 14px;
+    font-family: var(--display);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-size: 12px;
+    color: var(--muted);
+    text-decoration: none;
+  }
+  .home:hover, .home:focus-visible { color: var(--accent); }
+  @media print { .home { display: none; } }`;
+
+export const HOME_LINK = `<a class="home" href="index.html">← League home</a>`;

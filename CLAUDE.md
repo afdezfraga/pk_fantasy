@@ -10,7 +10,7 @@ Deployment lives in [DEPLOY.md](DEPLOY.md).
 
 ## Updating the market (repricing every Pokémon)
 
-**Run `npm run market:update`.** It chains the five steps below and takes a couple of minutes.
+**Run `npm run market:update`.** It chains the six steps below and takes a couple of minutes.
 Run the steps individually when something needs checking in between.
 
 ```bash
@@ -19,6 +19,7 @@ npm run roster:build    # recompute prices  -> data/roster.json + .csv
 npm run db:seed         # push the catalog into the database
 npm run tiers:doc       # render the sheet  -> data/tiers.html
 npm run guide:doc       # render the guide  -> data/draft-guide.html
+npm run site:doc        # render the front  -> data/index.html
 ```
 
 **Always finish with the documents.** Every repricing gets a readable record — see *The document*
@@ -151,6 +152,17 @@ knowledge, not checked against Champions usage data), so treat them as editable 
 The logic is pure and tested in [lib/roster/draft-guide.ts](lib/roster/draft-guide.ts); the
 tests' canaries (Incineroar has Fake Out and Intimidate, Indeedee redirects) skip when there
 is no cache.
+
+## The landing page
+
+`npm run site:doc` renders **`data/index.html`**: the league's front door, with the rules in
+brief, a link to the app at https://pokeleague.duckdns.org/, and links to the market sheet and
+the draft guide. Every figure on it is read from `config/` and `data/`, so it can't drift from the
+game. It runs last in `market:update`, because its tier strip quotes prices.
+
+[.github/workflows/pages.yml](.github/workflows/pages.yml) publishes those three pages to GitHub
+Pages when any of them changes on `main`, and copies them by name, so nothing else in `data/` goes
+out. The pages link to each other relatively, so they work the same opened from `data/`.
 
 ---
 

@@ -1,6 +1,10 @@
 /**
- * Advancing a round: waivers clear, the per-round match pay cap starts again, and the league
- * draws one shared shock for everybody to answer for themselves.
+ * Advancing a round: waivers clear, the per-round match pay cap starts again, and restrictions
+ * measured in rounds lift.
+ *
+ * A round used to close with one shock dealt to every club. It no longer draws anything: the
+ * whole untriggered deck is auctioned on the event board instead, on the clock rather than on
+ * the round, so what a club takes on is something it chose and was paid for.
  *
  * A round closes by itself once at least half the clubs have played every match it pays for
  * (`closeRoundIfDone`), and the commissioner can close it early. There are no wages, upkeep or
@@ -14,7 +18,6 @@ import { PAYOUTS } from '../../config/scoring.ts';
 import { db } from '../db.ts';
 import { expireByRound } from './effects.ts';
 import { expireListings } from './listings.ts';
-import { drawLeagueEvent } from './events.ts';
 import { audit } from './money.ts';
 
 export class RoundError extends Error {
@@ -72,7 +75,7 @@ export async function openNextRound(
   return true;
 }
 
-/** Closes the current round and draws the shock that opens the next. Null if it already moved. */
+/** Closes the current round. Null if it already moved. */
 async function closeRound(input: {
   leagueId: string;
   round: number;
@@ -81,11 +84,7 @@ async function closeRound(input: {
 }) {
   const closed = await db.$transaction((tx) => openNextRound(tx, input));
   if (!closed) return null;
-
-  // Outside the transaction: a shock failing to draw must not undo the round that closed.
-  // Each club gets its own copy to answer, so the same news lands differently everywhere.
-  const events = await drawLeagueEvent(input.leagueId, input.round + 1);
-  return { round: input.round, events };
+  return { round: input.round };
 }
 
 /** The commissioner closing the round early, without waiting for the matches to be played. */

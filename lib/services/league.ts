@@ -8,6 +8,7 @@ import { LEAGUE_DEFAULTS, type LeagueConfig } from '../../config/economy.ts';
 import { SEASON_START, rungNumber } from '../ladder.ts';
 import { db } from '../db.ts';
 import { standingColumns } from './ladder.ts';
+import { audit } from './money.ts';
 import { parseConfig } from './ownership.ts';
 
 /** Ambiguous characters (O/0, I/1) are omitted — these get read aloud and typed on phones. */
@@ -40,6 +41,8 @@ export async function createLeague(input: {
   config?: Partial<LeagueConfig>;
 }) {
   const config: LeagueConfig = { ...LEAGUE_DEFAULTS, ...input.config };
+  const problem = checkBoardSettings(config);
+  if (problem) throw new LeagueError(problem);
 
   const catalog = await db.pokemon.findMany({
     where: { legal: true },
@@ -83,6 +86,65 @@ export async function createLeague(input: {
     }
   }
   throw new LeagueError('Could not generate a unique invite code. Try again.');
+}
+
+/** The event board's dials: the ones a league chooses at creation and may change afterwards. */
+export type BoardSettings = Pick<LeagueConfig, 'eventBoardHours' | 'eventBoardSize' | 'eventBidMax'>;
+
+/**
+ * Checks the board's dials, in words a commissioner can act on.
+ *
+ * The limits are generous on purpose — a league that wants a board a week, or one event at a
+ * time, is making a choice about its own pace — and only rule out the settings that would stop
+ * the board working: a board that closes before anybody could bid, one with nothing on it, or
+ * a ceiling of nothing, which turns every auction into a race to volunteer.
+ */
+export function checkBoardSettings(settings: BoardSettings): string | null {
+  const { eventBoardHours: hours, eventBoardSize: size, eventBidMax: max } = settings;
+  if (!Number.isInteger(hours) || hours < 1 || hours > 24 * 14) {
+    return 'The board has to stay open for between 1 hour and 14 days.';
+  }
+  if (!Number.isInteger(size) || size < 1 || size > 6) {
+    return 'Put between 1 and 6 events on each board.';
+  }
+  if (!Number.isInteger(max) || max < 1_000 || max > 10_000_000) {
+    return 'The most a club may ask has to be between ₽1,000 and ₽10,000,000.';
+  }
+  return null;
+}
+
+/**
+ * The commissioner changing the board's dials once the league is under way.
+ *
+ * Takes effect from the next board, not the one on show: its close time is published and
+ * clubs have bid against it, and a ceiling lowered under a bid already placed would leave that
+ * bid standing above the rule. Merged into the stored config rather than replacing it, so the
+ * league keeps every other setting it was created with.
+ */
+export async function updateBoardSettings(input: {
+  leagueId: string;
+  actorUserId: string;
+  settings: BoardSettings;
+}) {
+  const league = await db.league.findUnique({ where: { id: input.leagueId } });
+  if (!league) throw new LeagueError('League not found.');
+  if (league.commissionerId !== input.actorUserId) {
+    throw new LeagueError('Only the commissioner can change the league settings.');
+  }
+  const problem = checkBoardSettings(input.settings);
+  if (problem) throw new LeagueError(problem);
+
+  const config = { ...JSON.parse(league.config), ...input.settings };
+  await db.$transaction(async (tx) => {
+    await tx.league.update({ where: { id: league.id }, data: { config: JSON.stringify(config) } });
+    await audit(tx, {
+      leagueId: league.id,
+      actorUserId: input.actorUserId,
+      action: 'SETTINGS',
+      detail: { ...input.settings },
+    });
+  });
+  return parseConfig(JSON.stringify(config));
 }
 
 export async function joinLeague(input: { inviteCode: string; userId: string; teamName: string }) {

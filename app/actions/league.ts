@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
+import { LEAGUE_DEFAULTS } from '../../config/economy.ts';
 import { requireUser } from '../../lib/auth/session.ts';
 import { createLeague, joinLeague, LeagueError } from '../../lib/services/league.ts';
 import { finishDraft, makePick, passPick, startDraft, DraftError } from '../../lib/services/draft.ts';
@@ -35,9 +36,24 @@ export async function createLeagueAction(_prev: FormState, formData: FormData): 
   if (name.length < 3) return { error: 'Give the league a name of at least 3 characters.' };
   if (teamName.length < 2) return { error: 'Give your team a name.' };
 
+  // The event board's dials, chosen now and changeable later. A blank field keeps the default.
+  const dial = (key: 'eventBoardHours' | 'eventBoardSize' | 'eventBidMax') => {
+    const raw = String(formData.get(key) ?? '').replace(/[₽,\s]/g, '');
+    return raw === '' ? LEAGUE_DEFAULTS[key] : Number(raw);
+  };
+
   let leagueId: string;
   try {
-    const { league } = await createLeague({ name, commissionerId: user.id, teamName });
+    const { league } = await createLeague({
+      name,
+      commissionerId: user.id,
+      teamName,
+      config: {
+        eventBoardHours: dial('eventBoardHours'),
+        eventBoardSize: dial('eventBoardSize'),
+        eventBidMax: dial('eventBidMax'),
+      },
+    });
     leagueId = league.id;
   } catch (error) {
     return { error: toMessage(error) };

@@ -16,8 +16,11 @@ import {
   type EffectSpec,
 } from './effects.ts';
 import {
+  dealEvent,
   ensurePendingEvent,
   EventPendingError,
+  loadDeck,
+  materialise,
   parseChoices,
   pendingEvent,
   resolveEvent,
@@ -104,6 +107,41 @@ async function play(
   });
 }
 
+/**
+ * Hands the club one named template, the way the board does when it settles.
+ *
+ * The countdown only deals events a club caused, so it is no longer a way to get "an event" in
+ * a test. Stadium works is the default: no requirements, a paid branch and a free one.
+ */
+async function deal(leagueId: string, teamId: string, key = 'stadium_works') {
+  const template = loadDeck().find((candidate) => candidate.key === key)!;
+  const context = (await buildContext(leagueId, teamId))!;
+  const offer = materialise(template, context, null, () => 0.5);
+  return db.$transaction((tx) =>
+    dealEvent(tx, {
+      leagueId,
+      teamId,
+      round: context.round,
+      template,
+      context,
+      triggerSubject: null,
+      offer,
+      // Above every virtueChance in the deck, so this deals the problem, not the good day.
+      random: () => 0.5,
+    }),
+  );
+}
+
+/** Three market moves in one round: enough to set off "too many new faces". */
+async function churn(leagueId: string, teamId: string) {
+  for (const slug of ['ditto', 'furfrou', 'delibird']) {
+    const row = await db.ownership.findUniqueOrThrow({
+      where: { leagueId_pokemonSlug: { leagueId, pokemonSlug: slug } },
+    });
+    await acquireFreeAgent({ leagueId, pokemonSlug: slug, teamId, price: row.marketValue, type: 'MARKET_BUY' });
+  }
+}
+
 async function give(leagueId: string, teamId: string, spec: EffectSpec) {
   await db.$transaction(async (tx) => {
     await addEffect(tx, { ...spec, leagueId, teamId });
@@ -111,27 +149,37 @@ async function give(leagueId: string, teamId: string, spec: EffectSpec) {
   return (await activeEffects(leagueId, teamId)).at(-1)!;
 }
 
-describe('when an event arrives', () => {
-  it('gives every club one the moment the draft ends, before a ball is kicked', async () => {
-    const { league, team, users } = await makeActiveLeague();
-    // completeDraft zeroes the countdown; the draw itself is lazy.
+describe('when an event arrives on the countdown', () => {
+  it('deals nothing from the random deck — only what the club caused', async () => {
+    const { league, team } = await makeActiveLeague();
     await db.team.updateMany({ where: { leagueId: league.id }, data: { eventCountdown: 0 } });
 
-    // 0.5 is above every virtueChance in the deck, so this draws a problem rather than the
-    // occasional good day — which resolves itself and would rightly block nobody.
-    const drawn = await ensurePendingEvent(league.id, team.id, () => 0.5);
-    expect(drawn).not.toBeNull();
+    // A quiet, well-run club: nothing has fired, so the check finds nothing. The rest of the
+    // deck is the board's to auction, not the countdown's to deal.
+    expect(await ensurePendingEvent(league.id, team.id, () => 0.5)).toBeNull();
+    expect(await db.leagueEvent.count({ where: { leagueId: league.id } })).toBe(0);
+    // And the countdown is still spent, so the next check is another run of matches away.
+    expect((await db.team.findUniqueOrThrow({ where: { id: team.id } })).eventCountdown).toBeGreaterThan(0);
+  });
+
+  it('deals the event the club caused, and it blocks the next report', async () => {
+    const { league, team, users } = await makeActiveLeague();
+    await churn(league.id, team.id);
+    await db.team.update({ where: { id: team.id }, data: { eventCountdown: 0 } });
+
+    expect(await ensurePendingEvent(league.id, team.id, () => 0.5)).not.toBeNull();
 
     const event = await pendingEvent(league.id, team.id);
+    expect(event?.templateKey).toBe('unsettled_squad');
     expect(event?.status).toBe('PENDING');
     expect(event?.description).not.toContain('{');
 
-    // And it blocks match one until it is answered.
     await expect(play(league.id, team.id, users[0].id)).rejects.toThrow(EventPendingError);
   });
 
   it('draws exactly one when two page loads land together', async () => {
     const { league, team } = await makeActiveLeague();
+    await churn(league.id, team.id);
     await db.team.updateMany({ where: { leagueId: league.id }, data: { eventCountdown: 0 } });
 
     const results = await Promise.allSettled([
@@ -141,8 +189,6 @@ describe('when an event arrives', () => {
     ]);
     expect(results.every((result) => result.status === 'fulfilled')).toBe(true);
 
-    // One *draw*, which is the invariant. Asserting one pending row would be a claim about the
-    // deck rather than the race, since a virtue resolves itself the moment it fires.
     const events = await db.leagueEvent.findMany({
       where: { leagueId: league.id, teamId: team.id, status: { not: 'NOTICE' } },
     });
@@ -151,16 +197,16 @@ describe('when an event arrives', () => {
 
   it('puts a template on cooldown even when it came back as a virtue', async () => {
     // A virtue is stored as `<key>:virtue`, and the cooldown matches on the template key. Left
-    // unstripped the suffix never matched, so a club whose suspension was dismissed could draw
-    // the suspension again on its very next event.
+    // unstripped the suffix never matched, so a club whose trouble was dismissed could draw the
+    // same trouble again on its very next check.
     const { league, team } = await makeActiveLeague();
     await db.leagueEvent.create({
       data: {
         leagueId: league.id,
         teamId: team.id,
         round: 1,
-        templateKey: 'suspension:virtue',
-        title: 'Charge dismissed',
+        templateKey: 'unsettled_squad:virtue',
+        title: 'Settled after all',
         description: 'x',
         detail: JSON.stringify({ virtue: true, tone: 'fortune' }),
         status: 'RESOLVED',
@@ -170,24 +216,21 @@ describe('when an event arrives', () => {
       },
     });
 
+    await churn(league.id, team.id);
     await db.team.update({ where: { id: team.id }, data: { eventCountdown: 0 } });
-    await ensurePendingEvent(league.id, team.id, () => 0.5);
-
-    const drawn = await db.leagueEvent.findMany({
-      where: { leagueId: league.id, teamId: team.id, templateKey: { not: 'suspension:virtue' } },
-      select: { templateKey: true },
-    });
-    expect(drawn.map((row) => row.templateKey)).not.toContain('suspension');
+    expect(await ensurePendingEvent(league.id, team.id, () => 0.5)).toBeNull();
   });
 
   it('does nothing while the countdown is still running', async () => {
     const { league, team } = await makeActiveLeague();
+    await churn(league.id, team.id);
     await db.team.update({ where: { id: team.id }, data: { eventCountdown: 5 } });
     expect(await ensurePendingEvent(league.id, team.id)).toBeNull();
   });
 
   it('stays out of a league that has switched events off', async () => {
     const { league, team } = await makeActiveLeague({ config: { eventsEnabled: 0 } });
+    await churn(league.id, team.id);
     await db.team.update({ where: { id: team.id }, data: { eventCountdown: 0 } });
     expect(await ensurePendingEvent(league.id, team.id)).toBeNull();
   });
@@ -201,6 +244,8 @@ describe('when an event arrives', () => {
 
     await play(league.id, team.id, users[0].id);
     expect((await db.team.findUniqueOrThrow({ where: { id: team.id } })).eventCountdown).toBe(0);
+
+    await churn(league.id, team.id);
     expect(await ensurePendingEvent(league.id, team.id, () => 0.5)).not.toBeNull();
   });
 });
@@ -208,8 +253,7 @@ describe('when an event arrives', () => {
 describe('answering it', () => {
   it('charges the option and unblocks the club', async () => {
     const { league, team, users } = await makeActiveLeague();
-    await db.team.update({ where: { id: team.id }, data: { eventCountdown: 0 } });
-    await ensurePendingEvent(league.id, team.id, () => 0.5);
+    await deal(league.id, team.id);
 
     const event = (await pendingEvent(league.id, team.id))!;
     const option = parseChoices(event.choices).find((candidate) => candidate.default)!;
@@ -257,8 +301,7 @@ describe('answering it', () => {
 
   it('refuses an option that was never on the table', async () => {
     const { league, team, users } = await makeActiveLeague();
-    await db.team.update({ where: { id: team.id }, data: { eventCountdown: 0 } });
-    await ensurePendingEvent(league.id, team.id, () => 0.5);
+    await deal(league.id, team.id);
     const event = (await pendingEvent(league.id, team.id))!;
 
     await expect(
@@ -268,8 +311,7 @@ describe('answering it', () => {
 
   it('cannot be answered twice', async () => {
     const { league, team, users } = await makeActiveLeague();
-    await db.team.update({ where: { id: team.id }, data: { eventCountdown: 0 } });
-    await ensurePendingEvent(league.id, team.id, () => 0.5);
+    await deal(league.id, team.id);
     const event = (await pendingEvent(league.id, team.id))!;
     const key = parseChoices(event.choices).find((option) => option.default)!.key;
 
@@ -284,8 +326,8 @@ describe('answering it', () => {
     // With it gone, the deck rule is the whole of it: every template carries an option with no
     // cost and no requirement, so the answer is always the manager's own.
     const { league, team, users } = await makeActiveLeague({ size: 4 });
-    await db.team.update({ where: { id: team.id }, data: { eventCountdown: 0, cash: 0 } });
-    await ensurePendingEvent(league.id, team.id, () => 0.5);
+    await db.team.update({ where: { id: team.id }, data: { cash: 0 } });
+    await deal(league.id, team.id);
     const event = (await pendingEvent(league.id, team.id))!;
 
     const free = parseChoices(event.choices).filter(
@@ -671,8 +713,7 @@ describe('the round is always recorded', () => {
   it('stamps a restriction with the round it came into force', async () => {
     const { league, team } = await makeActiveLeague({ size: 4 });
     await db.league.update({ where: { id: league.id }, data: { round: 4 } });
-    await db.team.update({ where: { id: team.id }, data: { eventCountdown: 0 } });
-    await ensurePendingEvent(league.id, team.id, () => 0.5);
+    await deal(league.id, team.id);
 
     const event = (await pendingEvent(league.id, team.id))!;
     expect(event.round).toBe(4);
@@ -680,58 +721,14 @@ describe('the round is always recorded', () => {
 });
 
 describe('closing a round', () => {
-  it('gives every club the same shock, not one each', async () => {
+  it('deals nobody anything — the board is where events come from now', async () => {
     const { league, users } = await makeActiveLeague();
     await db.team.updateMany({ where: { leagueId: league.id }, data: { eventCountdown: 9 } });
 
-    const { events } = await advanceRound({ leagueId: league.id, actorUserId: users[0].id });
-    expect(events).toBeGreaterThan(0);
+    await advanceRound({ leagueId: league.id, actorUserId: users[0].id });
 
-    const drawn = await db.leagueEvent.findMany({
-      where: { leagueId: league.id, round: { gte: 1 }, status: { not: 'NOTICE' } },
-    });
-    const fromTheRound = drawn.filter((row) => row.teamId !== null);
-    // One template, one evening, every club. A private draw each would defeat the only event in
-    // the deck the league can talk to itself about.
-    expect(new Set(fromTheRound.map((row) => row.templateKey)).size).toBe(1);
-    expect(fromTheRound.length).toBe(events);
-
-    // Drawing costs nothing — a shock is a decision, not a bill.
+    expect(await db.leagueEvent.count({ where: { leagueId: league.id } })).toBe(0);
     expect(await verifyLedger(db, league.id)).toEqual([]);
-  });
-
-  it('names the same type to everybody when the regulation moves', async () => {
-    const { league, other, users } = await makeActiveLeague();
-    // Give the second club a squad of its own, so "most owned" is a league-wide count rather
-    // than one club's shelf.
-    for (const slug of ['ditto', 'furfrou', 'delibird']) {
-      const row = await db.ownership.findUniqueOrThrow({
-        where: { leagueId_pokemonSlug: { leagueId: league.id, pokemonSlug: slug } },
-      });
-      await acquireFreeAgent({
-        leagueId: league.id,
-        pokemonSlug: slug,
-        teamId: other.id,
-        price: row.marketValue,
-        type: 'DRAFT_PICK',
-      });
-    }
-    await db.team.updateMany({ where: { leagueId: league.id }, data: { eventCountdown: 9 } });
-
-    // Keep drawing rounds until the regulation is the one that comes up.
-    let bans: { label: string }[] = [];
-    for (let attempt = 0; attempt < 25 && bans.length < 2; attempt += 1) {
-      await advanceRound({ leagueId: league.id, actorUserId: users[0].id });
-      bans = await db.activeEffect.findMany({
-        where: { leagueId: league.id, kind: 'TYPE_BAN' },
-        select: { label: true },
-      });
-    }
-
-    if (bans.length >= 2) {
-      // Every club is under the same regulation, word for word.
-      expect(new Set(bans.map((ban) => ban.label)).size).toBe(1);
-    }
   });
 
   it('moves no money in a league with events switched off', async () => {
@@ -1167,8 +1164,7 @@ describe('a favour measured in events', () => {
     expect((await activeEffects(league.id, team.id))[0].eventsLeft).toBe(2);
 
     // Being dealt an event does. The one that arrives never counts against itself.
-    await db.team.update({ where: { id: team.id }, data: { eventCountdown: 0 } });
-    await ensurePendingEvent(league.id, team.id, () => 0.5);
+    await deal(league.id, team.id);
     const spent = (await activeEffects(league.id, team.id)).find(
       (effect) => effect.kind === 'CAPTAIN_SPENT',
     );

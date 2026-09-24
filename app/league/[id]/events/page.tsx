@@ -1,6 +1,7 @@
 import { notFound, redirect } from 'next/navigation';
 
 import { getSessionUser } from '../../../../lib/auth/session.ts';
+import { getBoard, recentResults, sweepBoard } from '../../../../lib/services/board.ts';
 import { activeEffects } from '../../../../lib/services/effects.ts';
 import {
   ensurePendingEvent,
@@ -10,7 +11,11 @@ import {
 } from '../../../../lib/services/events.ts';
 import { getLeagueContext } from '../../../../lib/services/league.ts';
 import { Constraints } from '../../../components/Constraints.tsx';
+import { money } from '../../../../lib/format.ts';
 import { Empty, NavTabs, Panel } from '../../../components/ui.tsx';
+import { BoardCard } from './BoardCard.tsx';
+import { BoardSettingsForm } from './BoardSettingsForm.tsx';
+import { Deadline } from './Deadline.tsx';
 import { EventCard } from './EventCard.tsx';
 
 export const dynamic = 'force-dynamic';
@@ -34,14 +39,18 @@ export default async function EventsPage({ params }: { params: Promise<{ id: str
 
   const { league, myTeam, isCommissioner, config } = context;
 
-  // The draw is lazy, so opening this page is one of the moments an event can arrive.
-  if (myTeam && league.status === 'ACTIVE' && config.eventsEnabled) {
-    await ensurePendingEvent(id, myTeam.id);
-  }
+  // Both are lazy, so opening this page is one of the moments a board closes — and with it, an
+  // event arrives for whoever won it — or an event the club caused comes due.
+  const live = league.status === 'ACTIVE' && Boolean(config.eventsEnabled);
+  if (live) await sweepBoard(id);
+  if (myTeam && live) await ensurePendingEvent(id, myTeam.id);
 
   const pending = myTeam ? await pendingEvent(id, myTeam.id) : null;
   const history = myTeam ? await getTeamEvents(id, myTeam.id, 20) : [];
   const effects = myTeam ? await activeEffects(id, myTeam.id) : [];
+  const board = live ? await getBoard(id, myTeam?.id ?? null) : [];
+  const results = config.eventsEnabled ? await recentResults(id, 6) : [];
+  const closesAt = board[0]?.closesAt ?? null;
 
   const past = history.filter((event) => event.id !== pending?.id);
 
@@ -88,6 +97,90 @@ export default async function EventsPage({ params }: { params: Promise<{ id: str
         </Panel>
       )}
 
+      {live && (
+        <Panel
+          title="Event board"
+          action={closesAt ? <Deadline at={closesAt.toISOString()} /> : undefined}
+        >
+          <p className="mb-3 text-xs leading-relaxed text-muted">
+            Say what you&rsquo;d want to be paid to take each one on. When the board closes the
+            lowest bid gets the event and the money; a tie goes to the club lower down the table,
+            and an event nobody bids on simply goes away. Bids are sealed and final, and nobody
+            else&rsquo;s is ever shown. Each club sees its own version — if a Pokémon it names
+            leaves your squad, it is written again for one who&rsquo;s still there.
+          </p>
+          {board.length === 0 ? (
+            <Empty>Nothing on the board right now. The next one goes up when this one closes.</Empty>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {board.map((entry) => (
+                <BoardCard
+                  key={entry.id}
+                  leagueId={id}
+                  auctionId={entry.id}
+                  title={entry.title}
+                  description={entry.description}
+                  announcement={entry.announcement}
+                  closedReason={myTeam ? entry.closedReason : 'You have no club in this league.'}
+                  myBid={entry.myBid}
+                  bidMax={config.eventBidMax}
+                  options={entry.options.map((option) => ({
+                    key: option.key,
+                    label: option.label,
+                    detail: option.detail,
+                    cost: option.cost,
+                    available: option.available,
+                    unavailableReason: option.unavailableReason,
+                    default: option.default,
+                  }))}
+                />
+              ))}
+            </div>
+          )}
+        </Panel>
+      )}
+
+      {results.length > 0 && (
+        <Panel title="Board results">
+          <ul className="flex flex-col divide-y divide-line">
+            {results.map((result) => (
+              <li key={result.id} className="flex items-baseline justify-between gap-3 py-2 text-sm">
+                <span className="min-w-0">
+                  <span className="font-medium text-ink">{result.title}</span>
+                  <span className="text-muted">
+                    {result.winner
+                      ? ` — ${result.winnerTeamId === myTeam?.id ? 'you' : result.winner}`
+                      : ' — nobody bid'}
+                  </span>
+                </span>
+                <span className="tabular shrink-0 text-xs text-muted">
+                  {result.winner && result.amount !== null
+                    ? `${money(result.amount)} · ${result.bids} ${result.bids === 1 ? 'bid' : 'bids'}`
+                    : 'gone'}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Panel>
+      )}
+
+      {isCommissioner && config.eventsEnabled && (
+        <Panel title="Board settings">
+          <p className="text-xs text-muted">
+            Changes apply from the next board. The one on show keeps the close time and ceiling
+            clubs have already bid against.
+          </p>
+          <BoardSettingsForm
+            leagueId={id}
+            values={{
+              eventBoardHours: config.eventBoardHours,
+              eventBoardSize: config.eventBoardSize,
+              eventBidMax: config.eventBidMax,
+            }}
+          />
+        </Panel>
+      )}
+
       {effects.length > 0 && (
         <Panel title="What you're playing under">
           <Constraints
@@ -106,8 +199,8 @@ export default async function EventsPage({ params }: { params: Promise<{ id: str
       <Panel title={pending ? 'Earlier' : 'Your events'}>
         {past.length === 0 ? (
           <Empty>
-            Nothing has happened to your club yet. Events arrive every few matches — and one lands
-            the moment the draft ends.
+            Nothing has happened to your club yet. Events come from the board above, when you win
+            one — or, every few matches, from something your club has done.
           </Empty>
         ) : (
           <ul className="flex flex-col divide-y divide-line">

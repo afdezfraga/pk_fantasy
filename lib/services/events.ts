@@ -1,10 +1,16 @@
 /**
- * Random events, as decisions a manager makes.
+ * Events, as decisions a manager makes.
  *
- * An event is a problem, not a number that moves by itself. It is drawn for one club every few
- * matches, it blocks that club from reporting another match until it is answered, and answering
- * it costs something — money, a Pokémon's availability, or the freedom to battle the way you
- * would like to for the next few matches.
+ * An event is a problem, not a number that moves by itself. It blocks the club holding it from
+ * reporting another match until it is answered, and answering it costs something — money, a
+ * Pokémon's availability, or the freedom to battle the way you would like to for the next few
+ * matches.
+ *
+ * A club comes to hold one in two ways. An event it *caused* — a Pokémon it forgot, a squad it
+ * churned — is dealt to it directly, checked every few matches. Everything else in the deck is
+ * auctioned on the event board (`board.ts`), where clubs bid for how little they would take to
+ * be paid to live with it. This module turns a template into what a club would face; the board
+ * decides which club faces it.
  *
  * Three rules hold the whole thing up:
  *
@@ -190,7 +196,6 @@ export interface EventTemplate {
   key: string;
   title: string;
   description: string;
-  scope: 'team' | 'league';
   weight: number;
   cooldown?: number;
   tierLadder?: boolean;
@@ -262,9 +267,6 @@ export function validateDeck(deck: EventTemplate[]): string[] {
     seen.add(template.key);
 
     if (!(template.weight > 0)) problems.push(`${where}: weight must be positive`);
-    if (template.scope !== 'team' && template.scope !== 'league') {
-      problems.push(`${where}: scope must be "team" or "league"`);
-    }
     if (template.announcement) {
       if (!template.effects?.length) {
         problems.push(`${where}: an announcement needs effects — it is news, and news has to do something`);
@@ -591,17 +593,11 @@ export function materialise(
   context: EventContext,
   triggerSubject: string | null,
   random = Math.random,
-  /**
-   * Variables settled outside this club, for a shock the whole league is answering. A regulation
-   * that hit Water-types hit Water-types everywhere; resolving the macro per club would give
-   * every manager their own private regulation and nobody anything to talk about.
-   */
-  shared: { type?: string } = {},
 ): { description: string; subject: string | null; options: StoredOption[] } {
   const subject = resolveTarget(context, template.target, triggerSubject, random);
   const authoredType = [...template.options.flatMap((o) => o.effects), ...(template.effects ?? [])]
     .find((effect) => effect.type)?.type;
-  const templateType = shared.type ?? resolveType(context, authoredType, random);
+  const templateType = resolveType(context, authoredType, random);
 
   const other = resolveTarget(context, template.otherTarget, null, random);
 
@@ -622,7 +618,7 @@ export function materialise(
     const targets = repeatTargets(option, context, subject);
     return targets
       .map((optionSubject) =>
-        offerOption(template, option, context, optionSubject, triggerSubject, baseVars, random, shared),
+        offerOption(template, option, context, optionSubject, triggerSubject, baseVars, random),
       )
       .filter((offered): offered is StoredOption => offered !== null);
   });
@@ -714,7 +710,6 @@ function offerOption(
   triggerSubject: string | null,
   baseVars: Record<string, string>,
   random: () => number,
-  shared: { type?: string } = {},
 ): StoredOption | null {
   const severity = severityFor(template, context, subject);
   const cost = scale(costOf(context, option, subject), severity, 100);
@@ -730,7 +725,7 @@ function offerOption(
     const slug = effect.target
       ? resolveTarget(context, effect.target, triggerSubject, random)
       : subject;
-    const type = shared.type ?? resolveType(context, effect.type, random);
+    const type = resolveType(context, effect.type, random);
     const effectVars: Record<string, string> = {
       ...vars,
       pokemon: labelFor(context, slug),
@@ -973,30 +968,50 @@ async function recentKeys(leagueId: string, teamId: string): Promise<string[]> {
   return rows.map((row) => row.templateKey.replace(/:virtue$/, ''));
 }
 
-function eligible(
+/** Whether a template is one a club causes, rather than one the board auctions. */
+export function isTriggered(template: EventTemplate): boolean {
+  return template.trigger !== undefined;
+}
+
+/**
+ * The triggered templates this club has actually set off, with the Pokémon that set each off.
+ *
+ * A triggered template is *only* eligible when its trigger has fired — "the Pokémon you forgot
+ * about" is meaningless drawn at random.
+ */
+function fired(
   deck: EventTemplate[],
   context: EventContext,
   recent: string[],
-  scope: 'team' | 'league',
-): { template: EventTemplate; subject: string | null; triggered: boolean }[] {
+): { template: EventTemplate; subject: string | null }[] {
   return deck
-    .filter((template) => template.scope === scope)
+    .filter(isTriggered)
     .filter((template) => {
       const seenAt = recent.indexOf(template.key);
       return seenAt === -1 || seenAt >= (template.cooldown ?? 0);
     })
     .filter((template) => meetsRequires(context, template.requires))
-    .map((template) => {
-      const trigger = fires(context, template.trigger);
-      return { template, subject: trigger.subject, triggered: trigger.fired };
-    })
-    // A template that declares a trigger is *only* eligible when that trigger has fired —
-    // "the Pokémon you forgot about" is meaningless drawn at random.
-    .filter((candidate) => !candidate.template.trigger || candidate.triggered);
+    .map((template) => ({ template, trigger: fires(context, template.trigger) }))
+    .filter((candidate) => candidate.trigger.fired)
+    .map((candidate) => ({ template: candidate.template, subject: candidate.trigger.subject }));
+}
+
+/** The deck, refused outright if it is not safe to deal from. */
+export function safeDeck(): EventTemplate[] {
+  const deck = loadDeck();
+  const problems = validateDeck(deck);
+  if (problems.length > 0) {
+    throw new EventError(`data/events.json is not safe to draw from: ${problems[0]}`);
+  }
+  return deck;
 }
 
 /**
- * Draws this club's next event if one is due.
+ * Deals this club an event it caused, if one is due and it has caused one.
+ *
+ * Only triggered templates arrive this way; the rest of the deck is auctioned on the board. So
+ * a club that has been managing sensibly is checked every few matches and, most of the time,
+ * finds nothing — which is the point. What lands here is a consequence, not a roll.
  *
  * Lazy and idempotent: called from whichever page the manager happens to open. The countdown is
  * claimed with a guarded UPDATE — the same shape that makes two people racing for one Pokémon
@@ -1028,16 +1043,8 @@ export async function ensurePendingEvent(
   const context = await buildContext(leagueId, teamId);
   if (!context) return null;
 
-  const deck = loadDeck();
-  const problems = validateDeck(deck);
-  if (problems.length > 0) {
-    throw new EventError(`data/events.json is not safe to draw from: ${problems[0]}`);
-  }
-
-  const candidates = eligible(deck, context, await recentKeys(leagueId, teamId), 'team');
-  const triggered = candidates.filter((candidate) => candidate.triggered);
-  const pool = triggered.length > 0 ? triggered : candidates;
-  if (pool.length === 0) return null; // A quiet spell is a legitimate outcome.
+  const pool = fired(safeDeck(), context, await recentKeys(leagueId, teamId));
+  if (pool.length === 0) return null; // Nothing caused — the usual outcome, and a good one.
 
   const chosen = pickWeighted(
     pool.map((candidate) => ({ ...candidate, weight: candidate.template.weight })),
@@ -1045,116 +1052,108 @@ export async function ensurePendingEvent(
   );
   if (!chosen) return null;
 
-  return createEvent({
-    leagueId,
-    teamId,
-    round: league.round,
-    template: chosen.template,
-    context,
-    triggerSubject: chosen.subject,
-    random,
-  });
+  const offer = materialise(chosen.template, context, chosen.subject, random);
+  return db.$transaction((tx) =>
+    dealEvent(tx, {
+      leagueId,
+      teamId,
+      round: league.round,
+      template: chosen.template,
+      context,
+      triggerSubject: chosen.subject,
+      offer,
+      random,
+    }),
+  );
 }
 
+/** A materialised template: what one club would face. */
+export type Offer = ReturnType<typeof materialise>;
+
 /**
- * Writes the event, or applies a virtue outright.
+ * Hands one club an event, inside a transaction somebody else opened, or applies a virtue
+ * outright.
+ *
+ * Takes the offer already materialised, because the board has to show a club exactly what it
+ * is bidding on and then deal exactly that — materialising it again here would reroll every
+ * random choice in it.
  *
  * A deck tuned to take things away needs somewhere for the occasional good day to come from.
  * When a virtue fires there is nothing to decide — it is news, not a problem — so it resolves
  * itself and never blocks anybody.
  */
-async function createEvent(input: {
-  leagueId: string;
-  teamId: string;
-  round: number;
-  template: EventTemplate;
-  context: EventContext;
-  triggerSubject: string | null;
-  random: () => number;
-  shared?: { type?: string };
-}): Promise<{ id: string }> {
-  const { template, context, random } = input;
-  const shared = input.shared ?? {};
-  const offer = materialise(template, context, input.triggerSubject, random, shared);
+export async function dealEvent(
+  tx: Prisma.TransactionClient,
+  input: {
+    leagueId: string;
+    teamId: string;
+    round: number;
+    template: EventTemplate;
+    context: EventContext;
+    triggerSubject: string | null;
+    offer: Offer;
+    random: () => number;
+    /** Extra fields for the row's `detail`, such as the auction it was won in. */
+    detail?: Record<string, unknown>;
+  },
+): Promise<{ id: string }> {
+  const { template, context, random, offer } = input;
+  const extra = input.detail ?? {};
 
   const virtueChance = template.virtue ? (template.virtueChance ?? 0) : 0;
   const isVirtue = virtueChance > 0 && random() * 100 < virtueChance;
 
-  return db.$transaction(async (tx) => {
-    // Being dealt this event is what spends a favour measured in events. Done before the row is
-    // written so the crisis a club is looking at never counts against itself.
-    await tickEventEffects(tx, {
-      leagueId: input.leagueId,
-      teamId: input.teamId,
-      round: input.round,
+  // Being dealt this event is what spends a favour measured in events. Done before the row is
+  // written so the crisis a club is looking at never counts against itself.
+  await tickEventEffects(tx, {
+    leagueId: input.leagueId,
+    teamId: input.teamId,
+    round: input.round,
+  });
+
+  if (isVirtue && template.virtue) {
+    const virtue = materialise(
+      { ...template, announcement: false, options: [], description: template.virtue.description },
+      context,
+      input.triggerSubject,
+      random,
+    );
+    const event = await tx.leagueEvent.create({
+      data: {
+        leagueId: input.leagueId,
+        teamId: input.teamId,
+        round: input.round,
+        templateKey: `${template.key}:virtue`,
+        title: template.virtue.title,
+        description: virtue.description,
+        // A virtue is always good news, whatever the template it inverted.
+        detail: JSON.stringify({ ...extra, virtue: true, subject: offer.subject, tone: 'fortune' }),
+        status: 'RESOLVED',
+        choices: '[]',
+        choiceKey: 'virtue',
+        resolvedAt: new Date(),
+      },
     });
 
-    if (isVirtue && template.virtue) {
-      const virtue = materialise(
-        { ...template, announcement: false, options: [], description: template.virtue.description },
-        context,
-        input.triggerSubject,
-        random,
-        shared,
-      );
-      const event = await tx.leagueEvent.create({
-        data: {
-          leagueId: input.leagueId,
-          teamId: input.teamId,
-          round: input.round,
-          templateKey: `${template.key}:virtue`,
-          title: template.virtue.title,
-          description: virtue.description,
-          // A virtue is always good news, whatever the template it inverted.
-          detail: JSON.stringify({ virtue: true, subject: offer.subject, tone: 'fortune' }),
-          status: 'RESOLVED',
-          choices: '[]',
-          choiceKey: 'virtue',
-          resolvedAt: new Date(),
-        },
-      });
-
-      const effects = materialise(
-        {
-          ...template,
-          announcement: false,
-          options: [{ key: 'virtue', label: '', detail: '', effects: template.virtue.effects }],
-        },
-        context,
-        input.triggerSubject,
-        random,
-        shared,
-      );
-      for (const effect of effects.options[0].effects) {
-        await applyEffect(tx, { ...input, eventId: event.id }, effect);
-      }
-      return { id: event.id };
+    const effects = materialise(
+      {
+        ...template,
+        announcement: false,
+        options: [{ key: 'virtue', label: '', detail: '', effects: template.virtue.effects }],
+      },
+      context,
+      input.triggerSubject,
+      random,
+    );
+    for (const effect of effects.options[0].effects) {
+      await applyEffect(tx, { ...input, eventId: event.id }, effect);
     }
+    return { id: event.id };
+  }
 
-    // News, not a question. It applies itself and never blocks a club from reporting, because
-    // there is nothing for them to answer.
-    if (template.announcement) {
-      const event = await tx.leagueEvent.create({
-        data: {
-          leagueId: input.leagueId,
-          teamId: input.teamId,
-          round: input.round,
-          templateKey: template.key,
-          title: template.title,
-          description: offer.description,
-          detail: JSON.stringify({ announcement: true, subject: offer.subject }),
-          status: 'RESOLVED',
-          choices: '[]',
-          choiceKey: 'announcement',
-          resolvedAt: new Date(),
-        },
-      });
-      for (const effect of offer.options[0]?.effects ?? []) {
-        await applyEffect(tx, { ...input, eventId: event.id }, effect);
-      }
-      return { id: event.id };
-    }
-
+  // News, not a question. It applies itself and never blocks a club from reporting, because
+  // there is nothing for them to answer.
+  if (template.announcement) {
     const event = await tx.leagueEvent.create({
       data: {
         leagueId: input.leagueId,
@@ -1163,117 +1162,45 @@ async function createEvent(input: {
         templateKey: template.key,
         title: template.title,
         description: offer.description,
-        detail: JSON.stringify({
-          subject: offer.subject,
-          triggered: input.triggerSubject !== null,
-          ...(template.tone ? { tone: template.tone } : {}),
-        }),
-        status: 'PENDING',
-        choices: JSON.stringify(offer.options),
+        detail: JSON.stringify({ ...extra, announcement: true, subject: offer.subject }),
+        status: 'RESOLVED',
+        choices: '[]',
+        choiceKey: 'announcement',
+        resolvedAt: new Date(),
       },
     });
-
-    await audit(tx, {
-      leagueId: input.leagueId,
-      action: 'EVENT_DRAWN',
-      detail: { eventId: event.id, teamId: input.teamId, templateKey: template.key },
-    });
-
+    for (const effect of offer.options[0]?.effects ?? []) {
+      await applyEffect(tx, { ...input, eventId: event.id }, effect);
+    }
     return { id: event.id };
+  }
+
+  const event = await tx.leagueEvent.create({
+    data: {
+      leagueId: input.leagueId,
+      teamId: input.teamId,
+      round: input.round,
+      templateKey: template.key,
+      title: template.title,
+      description: offer.description,
+      detail: JSON.stringify({
+        ...extra,
+        subject: offer.subject,
+        triggered: input.triggerSubject !== null,
+        ...(template.tone ? { tone: template.tone } : {}),
+      }),
+      status: 'PENDING',
+      choices: JSON.stringify(offer.options),
+    },
   });
-}
 
-/** One league-wide shock, offered to every club to answer for itself. */
-/**
- * The shock a round closes with: one event, drawn once, answered by everybody.
- *
- * Deliberately not a loop of private draws. A league-scope event is the only thing in the deck
- * that every manager can talk to each other about, and that only works if it is the same event —
- * the same regulation, hitting the same type, on the same evening. So the template is picked
- * once for the league and its shared variables are settled once, then each club gets its own row
- * to deal with in its own squad.
- */
-export async function drawLeagueEvent(
-  leagueId: string,
-  round: number,
-  random = Math.random,
-): Promise<number> {
-  const league = await db.league.findUnique({ where: { id: leagueId }, include: { teams: true } });
-  if (!league) return 0;
+  await audit(tx, {
+    leagueId: input.leagueId,
+    action: 'EVENT_DRAWN',
+    detail: { eventId: event.id, teamId: input.teamId, templateKey: template.key },
+  });
 
-  const config = parseConfig(league.config);
-  if (!config.eventsEnabled) return 0;
-
-  const deck = loadDeck();
-
-  // Every club's situation first: what is eligible for the league is what is eligible for
-  // somebody in it, and the shared variables are read off all the squads at once.
-  const contexts: { teamId: string; context: EventContext }[] = [];
-  for (const team of league.teams) {
-    const context = await buildContext(leagueId, team.id);
-    if (context) contexts.push({ teamId: team.id, context });
-  }
-  if (contexts.length === 0) return 0;
-
-  const pool = new Map<string, { template: EventTemplate; weight: number }>();
-  for (const { teamId, context } of contexts) {
-    for (const candidate of eligible(deck, context, await recentKeys(leagueId, teamId), 'league')) {
-      pool.set(candidate.template.key, {
-        template: candidate.template,
-        weight: candidate.template.weight,
-      });
-    }
-  }
-  if (pool.size === 0) return 0;
-
-  const chosen = pickWeighted([...pool.values()], random);
-  if (!chosen) return 0;
-
-  const shared = { type: sharedType(contexts.map((entry) => entry.context), random) ?? undefined };
-
-  let drawn = 0;
-  for (const { teamId, context } of contexts) {
-    // A club already holding a decision is not handed a second one; it will see this in the feed.
-    if (await pendingEvent(leagueId, teamId)) continue;
-    if (!meetsRequires(context, chosen.template.requires)) continue;
-
-    await createEvent({
-      leagueId,
-      teamId,
-      round,
-      template: chosen.template,
-      context,
-      triggerSubject: null,
-      random,
-      shared,
-    });
-    drawn += 1;
-  }
-
-  return drawn;
-}
-
-/**
- * The type a league-wide shock lands on: whatever the league as a whole owns most of.
- *
- * The meta moving against the thing everybody plays is both the likeliest story and the one that
- * divides a league most sharply — the clubs that built around it are in trouble, and the club
- * that never owned one gets to say so all week.
- */
-function sharedType(contexts: EventContext[], random: () => number): string | null {
-  const counts = new Map<string, number>();
-  for (const context of contexts) {
-    for (const member of context.squad) {
-      for (const type of member.types) counts.set(type, (counts.get(type) ?? 0) + 1);
-    }
-  }
-  if (counts.size === 0) return null;
-
-  const ranked = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
-  // A tie at the top is broken by the roll, so a league of two identical squads is not condemned
-  // to the same regulation every time it comes round.
-  const top = ranked.filter((entry) => entry[1] === ranked[0][1]);
-  return top[Math.floor(random() * top.length)][0];
+  return { id: event.id };
 }
 
 // --- answering ----------------------------------------------------------------------------------

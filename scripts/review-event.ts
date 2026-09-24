@@ -24,7 +24,7 @@ for (const key of keys) {
   if (!t) { console.log(`?? unknown key ${key}`); continue; }
   const n = deck.indexOf(t) + 1;
   console.log(`━━ ${n}/${deck.length}  ${t.title}   [${t.key}]`);
-  console.log(`   scope ${t.scope} · weight ${t.weight} · cooldown ${t.cooldown ?? 0}${t.severityMult ? ` · severityMult ${JSON.stringify(t.severityMult)}` : ''}${t.target ? ` · target ${t.target}` : ''}`);
+  console.log(`   ${t.trigger ? "triggered" : "board"} · weight ${t.weight} · cooldown ${t.cooldown ?? 0}${t.severityMult ? ` · severityMult ${JSON.stringify(t.severityMult)}` : ''}${t.target ? ` · target ${t.target}` : ''}`);
   if (t.requires) console.log(`   requires ${JSON.stringify(t.requires)}`);
   if (t.trigger) console.log(`   trigger  ${JSON.stringify(t.trigger)}`);
   if (t.virtue) console.log(`   virtue @${t.virtueChance ?? 8}%: ${t.virtue.title}`);

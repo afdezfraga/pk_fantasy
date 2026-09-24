@@ -91,7 +91,6 @@ describe('validateDeck', () => {
     key: 'x',
     title: 'X',
     description: 'x',
-    scope: 'team',
     weight: 1,
     options: [
       { key: 'a', label: 'A', detail: 'a', default: true, effects: [] },

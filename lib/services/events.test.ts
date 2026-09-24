@@ -9,7 +9,7 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { isAttested, isEffectKind, isInstant, cashCost, bringLimit, payoutMultiplier, valueMultiplier, enforce, EffectViolation, type LiveEffect } from './effects.ts';
+import { contradicts, isAttested, isEffectKind, isInstant, cashCost, lineupCap, payoutMultiplier, valueMultiplier, enforce, EffectViolation, type LiveEffect } from './effects.ts';
 import { loadDeck, materialise, pickWeighted, validateDeck, type EventTemplate } from './events.ts';
 import { fires, meetsRequires, type EventContext } from './triggers.ts';
 
@@ -21,19 +21,33 @@ describe('the shipped deck', () => {
   });
 
   it('gives every club something it can always click', () => {
-    // The one that keeps hard block from stranding anybody.
-    for (const template of deck) {
+    // The one that keeps hard block from stranding anybody. An announcement is exempt by
+    // construction: it never goes PENDING, so it never blocks a report in the first place.
+    for (const template of deck.filter((entry) => !entry.announcement)) {
       const free = template.options.filter((option) => !option.cost && !option.requires);
       expect(free.length, `${template.key} has no unconditional option`).toBeGreaterThan(0);
     }
   });
 
-  it('never charges a percentage without a floor', () => {
-    // 12% of nothing is nothing, and an event that only bites the rich is not an event.
+  it('never leaves an announcement asking for an answer', () => {
+    for (const template of deck.filter((entry) => entry.announcement)) {
+      expect(template.options, `${template.key} is news, not a question`).toEqual([]);
+      expect(template.effects?.length, `${template.key} does nothing`).toBeGreaterThan(0);
+    }
+  });
+
+  it('never charges a percentage without a floor, nor a flat sum of nothing', () => {
+    // 12% of nothing is nothing, and an event that only bites the rich is not an event. A flat
+    // cost has no floor to set — it is the floor — but it does have to be a real number.
     for (const template of deck) {
       for (const option of template.options) {
         if (!option.cost) continue;
-        expect(option.cost.min, `${template.key}/${option.key}`).toBeGreaterThan(0);
+        const where = `${template.key}/${option.key}`;
+        if (option.cost.kind === 'CASH') {
+          expect(option.cost.amount, where).toBeGreaterThan(0);
+        } else {
+          expect(option.cost.min, where).toBeGreaterThan(0);
+        }
       }
     }
   });
@@ -155,21 +169,31 @@ describe('validateDeck', () => {
     expect(validateDeck([{ ...base, options }]).join(' ')).toMatch(/reward, a penalty, or both/);
   });
 
-  it('rejects a bond priced as a percentage with no floor', () => {
-    // The same rule as every other charge: 20% of nothing is nothing.
+  it('lets a bond be priced as a percentage with no floor, unlike every charge', () => {
+    // A floor exists so a broke club still feels a charge. Locked money is not a charge — it
+    // comes back with interest — and a floor on it makes the poor commit a far larger share of
+    // what they have than the rich, to an opportunity. A bond keeps them out with minCash.
     const options = [
-      { ...base.options[0], effects: [{ kind: 'ESCROW', pct: 20, returnPct: 115, rounds: 2, label: 'x', liftedMessage: 'y' }] },
+      { ...base.options[0], effects: [{ kind: 'ESCROW', pct: 20, returnPct: 120, rounds: 2, label: 'x', liftedMessage: 'y' }] },
       base.options[1],
     ];
-    expect(validateDeck([{ ...base, options }]).join(' ')).toMatch(/needs a "min" floor/);
+    expect(validateDeck([{ ...base, options }])).toEqual([]);
   });
 
-  it('rejects a swap with no idea what "similar value" means', () => {
+  it('still rejects a bond that never says what comes back', () => {
+    const options = [
+      { ...base.options[0], effects: [{ kind: 'ESCROW', pct: 20, rounds: 2, label: 'x', liftedMessage: 'y' }] },
+      base.options[1],
+    ];
+    expect(validateDeck([{ ...base, options }]).join(' ')).toMatch(/ESCROW needs an amount/);
+  });
+
+  it('rejects a swap that never says what the arrival is worth', () => {
     const options = [
       { ...base.options[0], effects: [{ kind: 'SWAP_OFFER' }] },
       base.options[1],
     ];
-    expect(validateDeck([{ ...base, options }]).join(' ')).toMatch(/SWAP_OFFER needs a band/);
+    expect(validateDeck([{ ...base, options }]).join(' ')).toMatch(/SWAP_OFFER needs a bonusPct/);
   });
 });
 
@@ -198,14 +222,23 @@ function member(slug: string, overrides: Partial<EventContext['squad'][number]> 
     starter: true,
     captain: false,
     marketValue: 10_000,
+    tier: 'B',
     types: ['Normal'],
     hasMega: false,
     ...overrides,
   };
 }
 
+/** A free agent the market is offering. Tier only matters to the events that name one. */
+function agent(slug: string, marketValue: number, tier = 'B') {
+  return { pokemonSlug: slug, name: slug[0].toUpperCase() + slug.slice(1), form: null, marketValue, tier };
+}
+
 function context(overrides: Partial<EventContext>): EventContext {
+  const squad = overrides.squad ?? [member('a'), member('b'), member('c'), member('d')];
   return {
+    // Unless a test says otherwise, the pecking order is the squad order it handed us.
+    mostUsed: squad.filter((one) => one.starter).map((one) => one.pokemonSlug),
     leagueId: 'L',
     teamId: 'T',
     teamName: 'Team',
@@ -213,6 +246,7 @@ function context(overrides: Partial<EventContext>): EventContext {
     cash: 100_000,
     tierKey: 'great',
     matchesPlayed: 10,
+    winRate: 50,
     winStreak: 0,
     losingStreak: 0,
     squad: [member('a', { marketValue: 50_000 }), member('b'), member('c'), member('d')],
@@ -224,6 +258,8 @@ function context(overrides: Partial<EventContext>): EventContext {
     severity: 100,
     hasCaptain: false,
     captainAvailable: false,
+    captainTenure: 0,
+    captainFromTheStart: false,
     ladderPosition: 1,
     teamCount: 4,
     benched: null,
@@ -276,9 +312,9 @@ describe('letting the club choose who', () => {
   const template = loadDeck().find((entry) => entry.key === 'release_for_two')!;
 
   const market = [
-    { pokemonSlug: 'x', name: 'X', form: null, marketValue: 9_000 },
-    { pokemonSlug: 'y', name: 'Y', form: null, marketValue: 7_000 },
-    { pokemonSlug: 'z', name: 'Z', form: null, marketValue: 5_000 },
+    agent('x', 9_000),
+    agent('y', 7_000),
+    agent('z', 5_000),
   ];
 
   it('offers one branch per Pokémon, spread across the squad by value', () => {
@@ -305,32 +341,37 @@ describe('letting the club choose who', () => {
     expect(offer.options[0].label).toContain('best');
   });
 
-  it('names who arrives, under a ceiling set by who leaves', () => {
+  it('names the tier and the price, and nobody at all', () => {
+    // What the club accepts is a tier and a count. Naming the two arrivals here would settle a
+    // gamble before it is taken, and pinning them would let a club read the market and pick the
+    // branch whose names it liked — which is the opposite of what this offer is.
     const offer = materialise(
       template,
       context({
         squad: [
-          member('best', { marketValue: 100_000 }),
+          member('best', { marketValue: 100_000, tier: 'A' }),
           member('b', { marketValue: 80_000 }),
           member('c', { marketValue: 60_000 }),
           member('d', { marketValue: 40_000 }),
-          member('worst', { marketValue: 20_000 }),
+          member('worst', { marketValue: 20_000, tier: 'C' }),
         ],
-        freeAgents: market,
+        freeAgents: [agent('x', 30_000, 'A'), agent('y', 9_000, 'A'), agent('z', 5_000, 'C')],
       }),
       null,
       () => 0.5,
     );
 
-    // 40% of ₽100,000 buys the two best under ₽40,000; 40% of ₽20,000 buys only what is under
-    // ₽8,000, which is a materially worse deal and is stated as such before you click.
     const fromBest = offer.options.find((option) => option.key === 'release:best')!;
-    expect(fromBest.detail).toContain('X and Y');
-    expect(fromBest.effects[0].params.slugs).toEqual(['x', 'y']);
-    expect(fromBest.effects[0].params.amount).toBe(40_000);
+    expect(fromBest.effects[0].params.slugs).toBeUndefined();
+    expect(fromBest.effects[0].params.tiers).toEqual(['A']);
+    expect(fromBest.detail).toContain('A tier');
+    // Half of what the leaver was worth, which is what each arrival will be set to.
+    expect(fromBest.effects[0].params.amount).toBe(100_000);
+    expect(fromBest.effects[0].params.pct).toBe(50);
 
+    // Only one unsigned C, so the cheapest branch cannot be filled and says so.
     const fromWorst = offer.options.find((option) => option.key === 'release:worst')!;
-    expect(fromWorst.effects[0].params.slugs).toEqual(['y', 'z']);
+    expect(fromWorst.available).toBe(false);
   });
 
   it('closes a branch the market cannot actually fill', () => {
@@ -344,8 +385,8 @@ describe('letting the club choose who', () => {
           member('d', { marketValue: 50_000 }),
           member('e', { marketValue: 50_000 }),
         ],
-        // One agent under the ₽20,000 ceiling where the offer promises two.
-        freeAgents: [{ pokemonSlug: 'x', name: 'X', form: null, marketValue: 9_000 }],
+        // One unsigned B where the offer promises two of them.
+        freeAgents: [agent('x', 9_000, 'B')],
       }),
       null,
       () => 0.5,
@@ -353,25 +394,29 @@ describe('letting the club choose who', () => {
 
     const release = offer.options.find((option) => option.key.startsWith('release:'))!;
     expect(release.available).toBe(false);
-    expect(release.unavailableReason).toContain('1 free agent');
+    expect(release.unavailableReason).toContain('only 1 unsigned B tier');
     // And the club can still answer, which is the whole point of the rule.
     expect(offer.options.find((option) => option.key === 'decline')!.available).toBe(true);
   });
 
-  it('names the Pokémon coming the other way in a swap', () => {
+  it('swaps for standing, not for a number', () => {
+    // The two marketValue columns are not the same quantity — an owned Pokémon carries a share
+    // of what was paid for it, a free agent the full shop price — so matching one against the
+    // other handed over a Pokémon for one worth roughly half as much. Tier is the honest
+    // statement of standing, and the cheap B tier here must lose to the A that is in band.
     const swap = loadDeck().find((entry) => entry.key === 'swap_offer')!;
     const offer = materialise(
       swap,
       context({
         squad: [
-          member('a', { marketValue: 50_000 }),
+          member('a', { marketValue: 50_000, tier: 'A' }),
           member('b'),
           member('c'),
           member('d'),
         ],
         freeAgents: [
-          { pokemonSlug: 'far', name: 'Far', form: null, marketValue: 9_000 },
-          { pokemonSlug: 'near', name: 'Near', form: null, marketValue: 52_000 },
+          agent('sameprice', 50_000, 'B'),
+          agent('standing', 9_000, 'A'),
         ],
       }),
       null,
@@ -379,9 +424,60 @@ describe('letting the club choose who', () => {
     );
 
     const take = offer.options.find((option) => option.key === 'swap')!;
-    expect(take.effects[0].params.slug).toBe('near');
-    expect(take.detail).toContain('Near');
+    expect(take.effects[0].params.slug).toBe('standing');
+    expect(take.detail).toContain('Standing');
+    expect(take.detail).toContain('A tier');
     expect(take.available).toBe(true);
+  });
+
+  it('leaves the sold Pokémon out of the fallout it caused', () => {
+    // The squad that stays behind is what the sale is about. A restriction written against a
+    // Pokémon another club now owns is a row nobody can ever serve, and the arrival landing in
+    // the same breath was never in the dressing room to be upset by it.
+    const swap = loadDeck().find((entry) => entry.key === 'swap_offer')!;
+    const offer = materialise(
+      swap,
+      context({
+        squad: [
+          member('a', { marketValue: 50_000, tier: 'A' }),
+          member('b'),
+          member('c'),
+          member('d'),
+        ],
+        freeAgents: [agent('standing', 9_000, 'A')],
+      }),
+      null,
+      () => 0,
+    );
+
+    const deal = offer.options.find((option) => option.key === 'swap')!;
+    const sulking = deal.effects.filter((effect) => effect.kind === 'ZERO_EVS');
+    expect(sulking.map((effect) => effect.pokemonSlug).sort()).toEqual(['b', 'c', 'd']);
+    expect(sulking.every((effect) => effect.matches === 2)).toBe(true);
+  });
+
+  it('will reach one rung up the market, but no further', () => {
+    const swap = loadDeck().find((entry) => entry.key === 'swap_offer')!;
+    const pool = (tiers: string[]) =>
+      materialise(
+        swap,
+        context({
+          squad: [
+            member('a', { marketValue: 50_000, tier: 'A' }),
+            member('b'),
+            member('c'),
+            member('d'),
+          ],
+          freeAgents: tiers.map((tier, index) => agent(`f${index}`, 9_000, tier)),
+        }),
+        null,
+        () => 0,
+      ).options.find((option) => option.key === 'swap')!;
+
+    // An A may be swapped for an A+ — the rung above — but never for an S.
+    expect(pool(['A+']).effects[0].params.slug).toBe('f0');
+    expect(pool(['S']).available).toBe(false);
+    expect(pool(['B']).available).toBe(false);
   });
 });
 
@@ -410,6 +506,212 @@ describe('money priced in wins', () => {
     const reckless = offer.options.find((option) => option.key === 'reckless')!;
     expect(reckless.effects[0].matches).toBe(5);
     expect(reckless.effects[0].params.wins).toBe(5);
+  });
+});
+
+describe('the invitation only a struggling club gets', () => {
+  const template = loadDeck().find((entry) => entry.key === 'underdogs_invitation')!;
+
+  it('is closed to a club that is bottom but winning', () => {
+    // Bottom of a table can happen on results alone. Bottom *and* losing most weeks is the
+    // season this event is written for, and the one a windfall is not an insult to.
+    expect(meetsRequires(context({ matchesPlayed: 14, winRate: 55 }), template.requires)).toBe(false);
+    expect(meetsRequires(context({ matchesPlayed: 14, winRate: 25 }), template.requires)).toBe(true);
+    // And never before a club has played enough for the table to mean anything.
+    expect(meetsRequires(context({ matchesPlayed: 4, winRate: 0 }), template.requires)).toBe(false);
+  });
+
+  it('closes the prize when the top tiers have all been signed', () => {
+    const empty = materialise(template, context({ freeAgents: [agent('x', 9_000, 'C')] }), null, () => 0.5);
+    const shut = empty.options.find((option) => option.key === 'prospect')!;
+    expect(shut.available).toBe(false);
+    expect(shut.unavailableReason).toContain('tier Pokémon left unsigned');
+    // The money is always there, so the club is never stuck behind an empty market.
+    expect(empty.options.find((option) => option.key === 'money')!.available).toBe(true);
+
+    const stocked = materialise(template, context({ freeAgents: [agent('x', 90_000, 'S')] }), null, () => 0.5);
+    expect(stocked.options.find((option) => option.key === 'prospect')!.available).toBe(true);
+  });
+
+  it('never names the prize, because the gamble is the point', () => {
+    const offer = materialise(template, context({ freeAgents: [agent('x', 90_000, 'S')] }), null, () => 0.5);
+    const prize = offer.options.find((option) => option.key === 'prospect')!;
+    expect(prize.detail).not.toContain('X');
+    expect(prize.effects[0].params.slug).toBeUndefined();
+    expect(prize.effects[0].params.tiers).toEqual(['S', 'A+']);
+  });
+});
+
+describe('asking the captain to step in', () => {
+  const template = loadDeck().find((entry) => entry.key === 'transfer_request')!;
+  const squad = [
+    member('a', { marketValue: 50_000, hasMega: true }),
+    member('b', { captain: true }),
+    member('c'),
+    member('d'),
+  ];
+  const captainOption = (over: Partial<EventContext>) =>
+    materialise(template, context({ squad, hasCaptain: true, captainAvailable: true, ...over }), null, () => 0.5)
+      .options.find((option) => option.key === 'captain')!;
+
+  it('is closed to a club that has just handed the armband over, and says so', () => {
+    const fresh = captainOption({ captainTenure: 3, captainFromTheStart: false });
+    expect(fresh.available).toBe(false);
+    expect(fresh.unavailableReason).toContain('3 matches');
+    expect(fresh.unavailableReason).toContain('15');
+  });
+
+  it('opens for one that has worn it from the start, or worn it long enough', () => {
+    expect(captainOption({ captainTenure: 0, captainFromTheStart: true }).available).toBe(true);
+    expect(captainOption({ captainTenure: 15, captainFromTheStart: false }).available).toBe(true);
+    expect(captainOption({ captainTenure: 14, captainFromTheStart: false }).available).toBe(false);
+  });
+
+  it('spends the favour in events rather than in matches', () => {
+    const spent = captainOption({ captainFromTheStart: true }).effects[0];
+    expect(spent.kind).toBe('CAPTAIN_SPENT');
+    expect(spent.events).toBe(5);
+    expect(spent.matches).toBe(0);
+  });
+
+  it('names the reason a club with no captain cannot ask', () => {
+    const none = materialise(template, context({ squad: [member('a', { marketValue: 50_000 })] }), null, () => 0.5)
+      .options.find((option) => option.key === 'captain')!;
+    expect(none.unavailableReason).toBe('Your club has no captain.');
+  });
+});
+
+describe('the two the club leans on', () => {
+  const template = loadDeck().find((entry) => entry.key === 'who_sits_out')!;
+
+  it('names the pecking order, and offers a branch about each', () => {
+    const squad = [
+      member('spare', { marketValue: 90_000 }),
+      member('first'),
+      member('second'),
+      member('third'),
+      member('fourth'),
+    ];
+    // Usage, not value: the ₽90,000 Pokémon nobody plays is nobody's rival.
+    const offer = materialise(
+      template,
+      context({ squad, mostUsed: ['first', 'second', 'third', 'fourth', 'spare'] }),
+      null,
+      () => 0.5,
+    );
+
+    expect(offer.description).toContain('first and second');
+    expect(offer.description).not.toContain('spare');
+
+    const [one, two] = offer.options;
+    expect(one.label).toBe('Stand first down');
+    expect(one.effects[0].pokemonSlug).toBe('first');
+    expect(two.label).toBe('Stand second down');
+    expect(two.effects[0].pokemonSlug).toBe('second');
+    // Whichever way it goes, somebody sits: both branches are free and one is the fallback.
+    expect(offer.options.filter((option) => option.cost === 0 && option.available)).toHaveLength(2);
+    expect(two.default).toBe(true);
+  });
+});
+
+describe('a published risk ladder', () => {
+  const template = loadDeck().find((entry) => entry.key === 'knock_in_training')!;
+
+  it('prints the odds it will actually roll on', () => {
+    const offer = materialise(template, context({}), null, () => 0.5);
+    const rush = offer.options.find((option) => option.key === 'rush')!;
+
+    expect(rush.detail).toContain('nothing at all (1 in 6)');
+    expect(rush.detail).toContain('out for 5 matches (3 in 6)');
+    expect(rush.effects[0].params.faces).toEqual([0, 1, 2, 5, 5, 5]);
+  });
+
+  it('publishes the table this club is on, not the one in the file', () => {
+    // A harsher league lengthens every absence, and the printed odds lengthen with it — an
+    // event that showed the file's numbers would be lying to half the leagues that run it.
+    const harsh = materialise(template, context({ severity: 200 }), null, () => 0.5);
+    const rush = harsh.options.find((option) => option.key === 'rush')!;
+
+    expect(rush.effects[0].params.faces).toEqual([0, 2, 4, 10, 10, 10]);
+    expect(rush.detail).toContain('out for 10 matches (3 in 6)');
+    // Nothing at all stays nothing at all: severity makes consequences worse, not inevitable.
+    expect(rush.detail).toContain('nothing at all (1 in 6)');
+  });
+});
+
+describe('restrictions that cannot both be honoured', () => {
+  it('knows which pairs contradict, in either order', () => {
+    expect(contradicts('POKEMON_OUT', 'MUST_FIELD')).toBe(true);
+    expect(contradicts('MUST_FIELD', 'POKEMON_OUT')).toBe(true);
+    expect(contradicts('POKEMON_OUT', 'MUST_LEAD')).toBe(true);
+    expect(contradicts('STAB_ONLY', 'NO_STAB')).toBe(true);
+    expect(contradicts('NO_ITEM', 'FIXED_ITEM')).toBe(true);
+    // Two restrictions that merely stack are not a contradiction, however unpleasant.
+    expect(contradicts('NO_MEGA', 'ZERO_EVS')).toBe(false);
+    expect(contradicts('POKEMON_OUT', 'POKEMON_OUT')).toBe(false);
+  });
+
+  it('lets a club report when an injury and a promise are both somehow in force', () => {
+    const squad = ['a', 'b', 'c', 'd', 'e', 'f'].map((slug) => ({
+      pokemonSlug: slug,
+      starter: true,
+      types: ['Normal'],
+    }));
+    const effects = [
+      effect('POKEMON_OUT', { pokemonSlug: 'a', label: 'A — out injured' }),
+      effect('MUST_FIELD', { pokemonSlug: 'a', label: 'A must play' }),
+    ];
+    const result = enforce({
+      effects,
+      squad,
+      lines: ['b', 'c', 'd', 'e'].map((slug) => ({ pokemonSlug: slug, benched: false })),
+      attested: [],
+      bringToMatch: 4,
+      lineupSize: 6,
+    });
+    expect(result.surrendered).toBe(false);
+  });
+});
+
+describe('a promise nobody could break', () => {
+  const template = loadDeck().find((entry) => entry.key === 'transfer_request')!;
+
+  it('drops the Mega ban when the Pokémon it lands on has no Mega', () => {
+    const withMega = [member('a', { marketValue: 50_000, hasMega: true }), member('b'), member('c')];
+    const without = [member('a', { marketValue: 50_000 }), member('b'), member('c')];
+
+    const kinds = (squad: EventContext['squad']) =>
+      materialise(template, context({ squad }), null, () => 0.5)
+        .options.find((option) => option.key === 'refuse')!
+        .effects.map((effect) => effect.kind);
+
+    expect(kinds(withMega)).toContain('NO_MEGA');
+    // The sulk still bites — it just stops asking the manager to tick a box about a Mega
+    // Evolution that was never available to them.
+    expect(kinds(without)).not.toContain('NO_MEGA');
+    expect(kinds(without)).toContain('ZERO_EVS');
+  });
+});
+
+describe('who an effect is actually about', () => {
+  it('leaves a club-wide effect unattached, even when the event names a Pokémon', () => {
+    // Burnout is about one exhausted Pokémon, but its virtue lifts the whole club's rewards.
+    // Tagging that row with the Pokémon would put it on one card, as though it were personal.
+    const burnout = loadDeck().find((entry) => entry.key === 'burnout')!;
+    const virtue = materialise(
+      { ...burnout, options: [{ key: 'virtue', label: '', detail: '', effects: burnout.virtue!.effects }] },
+      context({}),
+      'a',
+      () => 0.5,
+    );
+    expect(virtue.options[0].effects[0].kind).toBe('PAYOUT_MULT');
+    expect(virtue.options[0].effects[0].pokemonSlug).toBeNull();
+
+    // And one that really is about a Pokémon keeps its name.
+    const push = materialise(burnout, context({}), 'a', () => 0.5).options.find(
+      (option) => option.key === 'push',
+    )!;
+    expect(push.effects.map((effect) => effect.pokemonSlug)).toEqual(['a', 'a']);
   });
 });
 
@@ -480,10 +782,10 @@ describe('every placeholder resolves', () => {
       hasCaptain: true,
       captainAvailable: true,
       freeAgents: [
-        { pokemonSlug: 'w', name: 'W', form: null, marketValue: 88_000 },
-        { pokemonSlug: 'x', name: 'X', form: null, marketValue: 30_000 },
-        { pokemonSlug: 'y', name: 'Y', form: null, marketValue: 20_000 },
-        { pokemonSlug: 'z', name: 'Z', form: null, marketValue: 8_000 },
+        agent('w', 88_000),
+        agent('x', 30_000),
+        agent('y', 20_000),
+        agent('z', 8_000),
       ],
     });
 
@@ -585,6 +887,7 @@ function effect(kind: string, overrides: Partial<LiveEffect> = {}): LiveEffect {
     pokemonSlug: null,
     params: {},
     matchesLeft: 3,
+    eventsLeft: 0,
     untilRound: null,
     attested: isAttested(kind as LiveEffect['kind']),
     label: kind,
@@ -615,10 +918,10 @@ describe('multipliers', () => {
     expect(valueMultiplier([])).toBe(1);
   });
 
-  it('never lets a bring limit raise the ceiling', () => {
-    expect(bringLimit([effect('BRING_LIMIT', { params: { count: 3 } })], 4)).toBe(3);
-    expect(bringLimit([effect('BRING_LIMIT', { params: { count: 9 } })], 4)).toBe(4);
-    expect(bringLimit([], 4)).toBe(4);
+  it('never lets a shortened lineup raise the ceiling', () => {
+    expect(lineupCap([effect('LINEUP_LIMIT', { params: { count: 5 } })], 6)).toBe(5);
+    expect(lineupCap([effect('LINEUP_LIMIT', { params: { count: 9 } })], 6)).toBe(6);
+    expect(lineupCap([], 6)).toBe(6);
   });
 });
 
@@ -631,7 +934,7 @@ describe('enforce', () => {
   const lines = (slugs: string[]) => slugs.map((slug) => ({ pokemonSlug: slug, benched: false }));
 
   it('passes a clean match', () => {
-    const result = enforce({ effects: [], squad, lines: lines(['a', 'b', 'c', 'd']), attested: [], bringToMatch: 4 });
+    const result = enforce({ effects: [], squad, lines: lines(['a', 'b', 'c', 'd']), attested: [], bringToMatch: 4, lineupSize: 6 });
     expect(result.surrendered).toBe(false);
     expect(result.constraints).toEqual([]);
   });
@@ -639,14 +942,14 @@ describe('enforce', () => {
   it('refuses a Pokémon that is out, while the club has cover', () => {
     const out = effect('POKEMON_OUT', { pokemonSlug: 'a', label: 'a — injured' });
     expect(() =>
-      enforce({ effects: [out], squad, lines: lines(['a', 'b', 'c', 'd']), attested: [], bringToMatch: 4 }),
+      enforce({ effects: [out], squad, lines: lines(['a', 'b', 'c', 'd']), attested: [], bringToMatch: 4, lineupSize: 6 }),
     ).toThrow(EffectViolation);
   });
 
   it('bans by type, since the app can check those', () => {
     const ban = effect('TYPE_BAN', { params: { type: 'Fire' }, label: 'No Fire-types' });
     expect(() =>
-      enforce({ effects: [ban], squad, lines: lines(['a', 'b', 'c', 'd']), attested: [], bringToMatch: 4 }),
+      enforce({ effects: [ban], squad, lines: lines(['a', 'b', 'c', 'd']), attested: [], bringToMatch: 4, lineupSize: 6 }),
     ).toThrow(/No Fire-types/);
   });
 
@@ -660,7 +963,7 @@ describe('enforce', () => {
       squad: short,
       lines: [{ pokemonSlug: 'a', benched: true }, ...lines(['b', 'c', 'd'])],
       attested: [],
-      bringToMatch: 4,
+      bringToMatch: 4, lineupSize: 6,
     });
     expect(result.surrendered).toBe(false);
   });
@@ -673,7 +976,7 @@ describe('enforce', () => {
       squad: short,
       lines: lines(['a', 'b', 'c', 'd']),
       attested: [],
-      bringToMatch: 4,
+      bringToMatch: 4, lineupSize: 6,
     });
     expect(result.surrendered).toBe(true);
     expect(result.surrenderReason).toBe('a — suspended');
@@ -682,14 +985,14 @@ describe('enforce', () => {
   it('insists a must-field Pokémon actually plays', () => {
     const must = effect('MUST_FIELD', { pokemonSlug: 'f', label: 'f must start' });
     expect(() =>
-      enforce({ effects: [must], squad, lines: lines(['a', 'b', 'c', 'd']), attested: [], bringToMatch: 4 }),
+      enforce({ effects: [must], squad, lines: lines(['a', 'b', 'c', 'd']), attested: [], bringToMatch: 4, lineupSize: 6 }),
     ).toThrow(/has to play/);
   });
 
   it('holds the report until an honour-based rule is confirmed', () => {
     const mega = effect('NO_MEGA', { label: 'No Mega Evolution' });
     expect(() =>
-      enforce({ effects: [mega], squad, lines: lines(['a', 'b', 'c', 'd']), attested: [], bringToMatch: 4 }),
+      enforce({ effects: [mega], squad, lines: lines(['a', 'b', 'c', 'd']), attested: [], bringToMatch: 4, lineupSize: 6 }),
     ).toThrow(/Confirm you played under/);
 
     const result = enforce({
@@ -698,16 +1001,25 @@ describe('enforce', () => {
       lines: lines(['a', 'b', 'c', 'd']),
       attested: [mega.id],
       bringToMatch: 4,
+      lineupSize: 6,
     });
     expect(result.constraints).toEqual([
       { kind: 'NO_MEGA', label: 'No Mega Evolution', attested: true, honoured: true },
     ]);
   });
 
-  it('enforces a bring limit', () => {
-    const limit = effect('BRING_LIMIT', { params: { count: 3 }, label: 'Bring only 3' });
+  it('makes a club drop a name from the sheet, without touching the four it plays', () => {
+    const limit = effect('LINEUP_LIMIT', { params: { count: 5 }, label: 'Travelling light' });
+    // Six registered, five allowed: refused, and the manager picks who sits out.
     expect(() =>
-      enforce({ effects: [limit], squad, lines: lines(['a', 'b', 'c', 'd']), attested: [], bringToMatch: 4 }),
-    ).toThrow(/only bring 3/);
+      enforce({ effects: [limit], squad, lines: lines(['a', 'b', 'c', 'd']), attested: [], bringToMatch: 4, lineupSize: 6 }),
+    ).toThrow(/only 5 of your squad can be registered/);
+
+    // Cut to five, and the same four take the field as always.
+    const cut = [...squad.slice(0, 5), { ...squad[5], starter: false }];
+    expect(
+      enforce({ effects: [limit], squad: cut, lines: lines(['a', 'b', 'c', 'd']), attested: [], bringToMatch: 4, lineupSize: 6 })
+        .surrendered,
+    ).toBe(false);
   });
 });

@@ -3,12 +3,7 @@
 import { useActionState } from 'react';
 import { useFormStatus } from 'react-dom';
 
-import {
-  delegateEventAction,
-  forceResolveEventAction,
-  resolveEventAction,
-  type ActionState,
-} from '../../../actions/events.ts';
+import { resolveEventAction, type ActionState } from '../../../actions/events.ts';
 import { money } from '../../../../lib/format.ts';
 import { Button } from '../../../components/ui.tsx';
 
@@ -31,19 +26,6 @@ function Submit({ children, disabled }: { children: React.ReactNode; disabled?: 
   );
 }
 
-function GhostSubmit({ children }: { children: React.ReactNode }) {
-  const { pending } = useFormStatus();
-  return (
-    <button
-      type="submit"
-      disabled={pending}
-      className="text-xs text-muted underline underline-offset-2 transition hover:text-ink disabled:opacity-40"
-    >
-      {pending ? 'Asking…' : children}
-    </button>
-  );
-}
-
 /**
  * One decision, with every consequence spelled out before it is taken.
  *
@@ -57,26 +39,31 @@ export function EventCard({
   title,
   description,
   options,
-  delegable,
-  isCommissioner,
+  fortune = false,
 }: {
   leagueId: string;
   eventId: string;
   title: string;
   description: string;
   options: OptionView[];
-  delegable: boolean;
-  isCommissioner: boolean;
+  /** Good news rather than a problem: shown in gold, and said so in as many words. */
+  fortune?: boolean;
 }) {
   const [state, action] = useActionState<ActionState, FormData>(resolveEventAction, {});
-  const [delegateState, delegate] = useActionState<ActionState, FormData>(delegateEventAction, {});
-  const [forceState, force] = useActionState<ActionState, FormData>(forceResolveEventAction, {});
-
-  const error = state.error ?? delegateState.error ?? forceState.error;
+  const error = state.error;
 
   return (
-    <div className="flex flex-col gap-4 rounded-xl border border-accent/40 bg-accent/5 p-4">
+    <div
+      className={`flex flex-col gap-4 rounded-xl border p-4 ${
+        fortune ? 'fortune' : 'border-accent/40 bg-accent/5'
+      }`}
+    >
       <div>
+        {fortune && (
+          <div className="mb-1 text-[11px] font-semibold tracking-[0.14em] text-accent uppercase">
+            Your luck has turned
+          </div>
+        )}
         <h3 className="text-base font-semibold text-ink">{title}</h3>
         <p className="mt-1 text-sm leading-relaxed text-muted">{description}</p>
       </div>
@@ -110,26 +97,6 @@ export function EventCard({
           </form>
         ))}
       </div>
-
-      {/*
-        Always here, always secondary. It is the guarantee that no club is ever stuck behind a
-        decision it cannot afford — and the price is that your assistant picks, not you.
-      */}
-      {delegable && (
-        <form action={delegate} className="text-center">
-          <input type="hidden" name="leagueId" value={leagueId} />
-          <input type="hidden" name="eventId" value={eventId} />
-          <GhostSubmit>Let your assistant handle it</GhostSubmit>
-        </form>
-      )}
-
-      {isCommissioner && (
-        <form action={force} className="text-center">
-          <input type="hidden" name="leagueId" value={leagueId} />
-          <input type="hidden" name="eventId" value={eventId} />
-          <GhostSubmit>Force it through (commissioner)</GhostSubmit>
-        </form>
-      )}
     </div>
   );
 }

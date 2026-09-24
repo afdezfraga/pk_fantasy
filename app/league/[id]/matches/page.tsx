@@ -9,9 +9,10 @@ import { ensurePendingEvent, pendingEvent } from '../../../../lib/services/event
 import { getLeagueContext } from '../../../../lib/services/league.ts';
 import { getLineup } from '../../../../lib/services/lineup.ts';
 import { getMatches, winStreak } from '../../../../lib/services/matches.ts';
+import { RankBadge, RankGauge } from '../../../components/RankBadge.tsx';
 import { Empty, NavTabs, Panel } from '../../../components/ui.tsx';
 import { standingOf } from '../../../../lib/services/ladder.ts';
-import { getTier } from '../../../../lib/ladder.ts';
+import { formatStanding, getTier, type Standing } from '../../../../lib/ladder.ts';
 import { PAYOUTS } from '../../../../config/scoring.ts';
 import { MatchHistory } from './MatchHistory.tsx';
 import { StandingForm } from './StandingForm.tsx';
@@ -90,12 +91,18 @@ export default async function MatchesPage({ params }: { params: Promise<{ id: st
       <NavTabs leagueId={id} active="matches" pendingEvent={Boolean(pending)} />
 
       {myTeam && (
-        <Panel title="Your ladder rank">
-          <p className="mb-3 text-sm text-muted">
-            Matches are played on the Champions ranked ladder, so the league table is your rank.
-            Update it here whenever it changes — promotions pay a bonus.
+        <Panel
+          title="Your ladder rank"
+          action={<StandingForm leagueId={id} current={standingOf(myTeam)} />}
+        >
+          <div className="flex flex-wrap items-center gap-3">
+            <RankBadge standing={standingOf(myTeam)} size="lg" />
+            <RankGauge standing={standingOf(myTeam)} />
+          </div>
+          <p className="mt-2 text-xs text-muted">
+            The league table is your Champions ladder rank. It moves with each match you report,
+            and reaching a new ball tier for the first time in a season pays a bonus.
           </p>
-          <StandingForm leagueId={id} teamId={myTeam.id} current={standingOf(myTeam)} />
         </Panel>
       )}
 
@@ -139,6 +146,7 @@ export default async function MatchesPage({ params }: { params: Promise<{ id: st
           tierKey={myTeam.tierKey}
           tierName={getTier(myTeam.tierKey).name}
           streak={streak}
+          standing={standingOf(myTeam)}
           banEnforced={banEnforced}
           constraints={effects.map((effect) => ({
             id: effect.id,
@@ -146,6 +154,7 @@ export default async function MatchesPage({ params }: { params: Promise<{ id: st
             label: effect.label,
             attested: effect.attested,
             matchesLeft: effect.matchesLeft,
+            eventsLeft: effect.eventsLeft,
           }))}
           attestations={effects
             .filter((effect) => effect.attested)
@@ -171,6 +180,9 @@ export default async function MatchesPage({ params }: { params: Promise<{ id: st
               reportedBy: match.reportedById ? (reporterById.get(match.reportedById) ?? null) : null,
               playedAt: match.playedAt.toISOString(),
               tierName: match.tierKey ? getTier(match.tierKey).name : null,
+              rankAfter: match.rankAfter
+                ? formatStanding(JSON.parse(match.rankAfter) as Standing)
+                : null,
               reward: match.reward,
               streak: match.streak,
               constraints: parseConstraints(match.constraints),

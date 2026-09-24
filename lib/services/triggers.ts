@@ -29,6 +29,8 @@ export interface ContextMember {
   starter: boolean;
   captain: boolean;
   marketValue: number;
+  /** The market tier it was priced in — what a swap means by "of the same standing". */
+  tier: string;
   types: string[];
   hasMega: boolean;
 }
@@ -39,6 +41,8 @@ export interface FreeAgent {
   name: string;
   form: string | null;
   marketValue: number;
+  /** The market tier it was priced in — what an event means by "an S or A+ Pokémon". */
+  tier: string;
 }
 
 export interface EventContext {
@@ -50,6 +54,8 @@ export interface EventContext {
   tierKey: string;
 
   matchesPlayed: number;
+  /** Won as a percentage of settled results. 0 for a club that has not played. */
+  winRate: number;
   /** Consecutive wins, most recent match first. */
   winStreak: number;
   /** Consecutive losses. Both are zero after a club's very first match either way. */
@@ -57,6 +63,8 @@ export interface EventContext {
 
   squad: ContextMember[];
   squadSize: number;
+  /** Starters in order of how heavily the club uses them: matches played, then KOs, then value. */
+  mostUsed: string[];
   /** How many more Pokémon this club may hold. An event that signs somebody needs at least one. */
   squadRoom: number;
   /** Unowned and legal, cheapest information an event needs to offer a real name. */
@@ -65,6 +73,10 @@ export interface EventContext {
   ownedTypes: string[];
   hasCaptain: boolean;
   captainAvailable: boolean;
+  /** Matches the club has played since the armband was last handed over. */
+  captainTenure: number;
+  /** True when nobody else has worn it — the captain was there before the first match. */
+  captainFromTheStart: boolean;
 
   /**
    * The league's severity dial, as a percentage. Scales what an event costs and how long its
@@ -144,19 +156,19 @@ export async function buildContext(leagueId: string, teamId: string): Promise<Ev
   const [ownerships, matches, effects, unowned] = await Promise.all([
     db.ownership.findMany({
       where: { leagueId, teamId },
-      include: { pokemon: { select: { name: true, form: true, types: true, megas: true } } },
+      include: { pokemon: { select: { name: true, form: true, tier: true, types: true, megas: true } } },
       orderBy: { marketValue: 'desc' },
     }),
     db.match.findMany({
       where: { leagueId, homeTeamId: teamId },
       orderBy: { playedAt: 'desc' },
       take: WINDOW,
-      include: { stats: { select: { pokemonSlug: true, benched: true, teamId: true } } },
+      include: { stats: { select: { pokemonSlug: true, benched: true, teamId: true, kos: true } } },
     }),
     activeEffects(leagueId, teamId),
     db.ownership.findMany({
       where: { leagueId, teamId: null, pokemon: { legal: true } },
-      include: { pokemon: { select: { name: true, form: true } } },
+      include: { pokemon: { select: { name: true, form: true, tier: true } } },
       orderBy: { marketValue: 'desc' },
     }),
   ]);
@@ -168,6 +180,7 @@ export async function buildContext(leagueId: string, teamId: string): Promise<Ev
     starter: row.starter,
     captain: row.captain,
     marketValue: row.marketValue,
+    tier: row.pokemon.tier,
     types: parseTypes(row.pokemon.types),
     hasMega: row.pokemon.megas !== '[]' && row.pokemon.megas !== '',
   }));
@@ -178,6 +191,7 @@ export async function buildContext(leagueId: string, teamId: string): Promise<Ev
   let losingStreak = 0;
   let streakSettled = false;
   const appearances = new Map<string, number[]>();
+  const knockouts = new Map<string, number>();
 
   for (const [index, match] of matches.entries()) {
     const won = match.homeScore > match.awayScore;
@@ -193,6 +207,7 @@ export async function buildContext(leagueId: string, teamId: string): Promise<Ev
     for (const stat of match.stats) {
       if (stat.teamId !== teamId || stat.benched) continue;
       appearances.set(stat.pokemonSlug, [...(appearances.get(stat.pokemonSlug) ?? []), index]);
+      knockouts.set(stat.pokemonSlug, (knockouts.get(stat.pokemonSlug) ?? 0) + stat.kos);
     }
   }
 
@@ -211,6 +226,20 @@ export async function buildContext(leagueId: string, teamId: string): Promise<Ev
 
   const starters = squad.filter((member) => member.starter);
   const benched = longestBenched(starters, appearances, joinedAt);
+
+  // Who the club actually leans on: matches played first, knockouts as the tie-break, and value
+  // behind both so a squad with no history still has an order. Events about the pecking order
+  // read this — the two names at the top are the two with something to argue about.
+  const mostUsed = [...starters]
+    .sort((a, b) => {
+      const played =
+        (appearances.get(b.pokemonSlug)?.length ?? 0) - (appearances.get(a.pokemonSlug)?.length ?? 0);
+      if (played !== 0) return played;
+      const kos = (knockouts.get(b.pokemonSlug) ?? 0) - (knockouts.get(a.pokemonSlug) ?? 0);
+      if (kos !== 0) return kos;
+      return b.marketValue - a.marketValue;
+    })
+    .map((member) => member.pokemonSlug);
 
   // Burnout asks a stricter question over a shorter window: played in *every* one of the last
   // ten. A Pokémon that missed even one has had a breather.
@@ -234,6 +263,26 @@ export async function buildContext(leagueId: string, teamId: string): Promise<Ev
     },
   });
 
+  // How long the armband has been where it is. An event that asks a captain to settle a dispute
+  // is asking whether the dressing room actually listens to it, and a Pokémon handed the job
+  // last week has no standing to spend.
+  const captainRow = ownerships.find((row) => row.captain);
+  let captainTenure = 0;
+  let captainFromTheStart = false;
+  if (captainRow) {
+    if (!captainRow.captainSince) {
+      // A row from before the column existed. Nobody has taken the armband off it since.
+      captainFromTheStart = true;
+      captainTenure = matchesPlayed;
+    } else {
+      const before = await db.match.count({
+        where: { leagueId, homeTeamId: teamId, playedAt: { lt: captainRow.captainSince } },
+      });
+      captainFromTheStart = before === 0;
+      captainTenure = matchesPlayed - before;
+    }
+  }
+
   const order = sortByLadder(league.teams);
   const config = parseConfig(league.config);
 
@@ -245,22 +294,29 @@ export async function buildContext(leagueId: string, teamId: string): Promise<Ev
     cash: team.cash,
     tierKey: team.tierKey,
     matchesPlayed,
+    // Taken from the club's own record rather than from the matches it reported, so a result
+    // somebody else entered still counts against it.
+    winRate: team.wins + team.losses > 0 ? (team.wins / (team.wins + team.losses)) * 100 : 0,
     winStreak,
     losingStreak,
     squad,
     squadSize: squad.length,
+    mostUsed,
     squadRoom: Math.max(0, config.squadMax - squad.length),
     freeAgents: unowned.map((row) => ({
       pokemonSlug: row.pokemonSlug,
       name: row.pokemon.name,
       form: row.pokemon.form,
       marketValue: row.marketValue,
+      tier: row.pokemon.tier,
     })),
     squadValue: squad.reduce((sum, member) => sum + member.marketValue, 0),
     ownedTypes: [...new Set(squad.flatMap((member) => member.types))],
     severity: config.eventSeverity,
     hasCaptain: squad.some((member) => member.captain),
     captainAvailable: squad.some((member) => member.captain) && !captainSpent(effects),
+    captainTenure,
+    captainFromTheStart,
     ladderPosition: order.findIndex((candidate) => candidate.id === teamId) + 1,
     teamCount: league.teams.length,
     benched,
@@ -282,34 +338,93 @@ export interface Requires {
   minCash?: number;
   minLosingStreak?: number;
   minWinStreak?: number;
+  /** At most this share of results won, as a percentage. For events only a struggling club sees. */
+  maxWinRate?: number;
   hasMega?: boolean;
   hasCaptain?: boolean;
   captainAvailable?: boolean;
+  /**
+   * The captain has the standing to spend: it either wore the armband before the club's first
+   * match, or has worn it for `CAPTAIN_TENURE` matches since.
+   */
+  captainEstablished?: boolean;
   bottomOfLadder?: boolean;
   notBottomOfLadder?: boolean;
 }
 
-export function meetsRequires(context: EventContext, requires: Requires | undefined): boolean {
-  if (!requires) return true;
+/** How long an armband has to have been worn before the dressing room takes any notice of it. */
+export const CAPTAIN_TENURE = 15;
+
+/**
+ * Why this club cannot take this option, in words a manager can act on.
+ *
+ * The single source of truth for eligibility: `meetsRequires` is this function asking whether
+ * there was anything to say. Written as sentences rather than flags because the alternative —
+ * "Not available to your club right now" on every closed branch — tells somebody a door is shut
+ * without telling them what is behind it, and half of these are things they can go and fix.
+ */
+export function requireReason(
+  context: EventContext,
+  requires: Requires | undefined,
+): string | null {
+  if (!requires) return null;
   const starters = context.squad.filter((member) => member.starter).length;
   const bottom = context.teamCount > 1 && context.ladderPosition === context.teamCount;
 
-  if (requires.minMatches !== undefined && context.matchesPlayed < requires.minMatches) return false;
-  if (requires.maxMatches !== undefined && context.matchesPlayed > requires.maxMatches) return false;
-  if (requires.minSquad !== undefined && context.squadSize < requires.minSquad) return false;
-  if (requires.minStarters !== undefined && starters < requires.minStarters) return false;
-  if (requires.minSquadRoom !== undefined && context.squadRoom < requires.minSquadRoom) return false;
-  if (requires.minCash !== undefined && context.cash < requires.minCash) return false;
-  if (requires.minLosingStreak !== undefined && context.losingStreak < requires.minLosingStreak) {
-    return false;
+  if (requires.minMatches !== undefined && context.matchesPlayed < requires.minMatches) {
+    return `Your club has not played enough matches — ${requires.minMatches} are needed.`;
   }
-  if (requires.minWinStreak !== undefined && context.winStreak < requires.minWinStreak) return false;
-  if (requires.hasMega && !context.squad.some((member) => member.hasMega)) return false;
-  if (requires.hasCaptain && !context.hasCaptain) return false;
-  if (requires.captainAvailable && !context.captainAvailable) return false;
-  if (requires.bottomOfLadder && !bottom) return false;
-  if (requires.notBottomOfLadder && bottom) return false;
-  return true;
+  if (requires.maxWinRate !== undefined && context.winRate > requires.maxWinRate) {
+    return 'Your season has gone too well for this.';
+  }
+  if (requires.maxMatches !== undefined && context.matchesPlayed > requires.maxMatches) {
+    return 'Your club is too far into the season for this.';
+  }
+  if (requires.minSquad !== undefined && context.squadSize < requires.minSquad) {
+    return `Your squad is too small — ${requires.minSquad} Pokémon are needed.`;
+  }
+  if (requires.minStarters !== undefined && starters < requires.minStarters) {
+    return `You have only ${starters} in your starting lineup.`;
+  }
+  if (requires.minSquadRoom !== undefined && context.squadRoom < requires.minSquadRoom) {
+    return 'Your squad is full. Sell somebody first.';
+  }
+  if (requires.minCash !== undefined && context.cash < requires.minCash) {
+    return 'There is not enough in the account.';
+  }
+  if (requires.minLosingStreak !== undefined && context.losingStreak < requires.minLosingStreak) {
+    return 'Your recent results do not call for it.';
+  }
+  if (requires.minWinStreak !== undefined && context.winStreak < requires.minWinStreak) {
+    return 'Your recent results do not call for it.';
+  }
+  if (requires.hasMega && !context.squad.some((member) => member.hasMega)) {
+    return 'Nobody in your squad can Mega Evolve.';
+  }
+  if (requires.hasCaptain && !context.hasCaptain) return 'Your club has no captain.';
+  if (requires.captainAvailable && !context.captainAvailable) {
+    return context.hasCaptain
+      ? 'Your captain has already stepped in, and is still spending that credit.'
+      : 'Your club has no captain.';
+  }
+  if (requires.captainEstablished && !established(context)) {
+    return context.hasCaptain
+      ? `Your captain has worn the armband for ${context.captainTenure} match${context.captainTenure === 1 ? '' : 'es'}. The dressing room listens to one that has had it ${CAPTAIN_TENURE}, or has had it from the start.`
+      : 'Your club has no captain.';
+  }
+  if (requires.bottomOfLadder && !bottom) return 'This one is for the club at the bottom.';
+  if (requires.notBottomOfLadder && bottom) return 'This one is not for the club at the bottom.';
+  return null;
+}
+
+/** Whether the armband has been where it is long enough to be worth anything. */
+function established(context: EventContext): boolean {
+  if (!context.hasCaptain) return false;
+  return context.captainFromTheStart || context.captainTenure >= CAPTAIN_TENURE;
+}
+
+export function meetsRequires(context: EventContext, requires: Requires | undefined): boolean {
+  return requireReason(context, requires) === null;
 }
 
 // --- triggers -----------------------------------------------------------------------------------

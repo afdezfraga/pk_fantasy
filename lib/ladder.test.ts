@@ -6,7 +6,10 @@ import {
   formatStanding,
   ladderScore,
   progressPerRank,
+  promotionRewards,
   rungNumber,
+  SEASON_START,
+  tierAtRung,
   type Standing,
 } from './ladder.ts';
 
@@ -123,6 +126,64 @@ describe('applyResult', () => {
       globalPlacement: 123329,
     };
     expect(applyResult(master, true)).toEqual(master);
+  });
+
+  it('takes a win out of Beginner into Poké Ball 4', () => {
+    expect(applyResult(at('beginner', null), true)).toMatchObject({ tierKey: 'poke', rank: 4, progress: 0 });
+    expect(applyResult(at('beginner', null), false)).toMatchObject({ tierKey: 'beginner' });
+  });
+});
+
+describe('promotionRewards', () => {
+  const paid = (before: Standing, after: Standing, peak = rungNumber(before)) =>
+    promotionRewards(before, after, peak).map((reward) => reward.tierKey);
+
+  it('pays for each ball tier reached: Great, Ultra, Master, Champion', () => {
+    expect(paid(at('poke', 1, 2), at('great', 4))).toEqual(['great']);
+    expect(paid(at('great', 1, 3), at('ultra', 4))).toEqual(['ultra']);
+    expect(paid(at('ultra', 1, 4), at('master', 4))).toEqual(['master']);
+    expect(paid(at('master', 1), at('champion', null))).toEqual(['champion']);
+  });
+
+  it('pays nothing for climbing ranks inside a tier', () => {
+    expect(paid(at('poke', 2, 2), at('poke', 1))).toEqual([]);
+    expect(paid(at('ultra', 4, 4), at('ultra', 3))).toEqual([]);
+  });
+
+  it('pays nothing for leaving Beginner', () => {
+    expect(paid(at('beginner', null), SEASON_START)).toEqual([]);
+  });
+
+  it('pays a tier once a season, however many times it is re-entered', () => {
+    // Reached Great Ball earlier, then corrected back down to Poké Ball 1.
+    const peak = rungNumber(at('great', 3));
+    expect(paid(at('poke', 1, 2), at('great', 4), peak)).toEqual([]);
+    // A tier above the peak still pays.
+    expect(paid(at('great', 1, 3), at('ultra', 4), peak)).toEqual(['ultra']);
+  });
+
+  it('never pays for a tier a hand correction put you in', () => {
+    // Corrected up to Ultra Ball without a match, so the peak is still Poké Ball.
+    const peak = rungNumber(SEASON_START);
+    expect(paid(at('ultra', 2, 1), at('ultra', 1), peak)).toEqual([]);
+    expect(paid(at('ultra', 1, 4), at('master', 4), peak)).toEqual(['master']);
+  });
+});
+
+describe('tierAtRung', () => {
+  it('inverts rungNumber at every rung', () => {
+    for (const standing of [
+      at('beginner', null),
+      SEASON_START,
+      at('poke', 1),
+      at('great', 4),
+      at('great', 1),
+      at('ultra', 3),
+      at('master', 4),
+      at('champion', null),
+    ]) {
+      expect(tierAtRung(rungNumber(standing)).key).toBe(standing.tierKey);
+    }
   });
 });
 

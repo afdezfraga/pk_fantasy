@@ -6,7 +6,7 @@ import { requireUser } from '../../lib/auth/session.ts';
 import { db } from '../../lib/db.ts';
 import { money } from '../../lib/format.ts';
 import { EffectViolation } from '../../lib/services/effects.ts';
-import { delegateEvent, EventError, forceResolveEvent, resolveEvent } from '../../lib/services/events.ts';
+import { EventError, resolveEvent } from '../../lib/services/events.ts';
 import { LeagueError } from '../../lib/services/league.ts';
 import { InsufficientFunds } from '../../lib/services/money.ts';
 
@@ -55,49 +55,6 @@ export async function resolveEventAction(
     const result = await resolveEvent({ eventId, teamId: team.id, choiceKey, actorUserId: user.id });
     refresh(leagueId);
     return { success: outcome(result) };
-  } catch (error) {
-    return { error: toMessage(error) };
-  }
-}
-
-/**
- * Hands it to the assistant coach.
- *
- * They pick at random from whatever is open, which is rarely what you would have chosen. That
- * is the trade: it costs you control rather than money, and it means there is always one button
- * that works no matter how broke or short-handed the club is.
- */
-export async function delegateEventAction(
-  _prev: ActionState,
-  formData: FormData,
-): Promise<ActionState> {
-  const user = await requireUser();
-  const leagueId = String(formData.get('leagueId') ?? '');
-  const eventId = String(formData.get('eventId') ?? '');
-
-  try {
-    const team = await myTeam(leagueId, user.id);
-    const result = await delegateEvent({ eventId, teamId: team.id, actorUserId: user.id });
-    refresh(leagueId);
-    return { success: `Your assistant went with: ${outcome(result)}` };
-  } catch (error) {
-    return { error: toMessage(error) };
-  }
-}
-
-/** Commissioner escape hatch, so a stuck league can always move on. */
-export async function forceResolveEventAction(
-  _prev: ActionState,
-  formData: FormData,
-): Promise<ActionState> {
-  const user = await requireUser();
-  const leagueId = String(formData.get('leagueId') ?? '');
-  const eventId = String(formData.get('eventId') ?? '');
-
-  try {
-    const result = await forceResolveEvent({ eventId, actorUserId: user.id });
-    refresh(leagueId);
-    return { success: `Forced through: ${outcome(result)}` };
   } catch (error) {
     return { error: toMessage(error) };
   }

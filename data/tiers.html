@@ -168,18 +168,37 @@
     grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
   }
 
+  .mons > li { display: grid; }
+
   .mon {
     display: grid;
-    grid-template-columns: 1fr auto;
-    grid-template-areas: 'name price' 'meta price';
+    grid-template-columns: 1fr auto auto;
+    grid-template-areas: 'name price tick' 'meta price tick';
     align-items: center;
     column-gap: 10px;
     padding: 8px 10px;
     background: var(--panel);
+    border: 0;
     border-right: 1px solid var(--line);
     border-bottom: 1px solid var(--line);
+    font: inherit;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+    position: relative;
   }
-  .mon:nth-child(even) { background: var(--panel-2); }
+  .mons > li:nth-child(even) .mon { background: var(--panel-2); }
+  .mon:hover { background: #232838; }
+  .mon:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; z-index: 1; }
+
+  /* Picked: a left rail in the tier's own colour, plus a tick that only occupies space once
+     it has something to show — otherwise every row carries a permanent empty column. */
+  .mon-tick { grid-area: tick; width: 0; color: var(--accent); font-weight: 700; }
+  .mon[aria-pressed='true'] { background: #1b2030; box-shadow: inset 3px 0 0 var(--tier); }
+  .mons > li:nth-child(even) .mon[aria-pressed='true'] { background: #1b2030; }
+  .mon[aria-pressed='true'] .mon-tick { width: auto; }
+  .mon[aria-pressed='true'] .mon-tick::before { content: '✓'; }
+  .mon[aria-pressed='true'] .mon-name { color: var(--accent); }
 
   .mon-name { grid-area: name; font-weight: 600; }
   .mon-meta { grid-area: meta; font-size: 12px; color: var(--muted); }
@@ -198,6 +217,123 @@
   }
   .restricted { color: var(--muted); margin-left: 4px; }
 
+  /* --- the shortlist ------------------------------------------------------------------- */
+  /*
+   * Pinned rather than in the flow, because the whole point is to keep the running total in
+   * view while you scroll six tiers of Pokémon. Wide screens get a rail on the right; narrow
+   * ones get a bar along the bottom that opens upward, where a thumb already is.
+   */
+  .cart {
+    position: fixed;
+    z-index: 20;
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 8px 32px #0008;
+  }
+
+  .cart-toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 12px 14px;
+    background: none;
+    border: 0;
+    color: var(--ink);
+    font: inherit;
+    font-family: var(--display);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .cart-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .cart-toggle .count { color: var(--accent); font-weight: 700; }
+  .cart-toggle .total { margin-left: auto; font-size: 15px; font-variant-numeric: tabular-nums; }
+  .cart-chev { transition: transform 0.15s ease; }
+  .cart[data-open='false'] .cart-chev { transform: rotate(180deg); }
+
+  .cart-body { display: flex; flex-direction: column; min-height: 0; border-top: 1px solid var(--line); }
+  .cart[data-open='false'] .cart-body { display: none; }
+
+  .cart-list { list-style: none; margin: 0; padding: 0; overflow-y: auto; min-height: 0; flex: 1; }
+  .cart-list li + li { border-top: 1px solid var(--line); }
+
+  .cart-item {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: baseline;
+    gap: 2px 10px;
+    width: 100%;
+    padding: 8px 14px;
+    background: none;
+    border: 0;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+  .cart-item:hover { background: #262c3d; }
+  .cart-item:hover .cart-x { color: var(--negative); }
+  .cart-item:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .cart-item .nm { font-weight: 600; }
+  .cart-item .pr { font-variant-numeric: tabular-nums; color: var(--muted); }
+  .cart-item .tr { font-size: 11px; color: var(--tier); font-family: var(--display); letter-spacing: 0.08em; }
+  .cart-x { color: var(--muted); font-size: 16px; line-height: 1; }
+
+  .cart-empty { margin: 0; padding: 16px 14px; color: var(--muted); font-size: 13px; }
+
+  .cart-sums { margin: 0; padding: 10px 14px; border-top: 1px solid var(--line); display: grid; gap: 4px; }
+  .cart-sums > div { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; }
+  .cart-sums dt { color: var(--muted); }
+  .cart-sums dd { margin: 0; font-variant-numeric: tabular-nums; }
+  .cart-sums .over dd, .cart-sums dd.over { color: var(--negative); font-weight: 600; }
+  .cart-note { margin: 0; padding: 0 14px 10px; font-size: 12px; color: var(--negative); }
+
+  .cart-clear {
+    margin: 0;
+    padding: 9px 14px;
+    background: none;
+    border: 0;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font: inherit;
+    font-size: 12px;
+    text-align: left;
+    cursor: pointer;
+  }
+  .cart-clear:hover { color: var(--negative); }
+  .cart-clear:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+  /* Narrow: a bar on the bottom edge that opens upward. */
+  @media (max-width: 999px) {
+    .cart {
+      left: 0;
+      right: 0;
+      bottom: 0;
+      border-width: 1px 0 0;
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+      max-height: 75vh;
+    }
+    .cart-list { max-height: 45vh; }
+  }
+
+  /* Wide: a rail on the right. The page keeps clear of it rather than sliding underneath. */
+  @media (min-width: 1000px) {
+    .cart {
+      top: env(safe-area-inset-top, 0px);
+      right: 16px;
+      width: 290px;
+      max-height: min(80vh, 760px);
+      margin-top: 24px;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .page { padding-right: 330px; max-width: 1420px; }
+  }
+
   footer {
     margin-top: 56px;
     padding-top: 16px;
@@ -211,11 +347,16 @@
   @media print {
     :root { --surface: #fff; --panel: #fff; --panel-2: #fafafa; --line: #d8d8d8; --ink: #111; --muted: #555; --accent: #b38f00; }
     body { font-size: 10.5pt; }
-    .page { padding-block: 0; max-width: none; }
+    .page { padding-block: 0; padding-right: 16px; max-width: none; }
     .mons { grid-template-columns: repeat(3, 1fr); }
     .tier { break-inside: avoid; }
     .chip { color: #111; border: 1px solid #0003; }
     a { text-decoration: none; }
+    /* The shortlist is a screen tool; on paper a picked Pokémon is just marked. */
+    .cart { display: none; }
+    .mon { cursor: auto; }
+    .mon[aria-pressed='true'] { background: #f4f0dd; box-shadow: inset 3px 0 0 #333; }
+    .mon[aria-pressed='true'] .mon-name { color: inherit; }
     @page { margin: 14mm; }
   }
 
@@ -298,95 +439,185 @@
           <p class="tier-count tabular">18 <span>· 7.3% of the roster</span></p>
         </header>
         <ul class="mons">
-          <li class="mon">
-            <span class="mon-name">Salamence<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Dragon / Flying · 700 BST</span>
-            <span class="mon-price tabular">₽400,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="salamence" data-name="Salamence"
+              data-price="400000" data-tier="S">
+              <span class="mon-name">Salamence<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Dragon / Flying · 700 BST</span>
+              <span class="mon-price tabular">₽400,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Garchomp<span class="mega" title="2 Mega Evolutions included">M</span></span>
-            <span class="mon-meta">Dragon / Ground · 700 BST</span>
-            <span class="mon-price tabular">₽400,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="garchomp" data-name="Garchomp"
+              data-price="400000" data-tier="S">
+              <span class="mon-name">Garchomp<span class="mega" title="2 Mega Evolutions included">M</span></span>
+              <span class="mon-meta">Dragon / Ground · 700 BST</span>
+              <span class="mon-price tabular">₽400,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Charizard<span class="mega" title="2 Mega Evolutions included">M</span></span>
-            <span class="mon-meta">Fire / Flying · 634 BST</span>
-            <span class="mon-price tabular">₽394,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="charizard" data-name="Charizard"
+              data-price="394000" data-tier="S">
+              <span class="mon-name">Charizard<span class="mega" title="2 Mega Evolutions included">M</span></span>
+              <span class="mon-meta">Fire / Flying · 634 BST</span>
+              <span class="mon-price tabular">₽394,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Golisopod<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Bug / Water · 630 BST</span>
-            <span class="mon-price tabular">₽392,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="golisopod" data-name="Golisopod"
+              data-price="392000" data-tier="S">
+              <span class="mon-name">Golisopod<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Bug / Water · 630 BST</span>
+              <span class="mon-price tabular">₽392,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Gardevoir<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Psychic / Fairy · 618 BST</span>
-            <span class="mon-price tabular">₽387,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="gardevoir" data-name="Gardevoir"
+              data-price="387000" data-tier="S">
+              <span class="mon-name">Gardevoir<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Psychic / Fairy · 618 BST</span>
+              <span class="mon-price tabular">₽387,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Archaludon</span>
-            <span class="mon-meta">Steel / Dragon · 600 BST</span>
-            <span class="mon-price tabular">₽380,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="archaludon" data-name="Archaludon"
+              data-price="380000" data-tier="S">
+              <span class="mon-name">Archaludon</span>
+              <span class="mon-meta">Steel / Dragon · 600 BST</span>
+              <span class="mon-price tabular">₽380,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Raichu<span class="mega" title="2 Mega Evolutions included">M</span></span>
-            <span class="mon-meta">Electric · 585 BST</span>
-            <span class="mon-price tabular">₽374,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="raichu" data-name="Raichu"
+              data-price="374000" data-tier="S">
+              <span class="mon-name">Raichu<span class="mega" title="2 Mega Evolutions included">M</span></span>
+              <span class="mon-meta">Electric · 585 BST</span>
+              <span class="mon-price tabular">₽374,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Hisuian Arcanine</span>
-            <span class="mon-meta">Fire / Rock · 555 BST</span>
-            <span class="mon-price tabular">₽362,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="arcanine-hisui" data-name="Hisuian Arcanine"
+              data-price="362000" data-tier="S">
+              <span class="mon-name">Hisuian Arcanine</span>
+              <span class="mon-meta">Fire / Rock · 555 BST</span>
+              <span class="mon-price tabular">₽362,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Kingambit</span>
-            <span class="mon-meta">Dark / Steel · 550 BST</span>
-            <span class="mon-price tabular">₽360,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="kingambit" data-name="Kingambit"
+              data-price="360000" data-tier="S">
+              <span class="mon-name">Kingambit</span>
+              <span class="mon-meta">Dark / Steel · 550 BST</span>
+              <span class="mon-price tabular">₽360,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Gholdengo</span>
-            <span class="mon-meta">Steel / Ghost · 550 BST</span>
-            <span class="mon-price tabular">₽360,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="gholdengo" data-name="Gholdengo"
+              data-price="360000" data-tier="S">
+              <span class="mon-name">Gholdengo</span>
+              <span class="mon-meta">Steel / Ghost · 550 BST</span>
+              <span class="mon-price tabular">₽360,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Milotic</span>
-            <span class="mon-meta">Water · 540 BST</span>
-            <span class="mon-price tabular">₽356,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="milotic" data-name="Milotic"
+              data-price="356000" data-tier="S">
+              <span class="mon-name">Milotic</span>
+              <span class="mon-meta">Water · 540 BST</span>
+              <span class="mon-price tabular">₽356,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Incineroar</span>
-            <span class="mon-meta">Fire / Dark · 530 BST</span>
-            <span class="mon-price tabular">₽352,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="incineroar" data-name="Incineroar"
+              data-price="352000" data-tier="S">
+              <span class="mon-name">Incineroar</span>
+              <span class="mon-meta">Fire / Dark · 530 BST</span>
+              <span class="mon-price tabular">₽352,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Rillaboom</span>
-            <span class="mon-meta">Grass · 530 BST</span>
-            <span class="mon-price tabular">₽352,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="rillaboom" data-name="Rillaboom"
+              data-price="352000" data-tier="S">
+              <span class="mon-name">Rillaboom</span>
+              <span class="mon-meta">Grass · 530 BST</span>
+              <span class="mon-price tabular">₽352,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Basculegion</span>
-            <span class="mon-meta">Water / Ghost · 530 BST</span>
-            <span class="mon-price tabular">₽352,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="basculegion" data-name="Basculegion"
+              data-price="352000" data-tier="S">
+              <span class="mon-name">Basculegion</span>
+              <span class="mon-meta">Water / Ghost · 530 BST</span>
+              <span class="mon-price tabular">₽352,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Farigiraf</span>
-            <span class="mon-meta">Normal / Psychic · 520 BST</span>
-            <span class="mon-price tabular">₽348,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="farigiraf" data-name="Farigiraf"
+              data-price="348000" data-tier="S">
+              <span class="mon-name">Farigiraf</span>
+              <span class="mon-meta">Normal / Psychic · 520 BST</span>
+              <span class="mon-price tabular">₽348,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Sneasler</span>
-            <span class="mon-meta">Fighting / Poison · 510 BST</span>
-            <span class="mon-price tabular">₽344,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="sneasler" data-name="Sneasler"
+              data-price="344000" data-tier="S">
+              <span class="mon-name">Sneasler</span>
+              <span class="mon-meta">Fighting / Poison · 510 BST</span>
+              <span class="mon-price tabular">₽344,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Indeedee</span>
-            <span class="mon-meta">Psychic / Normal · 475 BST</span>
-            <span class="mon-price tabular">₽330,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="indeedee" data-name="Indeedee"
+              data-price="330000" data-tier="S">
+              <span class="mon-name">Indeedee</span>
+              <span class="mon-meta">Psychic / Normal · 475 BST</span>
+              <span class="mon-price tabular">₽330,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Pelipper</span>
-            <span class="mon-meta">Water / Flying · 440 BST</span>
-            <span class="mon-price tabular">₽316,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="pelipper" data-name="Pelipper"
+              data-price="316000" data-tier="S">
+              <span class="mon-name">Pelipper</span>
+              <span class="mon-meta">Water / Flying · 440 BST</span>
+              <span class="mon-price tabular">₽316,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li></ul>
       </section>
       <section class="tier" style="--tier:#ff9f43">
@@ -396,180 +627,355 @@
           <p class="tier-count tabular">35 <span>· 14.2% of the roster</span></p>
         </header>
         <ul class="mons">
-          <li class="mon">
-            <span class="mon-name">Dragonite<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Dragon / Flying · 700 BST</span>
-            <span class="mon-price tabular">₽250,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="dragonite" data-name="Dragonite"
+              data-price="250000" data-tier="A+">
+              <span class="mon-name">Dragonite<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Dragon / Flying · 700 BST</span>
+              <span class="mon-price tabular">₽250,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Tyranitar<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Rock / Dark · 700 BST</span>
-            <span class="mon-price tabular">₽250,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="tyranitar" data-name="Tyranitar"
+              data-price="250000" data-tier="A+">
+              <span class="mon-name">Tyranitar<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Rock / Dark · 700 BST</span>
+              <span class="mon-price tabular">₽250,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Metagross<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Steel / Psychic · 700 BST</span>
-            <span class="mon-price tabular">₽250,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="metagross" data-name="Metagross"
+              data-price="250000" data-tier="A+">
+              <span class="mon-name">Metagross<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Steel / Psychic · 700 BST</span>
+              <span class="mon-price tabular">₽250,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Eternal Flower Floette<span class="mega" title="1 Mega Evolution included">M</span><span class="restricted" title="On the roster but not catchable">·</span></span>
-            <span class="mon-meta">Fairy · 651 BST</span>
-            <span class="mon-price tabular">₽250,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="floette-eternal" data-name="Eternal Flower Floette"
+              data-price="250000" data-tier="A+">
+              <span class="mon-name">Eternal Flower Floette<span class="mega" title="1 Mega Evolution included">M</span><span class="restricted" title="On the roster but not catchable">·</span></span>
+              <span class="mon-meta">Fairy · 651 BST</span>
+              <span class="mon-price tabular">₽250,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Baxcalibur<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Dragon / Ice · 700 BST</span>
-            <span class="mon-price tabular">₽250,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="baxcalibur" data-name="Baxcalibur"
+              data-price="250000" data-tier="A+">
+              <span class="mon-name">Baxcalibur<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Dragon / Ice · 700 BST</span>
+              <span class="mon-price tabular">₽250,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Swampert<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Water / Ground · 635 BST</span>
-            <span class="mon-price tabular">₽244,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="swampert" data-name="Swampert"
+              data-price="244000" data-tier="A+">
+              <span class="mon-name">Swampert<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Water / Ground · 635 BST</span>
+              <span class="mon-price tabular">₽244,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Delphox<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Fire / Psychic · 634 BST</span>
-            <span class="mon-price tabular">₽244,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="delphox" data-name="Delphox"
+              data-price="244000" data-tier="A+">
+              <span class="mon-name">Delphox<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Fire / Psychic · 634 BST</span>
+              <span class="mon-price tabular">₽244,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Blastoise<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Water · 630 BST</span>
-            <span class="mon-price tabular">₽242,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="blastoise" data-name="Blastoise"
+              data-price="242000" data-tier="A+">
+              <span class="mon-name">Blastoise<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Water · 630 BST</span>
+              <span class="mon-price tabular">₽242,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Venusaur<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Grass / Poison · 625 BST</span>
-            <span class="mon-price tabular">₽240,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="venusaur" data-name="Venusaur"
+              data-price="240000" data-tier="A+">
+              <span class="mon-name">Venusaur<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Grass / Poison · 625 BST</span>
+              <span class="mon-price tabular">₽240,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Lucario<span class="mega" title="2 Mega Evolutions included">M</span></span>
-            <span class="mon-meta">Fighting / Steel · 625 BST</span>
-            <span class="mon-price tabular">₽240,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="lucario" data-name="Lucario"
+              data-price="240000" data-tier="A+">
+              <span class="mon-name">Lucario<span class="mega" title="2 Mega Evolutions included">M</span></span>
+              <span class="mon-meta">Fighting / Steel · 625 BST</span>
+              <span class="mon-price tabular">₽240,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Glimmora<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Rock / Poison · 625 BST</span>
-            <span class="mon-price tabular">₽240,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="glimmora" data-name="Glimmora"
+              data-price="240000" data-tier="A+">
+              <span class="mon-name">Glimmora<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Rock / Poison · 625 BST</span>
+              <span class="mon-price tabular">₽240,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Aerodactyl<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Rock / Flying · 615 BST</span>
-            <span class="mon-price tabular">₽236,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="aerodactyl" data-name="Aerodactyl"
+              data-price="236000" data-tier="A+">
+              <span class="mon-name">Aerodactyl<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Rock / Flying · 615 BST</span>
+              <span class="mon-price tabular">₽236,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Excadrill<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Ground / Steel · 608 BST</span>
-            <span class="mon-price tabular">₽233,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="excadrill" data-name="Excadrill"
+              data-price="233000" data-tier="A+">
+              <span class="mon-name">Excadrill<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Ground / Steel · 608 BST</span>
+              <span class="mon-price tabular">₽233,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Gengar<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Ghost / Poison · 600 BST</span>
-            <span class="mon-price tabular">₽230,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="gengar" data-name="Gengar"
+              data-price="230000" data-tier="A+">
+              <span class="mon-name">Gengar<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Ghost / Poison · 600 BST</span>
+              <span class="mon-price tabular">₽230,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Kommo-o</span>
-            <span class="mon-meta">Dragon / Fighting · 600 BST</span>
-            <span class="mon-price tabular">₽230,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="kommo-o" data-name="Kommo-o"
+              data-price="230000" data-tier="A+">
+              <span class="mon-name">Kommo-o</span>
+              <span class="mon-meta">Dragon / Fighting · 600 BST</span>
+              <span class="mon-price tabular">₽230,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Staraptor<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Normal / Flying · 585 BST</span>
-            <span class="mon-price tabular">₽224,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="staraptor" data-name="Staraptor"
+              data-price="224000" data-tier="A+">
+              <span class="mon-name">Staraptor<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Normal / Flying · 585 BST</span>
+              <span class="mon-price tabular">₽224,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Froslass<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Ice / Ghost · 580 BST</span>
-            <span class="mon-price tabular">₽222,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="froslass" data-name="Froslass"
+              data-price="222000" data-tier="A+">
+              <span class="mon-name">Froslass<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Ice / Ghost · 580 BST</span>
+              <span class="mon-price tabular">₽222,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Absol<span class="mega" title="2 Mega Evolutions included">M</span></span>
-            <span class="mon-meta">Dark · 565 BST</span>
-            <span class="mon-price tabular">₽216,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="absol" data-name="Absol"
+              data-price="216000" data-tier="A+">
+              <span class="mon-name">Absol<span class="mega" title="2 Mega Evolutions included">M</span></span>
+              <span class="mon-meta">Dark · 565 BST</span>
+              <span class="mon-price tabular">₽216,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Volcarona</span>
-            <span class="mon-meta">Bug / Fire · 550 BST</span>
-            <span class="mon-price tabular">₽210,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="volcarona" data-name="Volcarona"
+              data-price="210000" data-tier="A+">
+              <span class="mon-name">Volcarona</span>
+              <span class="mon-meta">Bug / Fire · 550 BST</span>
+              <span class="mon-price tabular">₽210,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Annihilape</span>
-            <span class="mon-meta">Fighting / Ghost · 535 BST</span>
-            <span class="mon-price tabular">₽204,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="annihilape" data-name="Annihilape"
+              data-price="204000" data-tier="A+">
+              <span class="mon-name">Annihilape</span>
+              <span class="mon-meta">Fighting / Ghost · 535 BST</span>
+              <span class="mon-price tabular">₽204,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Primarina</span>
-            <span class="mon-meta">Water / Fairy · 530 BST</span>
-            <span class="mon-price tabular">₽202,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="primarina" data-name="Primarina"
+              data-price="202000" data-tier="A+">
+              <span class="mon-name">Primarina</span>
+              <span class="mon-meta">Water / Fairy · 530 BST</span>
+              <span class="mon-price tabular">₽202,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Sylveon</span>
-            <span class="mon-meta">Fairy · 525 BST</span>
-            <span class="mon-price tabular">₽200,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="sylveon" data-name="Sylveon"
+              data-price="200000" data-tier="A+">
+              <span class="mon-name">Sylveon</span>
+              <span class="mon-meta">Fairy · 525 BST</span>
+              <span class="mon-price tabular">₽200,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Armarouge</span>
-            <span class="mon-meta">Fire / Psychic · 525 BST</span>
-            <span class="mon-price tabular">₽200,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="armarouge" data-name="Armarouge"
+              data-price="200000" data-tier="A+">
+              <span class="mon-name">Armarouge</span>
+              <span class="mon-meta">Fire / Psychic · 525 BST</span>
+              <span class="mon-price tabular">₽200,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Hatterene</span>
-            <span class="mon-meta">Psychic / Fairy · 510 BST</span>
-            <span class="mon-price tabular">₽194,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="hatterene" data-name="Hatterene"
+              data-price="194000" data-tier="A+">
+              <span class="mon-name">Hatterene</span>
+              <span class="mon-meta">Psychic / Fairy · 510 BST</span>
+              <span class="mon-price tabular">₽194,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Grimmsnarl</span>
-            <span class="mon-meta">Dark / Fairy · 510 BST</span>
-            <span class="mon-price tabular">₽194,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="grimmsnarl" data-name="Grimmsnarl"
+              data-price="194000" data-tier="A+">
+              <span class="mon-name">Grimmsnarl</span>
+              <span class="mon-meta">Dark / Fairy · 510 BST</span>
+              <span class="mon-price tabular">₽194,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Sinistcha</span>
-            <span class="mon-meta">Grass / Ghost · 508 BST</span>
-            <span class="mon-price tabular">₽193,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="sinistcha" data-name="Sinistcha"
+              data-price="193000" data-tier="A+">
+              <span class="mon-name">Sinistcha</span>
+              <span class="mon-meta">Grass / Ghost · 508 BST</span>
+              <span class="mon-price tabular">₽193,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Alolan Ninetales</span>
-            <span class="mon-meta">Ice / Fairy · 505 BST</span>
-            <span class="mon-price tabular">₽192,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="ninetales-alola" data-name="Alolan Ninetales"
+              data-price="192000" data-tier="A+">
+              <span class="mon-name">Alolan Ninetales</span>
+              <span class="mon-meta">Ice / Fairy · 505 BST</span>
+              <span class="mon-price tabular">₽192,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Politoed</span>
-            <span class="mon-meta">Water · 500 BST</span>
-            <span class="mon-price tabular">₽190,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="politoed" data-name="Politoed"
+              data-price="190000" data-tier="A+">
+              <span class="mon-name">Politoed</span>
+              <span class="mon-meta">Water · 500 BST</span>
+              <span class="mon-price tabular">₽190,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Talonflame</span>
-            <span class="mon-meta">Fire / Flying · 499 BST</span>
-            <span class="mon-price tabular">₽190,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="talonflame" data-name="Talonflame"
+              data-price="190000" data-tier="A+">
+              <span class="mon-name">Talonflame</span>
+              <span class="mon-meta">Fire / Flying · 499 BST</span>
+              <span class="mon-price tabular">₽190,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Corviknight</span>
-            <span class="mon-meta">Flying / Steel · 495 BST</span>
-            <span class="mon-price tabular">₽188,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="corviknight" data-name="Corviknight"
+              data-price="188000" data-tier="A+">
+              <span class="mon-name">Corviknight</span>
+              <span class="mon-meta">Flying / Steel · 495 BST</span>
+              <span class="mon-price tabular">₽188,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Pawmot</span>
-            <span class="mon-meta">Electric / Fighting · 490 BST</span>
-            <span class="mon-price tabular">₽186,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="pawmot" data-name="Pawmot"
+              data-price="186000" data-tier="A+">
+              <span class="mon-name">Pawmot</span>
+              <span class="mon-meta">Electric / Fighting · 490 BST</span>
+              <span class="mon-price tabular">₽186,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Sableye<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Dark / Ghost · 480 BST</span>
-            <span class="mon-price tabular">₽182,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="sableye" data-name="Sableye"
+              data-price="182000" data-tier="A+">
+              <span class="mon-name">Sableye<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Dark / Ghost · 480 BST</span>
+              <span class="mon-price tabular">₽182,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Whimsicott</span>
-            <span class="mon-meta">Grass / Fairy · 480 BST</span>
-            <span class="mon-price tabular">₽182,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="whimsicott" data-name="Whimsicott"
+              data-price="182000" data-tier="A+">
+              <span class="mon-name">Whimsicott</span>
+              <span class="mon-meta">Grass / Fairy · 480 BST</span>
+              <span class="mon-price tabular">₽182,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Torkoal</span>
-            <span class="mon-meta">Fire · 470 BST</span>
-            <span class="mon-price tabular">₽178,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="torkoal" data-name="Torkoal"
+              data-price="178000" data-tier="A+">
+              <span class="mon-name">Torkoal</span>
+              <span class="mon-meta">Fire · 470 BST</span>
+              <span class="mon-price tabular">₽178,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Maushold</span>
-            <span class="mon-meta">Normal · 470 BST</span>
-            <span class="mon-price tabular">₽178,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="maushold" data-name="Maushold"
+              data-price="178000" data-tier="A+">
+              <span class="mon-name">Maushold</span>
+              <span class="mon-meta">Normal · 470 BST</span>
+              <span class="mon-price tabular">₽178,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li></ul>
       </section>
       <section class="tier" style="--tier:#ffd93d">
@@ -579,180 +985,355 @@
           <p class="tier-count tabular">35 <span>· 14.2% of the roster</span></p>
         </header>
         <ul class="mons">
-          <li class="mon">
-            <span class="mon-name">Blaziken<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Fire / Fighting · 630 BST</span>
-            <span class="mon-price tabular">₽136,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="blaziken" data-name="Blaziken"
+              data-price="136000" data-tier="A">
+              <span class="mon-name">Blaziken<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Fire / Fighting · 630 BST</span>
+              <span class="mon-price tabular">₽136,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Greninja<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Water / Dark · 630 BST</span>
-            <span class="mon-price tabular">₽136,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="greninja" data-name="Greninja"
+              data-price="136000" data-tier="A">
+              <span class="mon-name">Greninja<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Water / Dark · 630 BST</span>
+              <span class="mon-price tabular">₽136,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Meganium<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Grass · 625 BST</span>
-            <span class="mon-price tabular">₽135,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="meganium" data-name="Meganium"
+              data-price="135000" data-tier="A">
+              <span class="mon-name">Meganium<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Grass · 625 BST</span>
+              <span class="mon-price tabular">₽135,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Gallade<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Psychic / Fighting · 618 BST</span>
-            <span class="mon-price tabular">₽134,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="gallade" data-name="Gallade"
+              data-price="134000" data-tier="A">
+              <span class="mon-name">Gallade<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Psychic / Fighting · 618 BST</span>
+              <span class="mon-price tabular">₽134,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Chandelure<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Ghost / Fire · 620 BST</span>
-            <span class="mon-price tabular">₽134,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="chandelure" data-name="Chandelure"
+              data-price="134000" data-tier="A">
+              <span class="mon-name">Chandelure<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Ghost / Fire · 620 BST</span>
+              <span class="mon-price tabular">₽134,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Alakazam<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Psychic · 600 BST</span>
-            <span class="mon-price tabular">₽130,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="alakazam" data-name="Alakazam"
+              data-price="130000" data-tier="A">
+              <span class="mon-name">Alakazam<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Psychic · 600 BST</span>
+              <span class="mon-price tabular">₽130,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Scizor<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Bug / Steel · 600 BST</span>
-            <span class="mon-price tabular">₽130,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="scizor" data-name="Scizor"
+              data-price="130000" data-tier="A">
+              <span class="mon-name">Scizor<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Bug / Steel · 600 BST</span>
+              <span class="mon-price tabular">₽130,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Hydreigon</span>
-            <span class="mon-meta">Dark / Dragon · 600 BST</span>
-            <span class="mon-price tabular">₽130,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="hydreigon" data-name="Hydreigon"
+              data-price="130000" data-tier="A">
+              <span class="mon-name">Hydreigon</span>
+              <span class="mon-meta">Dark / Dragon · 600 BST</span>
+              <span class="mon-price tabular">₽130,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Hisuian Goodra</span>
-            <span class="mon-meta">Steel / Dragon · 600 BST</span>
-            <span class="mon-price tabular">₽130,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="goodra-hisui" data-name="Hisuian Goodra"
+              data-price="130000" data-tier="A">
+              <span class="mon-name">Hisuian Goodra</span>
+              <span class="mon-meta">Steel / Dragon · 600 BST</span>
+              <span class="mon-price tabular">₽130,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Dragapult</span>
-            <span class="mon-meta">Dragon / Ghost · 600 BST</span>
-            <span class="mon-price tabular">₽130,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="dragapult" data-name="Dragapult"
+              data-price="130000" data-tier="A">
+              <span class="mon-name">Dragapult</span>
+              <span class="mon-meta">Dragon / Ghost · 600 BST</span>
+              <span class="mon-price tabular">₽130,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Clefable<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Fairy · 583 BST</span>
-            <span class="mon-price tabular">₽127,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="clefable" data-name="Clefable"
+              data-price="127000" data-tier="A">
+              <span class="mon-name">Clefable<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Fairy · 583 BST</span>
+              <span class="mon-price tabular">₽127,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Scovillain<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Grass / Fire · 586 BST</span>
-            <span class="mon-price tabular">₽127,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="scovillain" data-name="Scovillain"
+              data-price="127000" data-tier="A">
+              <span class="mon-name">Scovillain<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Grass / Fire · 586 BST</span>
+              <span class="mon-price tabular">₽127,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Malamar<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Dark / Psychic · 582 BST</span>
-            <span class="mon-price tabular">₽126,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="malamar" data-name="Malamar"
+              data-price="126000" data-tier="A">
+              <span class="mon-name">Malamar<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Dark / Psychic · 582 BST</span>
+              <span class="mon-price tabular">₽126,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Camerupt<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Fire / Ground · 560 BST</span>
-            <span class="mon-price tabular">₽122,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="camerupt" data-name="Camerupt"
+              data-price="122000" data-tier="A">
+              <span class="mon-name">Camerupt<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Fire / Ground · 560 BST</span>
+              <span class="mon-price tabular">₽122,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Hisuian Typhlosion</span>
-            <span class="mon-meta">Fire / Ghost · 534 BST</span>
-            <span class="mon-price tabular">₽117,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="typhlosion-hisui" data-name="Hisuian Typhlosion"
+              data-price="117000" data-tier="A">
+              <span class="mon-name">Hisuian Typhlosion</span>
+              <span class="mon-meta">Fire / Ghost · 534 BST</span>
+              <span class="mon-price tabular">₽117,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Empoleon</span>
-            <span class="mon-meta">Water / Steel · 530 BST</span>
-            <span class="mon-price tabular">₽116,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="empoleon" data-name="Empoleon"
+              data-price="116000" data-tier="A">
+              <span class="mon-name">Empoleon</span>
+              <span class="mon-meta">Water / Steel · 530 BST</span>
+              <span class="mon-price tabular">₽116,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Mamoswine</span>
-            <span class="mon-meta">Ice / Ground · 530 BST</span>
-            <span class="mon-price tabular">₽116,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="mamoswine" data-name="Mamoswine"
+              data-price="116000" data-tier="A">
+              <span class="mon-name">Mamoswine</span>
+              <span class="mon-meta">Ice / Ground · 530 BST</span>
+              <span class="mon-price tabular">₽116,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Cinderace</span>
-            <span class="mon-meta">Fire · 530 BST</span>
-            <span class="mon-price tabular">₽116,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="cinderace" data-name="Cinderace"
+              data-price="116000" data-tier="A">
+              <span class="mon-name">Cinderace</span>
+              <span class="mon-meta">Fire · 530 BST</span>
+              <span class="mon-price tabular">₽116,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Inteleon</span>
-            <span class="mon-meta">Water · 530 BST</span>
-            <span class="mon-price tabular">₽116,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="inteleon" data-name="Inteleon"
+              data-price="116000" data-tier="A">
+              <span class="mon-name">Inteleon</span>
+              <span class="mon-meta">Water · 530 BST</span>
+              <span class="mon-price tabular">₽116,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Meowscarada</span>
-            <span class="mon-meta">Grass / Dark · 530 BST</span>
-            <span class="mon-price tabular">₽116,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="meowscarada" data-name="Meowscarada"
+              data-price="116000" data-tier="A">
+              <span class="mon-name">Meowscarada</span>
+              <span class="mon-meta">Grass / Dark · 530 BST</span>
+              <span class="mon-price tabular">₽116,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Ceruledge</span>
-            <span class="mon-meta">Fire / Ghost · 525 BST</span>
-            <span class="mon-price tabular">₽115,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="ceruledge" data-name="Ceruledge"
+              data-price="115000" data-tier="A">
+              <span class="mon-name">Ceruledge</span>
+              <span class="mon-meta">Fire / Ghost · 525 BST</span>
+              <span class="mon-price tabular">₽115,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Rotom</span>
-            <span class="mon-meta">Electric / Ghost · 520 BST</span>
-            <span class="mon-price tabular">₽114,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="rotom" data-name="Rotom"
+              data-price="114000" data-tier="A">
+              <span class="mon-name">Rotom</span>
+              <span class="mon-meta">Electric / Ghost · 520 BST</span>
+              <span class="mon-price tabular">₽114,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Weavile</span>
-            <span class="mon-meta">Dark / Ice · 510 BST</span>
-            <span class="mon-price tabular">₽112,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="weavile" data-name="Weavile"
+              data-price="112000" data-tier="A">
+              <span class="mon-name">Weavile</span>
+              <span class="mon-meta">Dark / Ice · 510 BST</span>
+              <span class="mon-price tabular">₽112,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Hisuian Zoroark</span>
-            <span class="mon-meta">Normal / Ghost · 510 BST</span>
-            <span class="mon-price tabular">₽112,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="zoroark-hisui" data-name="Hisuian Zoroark"
+              data-price="112000" data-tier="A">
+              <span class="mon-name">Hisuian Zoroark</span>
+              <span class="mon-meta">Normal / Ghost · 510 BST</span>
+              <span class="mon-price tabular">₽112,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Tsareena</span>
-            <span class="mon-meta">Grass · 510 BST</span>
-            <span class="mon-price tabular">₽112,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="tsareena" data-name="Tsareena"
+              data-price="112000" data-tier="A">
+              <span class="mon-name">Tsareena</span>
+              <span class="mon-meta">Grass · 510 BST</span>
+              <span class="mon-price tabular">₽112,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Sirfetch'd</span>
-            <span class="mon-meta">Fighting · 507 BST</span>
-            <span class="mon-price tabular">₽111,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="sirfetchd" data-name="Sirfetch'd"
+              data-price="111000" data-tier="A">
+              <span class="mon-name">Sirfetch'd</span>
+              <span class="mon-meta">Fighting · 507 BST</span>
+              <span class="mon-price tabular">₽111,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Aegislash</span>
-            <span class="mon-meta">Steel / Ghost · 500 BST</span>
-            <span class="mon-price tabular">₽110,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="aegislash" data-name="Aegislash"
+              data-price="110000" data-tier="A">
+              <span class="mon-name">Aegislash</span>
+              <span class="mon-meta">Steel / Ghost · 500 BST</span>
+              <span class="mon-price tabular">₽110,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Toxtricity</span>
-            <span class="mon-meta">Electric / Poison · 502 BST</span>
-            <span class="mon-price tabular">₽110,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="toxtricity" data-name="Toxtricity"
+              data-price="110000" data-tier="A">
+              <span class="mon-name">Toxtricity</span>
+              <span class="mon-meta">Electric / Poison · 502 BST</span>
+              <span class="mon-price tabular">₽110,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Kleavor</span>
-            <span class="mon-meta">Bug / Rock · 500 BST</span>
-            <span class="mon-price tabular">₽110,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="kleavor" data-name="Kleavor"
+              data-price="110000" data-tier="A">
+              <span class="mon-name">Kleavor</span>
+              <span class="mon-meta">Bug / Rock · 500 BST</span>
+              <span class="mon-price tabular">₽110,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Toxapex</span>
-            <span class="mon-meta">Poison / Water · 495 BST</span>
-            <span class="mon-price tabular">₽109,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="toxapex" data-name="Toxapex"
+              data-price="109000" data-tier="A">
+              <span class="mon-name">Toxapex</span>
+              <span class="mon-meta">Poison / Water · 495 BST</span>
+              <span class="mon-price tabular">₽109,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Mawile<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Steel / Fairy · 480 BST</span>
-            <span class="mon-price tabular">₽106,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="mawile" data-name="Mawile"
+              data-price="106000" data-tier="A">
+              <span class="mon-name">Mawile<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Steel / Fairy · 480 BST</span>
+              <span class="mon-price tabular">₽106,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Espathra</span>
-            <span class="mon-meta">Psychic · 481 BST</span>
-            <span class="mon-price tabular">₽106,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="espathra" data-name="Espathra"
+              data-price="106000" data-tier="A">
+              <span class="mon-name">Espathra</span>
+              <span class="mon-meta">Psychic · 481 BST</span>
+              <span class="mon-price tabular">₽106,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Mimikyu</span>
-            <span class="mon-meta">Ghost / Fairy · 476 BST</span>
-            <span class="mon-price tabular">₽105,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="mimikyu" data-name="Mimikyu"
+              data-price="105000" data-tier="A">
+              <span class="mon-name">Mimikyu</span>
+              <span class="mon-meta">Ghost / Fairy · 476 BST</span>
+              <span class="mon-price tabular">₽105,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Pincurchin</span>
-            <span class="mon-meta">Electric · 435 BST</span>
-            <span class="mon-price tabular">₽97,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="pincurchin" data-name="Pincurchin"
+              data-price="97000" data-tier="A">
+              <span class="mon-name">Pincurchin</span>
+              <span class="mon-meta">Electric · 435 BST</span>
+              <span class="mon-price tabular">₽97,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Vivillon</span>
-            <span class="mon-meta">Bug / Flying · 411 BST</span>
-            <span class="mon-price tabular">₽92,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="vivillon-high-plains" data-name="Vivillon"
+              data-price="92000" data-tier="A">
+              <span class="mon-name">Vivillon</span>
+              <span class="mon-meta">Bug / Flying · 411 BST</span>
+              <span class="mon-price tabular">₽92,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li></ul>
       </section>
       <section class="tier" style="--tier:#6bcb77">
@@ -762,280 +1343,555 @@
           <p class="tier-count tabular">55 <span>· 22.3% of the roster</span></p>
         </header>
         <ul class="mons">
-          <li class="mon">
-            <span class="mon-name">Palafin</span>
-            <span class="mon-meta">Water · 650 BST</span>
-            <span class="mon-price tabular">₽80,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="palafin" data-name="Palafin"
+              data-price="80000" data-tier="B">
+              <span class="mon-name">Palafin</span>
+              <span class="mon-meta">Water · 650 BST</span>
+              <span class="mon-price tabular">₽80,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Gyarados<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Water / Flying · 640 BST</span>
-            <span class="mon-price tabular">₽78,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="gyarados" data-name="Gyarados"
+              data-price="78000" data-tier="B">
+              <span class="mon-name">Gyarados<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Water / Flying · 640 BST</span>
+              <span class="mon-price tabular">₽78,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Sceptile<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Grass · 630 BST</span>
-            <span class="mon-price tabular">₽77,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="sceptile" data-name="Sceptile"
+              data-price="77000" data-tier="B">
+              <span class="mon-name">Sceptile<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Grass · 630 BST</span>
+              <span class="mon-price tabular">₽77,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Aggron<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Steel / Rock · 630 BST</span>
-            <span class="mon-price tabular">₽77,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="aggron" data-name="Aggron"
+              data-price="77000" data-tier="B">
+              <span class="mon-name">Aggron<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Steel / Rock · 630 BST</span>
+              <span class="mon-price tabular">₽77,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Chesnaught<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Grass / Fighting · 630 BST</span>
-            <span class="mon-price tabular">₽77,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="chesnaught" data-name="Chesnaught"
+              data-price="77000" data-tier="B">
+              <span class="mon-name">Chesnaught<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Grass / Fighting · 630 BST</span>
+              <span class="mon-price tabular">₽77,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Starmie<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Water / Psychic · 620 BST</span>
-            <span class="mon-price tabular">₽75,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="starmie" data-name="Starmie"
+              data-price="75000" data-tier="B">
+              <span class="mon-name">Starmie<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Water / Psychic · 620 BST</span>
+              <span class="mon-price tabular">₽75,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Ampharos<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Electric · 610 BST</span>
-            <span class="mon-price tabular">₽74,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="ampharos" data-name="Ampharos"
+              data-price="74000" data-tier="B">
+              <span class="mon-name">Ampharos<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Electric · 610 BST</span>
+              <span class="mon-price tabular">₽74,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Steelix<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Steel / Ground · 610 BST</span>
-            <span class="mon-price tabular">₽74,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="steelix" data-name="Steelix"
+              data-price="74000" data-tier="B">
+              <span class="mon-name">Steelix<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Steel / Ground · 610 BST</span>
+              <span class="mon-price tabular">₽74,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Eelektross<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Electric · 615 BST</span>
-            <span class="mon-price tabular">₽74,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="eelektross" data-name="Eelektross"
+              data-price="74000" data-tier="B">
+              <span class="mon-name">Eelektross<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Electric · 615 BST</span>
+              <span class="mon-price tabular">₽74,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Pyroar<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Fire / Normal · 607 BST</span>
-            <span class="mon-price tabular">₽73,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="pyroar" data-name="Pyroar"
+              data-price="73000" data-tier="B">
+              <span class="mon-name">Pyroar<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Fire / Normal · 607 BST</span>
+              <span class="mon-price tabular">₽73,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Houndoom<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Dark / Fire · 600 BST</span>
-            <span class="mon-price tabular">₽72,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="houndoom" data-name="Houndoom"
+              data-price="72000" data-tier="B">
+              <span class="mon-name">Houndoom<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Dark / Fire · 600 BST</span>
+              <span class="mon-price tabular">₽72,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Hawlucha<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Fighting / Flying · 600 BST</span>
-            <span class="mon-price tabular">₽72,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="hawlucha" data-name="Hawlucha"
+              data-price="72000" data-tier="B">
+              <span class="mon-name">Hawlucha<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Fighting / Flying · 600 BST</span>
+              <span class="mon-price tabular">₽72,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Abomasnow<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Grass / Ice · 594 BST</span>
-            <span class="mon-price tabular">₽71,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="abomasnow" data-name="Abomasnow"
+              data-price="71000" data-tier="B">
+              <span class="mon-name">Abomasnow<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Grass / Ice · 594 BST</span>
+              <span class="mon-price tabular">₽71,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Dragalge<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Poison / Dragon · 594 BST</span>
-            <span class="mon-price tabular">₽71,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="dragalge" data-name="Dragalge"
+              data-price="71000" data-tier="B">
+              <span class="mon-name">Dragalge<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Poison / Dragon · 594 BST</span>
+              <span class="mon-price tabular">₽71,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Slowbro<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Water / Psychic · 590 BST</span>
-            <span class="mon-price tabular">₽70,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="slowbro" data-name="Slowbro"
+              data-price="70000" data-tier="B">
+              <span class="mon-name">Slowbro<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Water / Psychic · 590 BST</span>
+              <span class="mon-price tabular">₽70,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Kangaskhan<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Normal · 590 BST</span>
-            <span class="mon-price tabular">₽70,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="kangaskhan" data-name="Kangaskhan"
+              data-price="70000" data-tier="B">
+              <span class="mon-name">Kangaskhan<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Normal · 590 BST</span>
+              <span class="mon-price tabular">₽70,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Altaria<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Dragon / Flying · 590 BST</span>
-            <span class="mon-price tabular">₽70,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="altaria" data-name="Altaria"
+              data-price="70000" data-tier="B">
+              <span class="mon-name">Altaria<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Dragon / Flying · 590 BST</span>
+              <span class="mon-price tabular">₽70,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Scrafty<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Dark / Fighting · 588 BST</span>
-            <span class="mon-price tabular">₽70,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="scrafty" data-name="Scrafty"
+              data-price="70000" data-tier="B">
+              <span class="mon-name">Scrafty<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Dark / Fighting · 588 BST</span>
+              <span class="mon-price tabular">₽70,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Drampa<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Normal / Dragon · 585 BST</span>
-            <span class="mon-price tabular">₽70,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="drampa" data-name="Drampa"
+              data-price="70000" data-tier="B">
+              <span class="mon-name">Drampa<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Normal / Dragon · 585 BST</span>
+              <span class="mon-price tabular">₽70,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Lopunny<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Normal · 580 BST</span>
-            <span class="mon-price tabular">₽69,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="lopunny" data-name="Lopunny"
+              data-price="69000" data-tier="B">
+              <span class="mon-name">Lopunny<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Normal · 580 BST</span>
+              <span class="mon-price tabular">₽69,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Manectric<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Electric · 575 BST</span>
-            <span class="mon-price tabular">₽68,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="manectric" data-name="Manectric"
+              data-price="68000" data-tier="B">
+              <span class="mon-name">Manectric<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Electric · 575 BST</span>
+              <span class="mon-price tabular">₽68,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Crabominable<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Fighting / Ice · 578 BST</span>
-            <span class="mon-price tabular">₽68,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="crabominable" data-name="Crabominable"
+              data-price="68000" data-tier="B">
+              <span class="mon-name">Crabominable<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Fighting / Ice · 578 BST</span>
+              <span class="mon-price tabular">₽68,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Meowstic<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Psychic · 566 BST</span>
-            <span class="mon-price tabular">₽67,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="meowstic" data-name="Meowstic"
+              data-price="67000" data-tier="B">
+              <span class="mon-name">Meowstic<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Psychic · 566 BST</span>
+              <span class="mon-price tabular">₽67,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Skarmory<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Steel / Flying · 565 BST</span>
-            <span class="mon-price tabular">₽66,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="skarmory" data-name="Skarmory"
+              data-price="66000" data-tier="B">
+              <span class="mon-name">Skarmory<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Steel / Flying · 565 BST</span>
+              <span class="mon-price tabular">₽66,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Arcanine</span>
-            <span class="mon-meta">Fire · 555 BST</span>
-            <span class="mon-price tabular">₽65,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="arcanine" data-name="Arcanine"
+              data-price="65000" data-tier="B">
+              <span class="mon-name">Arcanine</span>
+              <span class="mon-meta">Fire · 555 BST</span>
+              <span class="mon-price tabular">₽65,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Audino<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Normal · 545 BST</span>
-            <span class="mon-price tabular">₽63,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="audino" data-name="Audino"
+              data-price="63000" data-tier="B">
+              <span class="mon-name">Audino<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Normal · 545 BST</span>
+              <span class="mon-price tabular">₽63,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Snorlax</span>
-            <span class="mon-meta">Normal · 540 BST</span>
-            <span class="mon-price tabular">₽62,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="snorlax" data-name="Snorlax"
+              data-price="62000" data-tier="B">
+              <span class="mon-name">Snorlax</span>
+              <span class="mon-meta">Normal · 540 BST</span>
+              <span class="mon-price tabular">₽62,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Vanilluxe</span>
-            <span class="mon-meta">Ice · 535 BST</span>
-            <span class="mon-price tabular">₽62,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="vanilluxe" data-name="Vanilluxe"
+              data-price="62000" data-tier="B">
+              <span class="mon-name">Vanilluxe</span>
+              <span class="mon-meta">Ice · 535 BST</span>
+              <span class="mon-price tabular">₽62,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Noivern</span>
-            <span class="mon-meta">Flying / Dragon · 535 BST</span>
-            <span class="mon-price tabular">₽62,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="noivern" data-name="Noivern"
+              data-price="62000" data-tier="B">
+              <span class="mon-name">Noivern</span>
+              <span class="mon-meta">Flying / Dragon · 535 BST</span>
+              <span class="mon-price tabular">₽62,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Infernape</span>
-            <span class="mon-meta">Fire / Fighting · 534 BST</span>
-            <span class="mon-price tabular">₽61,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="infernape" data-name="Infernape"
+              data-price="61000" data-tier="B">
+              <span class="mon-name">Infernape</span>
+              <span class="mon-meta">Fire / Fighting · 534 BST</span>
+              <span class="mon-price tabular">₽61,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Skeledirge</span>
-            <span class="mon-meta">Fire / Ghost · 530 BST</span>
-            <span class="mon-price tabular">₽61,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="skeledirge" data-name="Skeledirge"
+              data-price="61000" data-tier="B">
+              <span class="mon-name">Skeledirge</span>
+              <span class="mon-meta">Fire / Ghost · 530 BST</span>
+              <span class="mon-price tabular">₽61,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Jolteon</span>
-            <span class="mon-meta">Electric · 525 BST</span>
-            <span class="mon-price tabular">₽60,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="jolteon" data-name="Jolteon"
+              data-price="60000" data-tier="B">
+              <span class="mon-name">Jolteon</span>
+              <span class="mon-meta">Electric · 525 BST</span>
+              <span class="mon-price tabular">₽60,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Umbreon</span>
-            <span class="mon-meta">Dark · 525 BST</span>
-            <span class="mon-price tabular">₽60,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="umbreon" data-name="Umbreon"
+              data-price="60000" data-tier="B">
+              <span class="mon-name">Umbreon</span>
+              <span class="mon-meta">Dark · 525 BST</span>
+              <span class="mon-price tabular">₽60,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Hisuian Samurott</span>
-            <span class="mon-meta">Water / Dark · 528 BST</span>
-            <span class="mon-price tabular">₽60,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="samurott-hisui" data-name="Hisuian Samurott"
+              data-price="60000" data-tier="B">
+              <span class="mon-name">Hisuian Samurott</span>
+              <span class="mon-meta">Water / Dark · 528 BST</span>
+              <span class="mon-price tabular">₽60,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Gliscor</span>
-            <span class="mon-meta">Ground / Flying · 510 BST</span>
-            <span class="mon-price tabular">₽58,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="gliscor" data-name="Gliscor"
+              data-price="58000" data-tier="B">
+              <span class="mon-name">Gliscor</span>
+              <span class="mon-meta">Ground / Flying · 510 BST</span>
+              <span class="mon-price tabular">₽58,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Overqwil</span>
-            <span class="mon-meta">Dark / Poison · 510 BST</span>
-            <span class="mon-price tabular">₽58,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="overqwil" data-name="Overqwil"
+              data-price="58000" data-tier="B">
+              <span class="mon-name">Overqwil</span>
+              <span class="mon-meta">Dark / Poison · 510 BST</span>
+              <span class="mon-price tabular">₽58,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Ninetales</span>
-            <span class="mon-meta">Fire · 505 BST</span>
-            <span class="mon-price tabular">₽57,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="ninetales" data-name="Ninetales"
+              data-price="57000" data-tier="B">
+              <span class="mon-name">Ninetales</span>
+              <span class="mon-meta">Fire · 505 BST</span>
+              <span class="mon-price tabular">₽57,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Conkeldurr</span>
-            <span class="mon-meta">Fighting · 505 BST</span>
-            <span class="mon-price tabular">₽57,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="conkeldurr" data-name="Conkeldurr"
+              data-price="57000" data-tier="B">
+              <span class="mon-name">Conkeldurr</span>
+              <span class="mon-meta">Fighting · 505 BST</span>
+              <span class="mon-price tabular">₽57,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Tinkaton</span>
-            <span class="mon-meta">Fairy / Steel · 506 BST</span>
-            <span class="mon-price tabular">₽57,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="tinkaton" data-name="Tinkaton"
+              data-price="57000" data-tier="B">
+              <span class="mon-name">Tinkaton</span>
+              <span class="mon-meta">Fairy / Steel · 506 BST</span>
+              <span class="mon-price tabular">₽57,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Clawitzer</span>
-            <span class="mon-meta">Water · 500 BST</span>
-            <span class="mon-price tabular">₽56,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="clawitzer" data-name="Clawitzer"
+              data-price="56000" data-tier="B">
+              <span class="mon-name">Clawitzer</span>
+              <span class="mon-meta">Water · 500 BST</span>
+              <span class="mon-price tabular">₽56,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Bellibolt</span>
-            <span class="mon-meta">Electric · 495 BST</span>
-            <span class="mon-price tabular">₽55,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="bellibolt" data-name="Bellibolt"
+              data-price="55000" data-tier="B">
+              <span class="mon-name">Bellibolt</span>
+              <span class="mon-meta">Electric · 495 BST</span>
+              <span class="mon-price tabular">₽55,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Alolan Raichu</span>
-            <span class="mon-meta">Electric / Psychic · 485 BST</span>
-            <span class="mon-price tabular">₽54,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="raichu-alola" data-name="Alolan Raichu"
+              data-price="54000" data-tier="B">
+              <span class="mon-name">Alolan Raichu</span>
+              <span class="mon-meta">Electric / Psychic · 485 BST</span>
+              <span class="mon-price tabular">₽54,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Galarian Slowbro</span>
-            <span class="mon-meta">Poison / Psychic · 490 BST</span>
-            <span class="mon-price tabular">₽54,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="slowbro-galar" data-name="Galarian Slowbro"
+              data-price="54000" data-tier="B">
+              <span class="mon-name">Galarian Slowbro</span>
+              <span class="mon-meta">Poison / Psychic · 490 BST</span>
+              <span class="mon-price tabular">₽54,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Galarian Slowking</span>
-            <span class="mon-meta">Poison / Psychic · 490 BST</span>
-            <span class="mon-price tabular">₽54,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="slowking-galar" data-name="Galarian Slowking"
+              data-price="54000" data-tier="B">
+              <span class="mon-name">Galarian Slowking</span>
+              <span class="mon-meta">Poison / Psychic · 490 BST</span>
+              <span class="mon-price tabular">₽54,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Spiritomb</span>
-            <span class="mon-meta">Ghost / Dark · 485 BST</span>
-            <span class="mon-price tabular">₽54,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="spiritomb" data-name="Spiritomb"
+              data-price="54000" data-tier="B">
+              <span class="mon-name">Spiritomb</span>
+              <span class="mon-meta">Ghost / Dark · 485 BST</span>
+              <span class="mon-price tabular">₽54,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Lycanroc</span>
-            <span class="mon-meta">Rock · 487 BST</span>
-            <span class="mon-price tabular">₽54,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="lycanroc" data-name="Lycanroc"
+              data-price="54000" data-tier="B">
+              <span class="mon-name">Lycanroc</span>
+              <span class="mon-meta">Rock · 487 BST</span>
+              <span class="mon-price tabular">₽54,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Oranguru</span>
-            <span class="mon-meta">Normal / Psychic · 490 BST</span>
-            <span class="mon-price tabular">₽54,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="oranguru" data-name="Oranguru"
+              data-price="54000" data-tier="B">
+              <span class="mon-name">Oranguru</span>
+              <span class="mon-meta">Normal / Psychic · 490 BST</span>
+              <span class="mon-price tabular">₽54,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Houndstone</span>
-            <span class="mon-meta">Ghost · 488 BST</span>
-            <span class="mon-price tabular">₽54,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="houndstone" data-name="Houndstone"
+              data-price="54000" data-tier="B">
+              <span class="mon-name">Houndstone</span>
+              <span class="mon-meta">Ghost · 488 BST</span>
+              <span class="mon-price tabular">₽54,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Heliolisk</span>
-            <span class="mon-meta">Electric / Normal · 481 BST</span>
-            <span class="mon-price tabular">₽53,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="heliolisk" data-name="Heliolisk"
+              data-price="53000" data-tier="B">
+              <span class="mon-name">Heliolisk</span>
+              <span class="mon-meta">Electric / Normal · 481 BST</span>
+              <span class="mon-price tabular">₽53,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Grapploct</span>
-            <span class="mon-meta">Fighting · 480 BST</span>
-            <span class="mon-price tabular">₽53,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="grapploct" data-name="Grapploct"
+              data-price="53000" data-tier="B">
+              <span class="mon-name">Grapploct</span>
+              <span class="mon-meta">Fighting · 480 BST</span>
+              <span class="mon-price tabular">₽53,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Klefki</span>
-            <span class="mon-meta">Steel / Fairy · 470 BST</span>
-            <span class="mon-price tabular">₽51,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="klefki" data-name="Klefki"
+              data-price="51000" data-tier="B">
+              <span class="mon-name">Klefki</span>
+              <span class="mon-meta">Steel / Fairy · 470 BST</span>
+              <span class="mon-price tabular">₽51,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Araquanid</span>
-            <span class="mon-meta">Water / Bug · 454 BST</span>
-            <span class="mon-price tabular">₽49,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="araquanid" data-name="Araquanid"
+              data-price="49000" data-tier="B">
+              <span class="mon-name">Araquanid</span>
+              <span class="mon-meta">Water / Bug · 454 BST</span>
+              <span class="mon-price tabular">₽49,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Perrserker</span>
-            <span class="mon-meta">Steel · 440 BST</span>
-            <span class="mon-price tabular">₽46,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="perrserker" data-name="Perrserker"
+              data-price="46000" data-tier="B">
+              <span class="mon-name">Perrserker</span>
+              <span class="mon-meta">Steel · 440 BST</span>
+              <span class="mon-price tabular">₽46,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Azumarill</span>
-            <span class="mon-meta">Water / Fairy · 420 BST</span>
-            <span class="mon-price tabular">₽43,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="azumarill" data-name="Azumarill"
+              data-price="43000" data-tier="B">
+              <span class="mon-name">Azumarill</span>
+              <span class="mon-meta">Water / Fairy · 420 BST</span>
+              <span class="mon-price tabular">₽43,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Ditto</span>
-            <span class="mon-meta">Normal · 288 BST</span>
-            <span class="mon-price tabular">₽40,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="ditto" data-name="Ditto"
+              data-price="40000" data-tier="B">
+              <span class="mon-name">Ditto</span>
+              <span class="mon-meta">Normal · 288 BST</span>
+              <span class="mon-price tabular">₽40,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li></ul>
       </section>
       <section class="tier" style="--tier:#4d96ff">
@@ -1045,265 +1901,525 @@
           <p class="tier-count tabular">52 <span>· 21.1% of the roster</span></p>
         </header>
         <ul class="mons">
-          <li class="mon">
-            <span class="mon-name">Feraligatr<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Water · 630 BST</span>
-            <span class="mon-price tabular">₽33,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="feraligatr" data-name="Feraligatr"
+              data-price="33000" data-tier="C">
+              <span class="mon-name">Feraligatr<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Water · 630 BST</span>
+              <span class="mon-price tabular">₽33,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Heracross<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Bug / Fighting · 600 BST</span>
-            <span class="mon-price tabular">₽30,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="heracross" data-name="Heracross"
+              data-price="30000" data-tier="C">
+              <span class="mon-name">Heracross<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Bug / Fighting · 600 BST</span>
+              <span class="mon-price tabular">₽30,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Scolipede<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Bug / Poison · 585 BST</span>
-            <span class="mon-price tabular">₽29,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="scolipede" data-name="Scolipede"
+              data-price="29000" data-tier="C">
+              <span class="mon-name">Scolipede<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Bug / Poison · 585 BST</span>
+              <span class="mon-price tabular">₽29,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Pidgeot<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Normal / Flying · 579 BST</span>
-            <span class="mon-price tabular">₽28,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="pidgeot" data-name="Pidgeot"
+              data-price="28000" data-tier="C">
+              <span class="mon-name">Pidgeot<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Normal / Flying · 579 BST</span>
+              <span class="mon-price tabular">₽28,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Glalie<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Ice · 580 BST</span>
-            <span class="mon-price tabular">₽28,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="glalie" data-name="Glalie"
+              data-price="28000" data-tier="C">
+              <span class="mon-name">Glalie<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Ice · 580 BST</span>
+              <span class="mon-price tabular">₽28,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Golurk<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Ground / Ghost · 583 BST</span>
-            <span class="mon-price tabular">₽28,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="golurk" data-name="Golurk"
+              data-price="28000" data-tier="C">
+              <span class="mon-name">Golurk<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Ground / Ghost · 583 BST</span>
+              <span class="mon-price tabular">₽28,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Banette<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Ghost · 555 BST</span>
-            <span class="mon-price tabular">₽26,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="banette" data-name="Banette"
+              data-price="26000" data-tier="C">
+              <span class="mon-name">Banette<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Ghost · 555 BST</span>
+              <span class="mon-price tabular">₽26,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Rhyperior</span>
-            <span class="mon-meta">Ground / Rock · 535 BST</span>
-            <span class="mon-price tabular">₽24,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="rhyperior" data-name="Rhyperior"
+              data-price="24000" data-tier="C">
+              <span class="mon-name">Rhyperior</span>
+              <span class="mon-meta">Ground / Rock · 535 BST</span>
+              <span class="mon-price tabular">₽24,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Hydrapple</span>
-            <span class="mon-meta">Grass / Dragon · 540 BST</span>
-            <span class="mon-price tabular">₽24,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="hydrapple" data-name="Hydrapple"
+              data-price="24000" data-tier="C">
+              <span class="mon-name">Hydrapple</span>
+              <span class="mon-meta">Grass / Dragon · 540 BST</span>
+              <span class="mon-price tabular">₽24,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Vaporeon</span>
-            <span class="mon-meta">Water · 525 BST</span>
-            <span class="mon-price tabular">₽23,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="vaporeon" data-name="Vaporeon"
+              data-price="23000" data-tier="C">
+              <span class="mon-name">Vaporeon</span>
+              <span class="mon-meta">Water · 525 BST</span>
+              <span class="mon-price tabular">₽23,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Typhlosion</span>
-            <span class="mon-meta">Fire · 534 BST</span>
-            <span class="mon-price tabular">₽23,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="typhlosion" data-name="Typhlosion"
+              data-price="23000" data-tier="C">
+              <span class="mon-name">Typhlosion</span>
+              <span class="mon-meta">Fire · 534 BST</span>
+              <span class="mon-price tabular">₽23,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Espeon</span>
-            <span class="mon-meta">Psychic · 525 BST</span>
-            <span class="mon-price tabular">₽23,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="espeon" data-name="Espeon"
+              data-price="23000" data-tier="C">
+              <span class="mon-name">Espeon</span>
+              <span class="mon-meta">Psychic · 525 BST</span>
+              <span class="mon-price tabular">₽23,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Torterra</span>
-            <span class="mon-meta">Grass / Ground · 525 BST</span>
-            <span class="mon-price tabular">₽23,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="torterra" data-name="Torterra"
+              data-price="23000" data-tier="C">
+              <span class="mon-name">Torterra</span>
+              <span class="mon-meta">Grass / Ground · 525 BST</span>
+              <span class="mon-price tabular">₽23,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Hippowdon</span>
-            <span class="mon-meta">Ground · 525 BST</span>
-            <span class="mon-price tabular">₽23,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="hippowdon" data-name="Hippowdon"
+              data-price="23000" data-tier="C">
+              <span class="mon-name">Hippowdon</span>
+              <span class="mon-meta">Ground · 525 BST</span>
+              <span class="mon-price tabular">₽23,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Glaceon</span>
-            <span class="mon-meta">Ice · 525 BST</span>
-            <span class="mon-price tabular">₽23,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="glaceon" data-name="Glaceon"
+              data-price="23000" data-tier="C">
+              <span class="mon-name">Glaceon</span>
+              <span class="mon-meta">Ice · 525 BST</span>
+              <span class="mon-price tabular">₽23,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Serperior</span>
-            <span class="mon-meta">Grass · 528 BST</span>
-            <span class="mon-price tabular">₽23,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="serperior" data-name="Serperior"
+              data-price="23000" data-tier="C">
+              <span class="mon-name">Serperior</span>
+              <span class="mon-meta">Grass · 528 BST</span>
+              <span class="mon-price tabular">₽23,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Gogoat</span>
-            <span class="mon-meta">Grass · 531 BST</span>
-            <span class="mon-price tabular">₽23,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="gogoat" data-name="Gogoat"
+              data-price="23000" data-tier="C">
+              <span class="mon-name">Gogoat</span>
+              <span class="mon-meta">Grass · 531 BST</span>
+              <span class="mon-price tabular">₽23,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Hisuian Decidueye</span>
-            <span class="mon-meta">Grass / Fighting · 530 BST</span>
-            <span class="mon-price tabular">₽23,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="decidueye-hisui" data-name="Hisuian Decidueye"
+              data-price="23000" data-tier="C">
+              <span class="mon-name">Hisuian Decidueye</span>
+              <span class="mon-meta">Grass / Fighting · 530 BST</span>
+              <span class="mon-price tabular">₽23,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Wyrdeer</span>
-            <span class="mon-meta">Normal / Psychic · 525 BST</span>
-            <span class="mon-price tabular">₽23,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="wyrdeer" data-name="Wyrdeer"
+              data-price="23000" data-tier="C">
+              <span class="mon-name">Wyrdeer</span>
+              <span class="mon-meta">Normal / Psychic · 525 BST</span>
+              <span class="mon-price tabular">₽23,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Quaquaval</span>
-            <span class="mon-meta">Water / Fighting · 530 BST</span>
-            <span class="mon-price tabular">₽23,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="quaquaval" data-name="Quaquaval"
+              data-price="23000" data-tier="C">
+              <span class="mon-name">Quaquaval</span>
+              <span class="mon-meta">Water / Fighting · 530 BST</span>
+              <span class="mon-price tabular">₽23,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Krookodile</span>
-            <span class="mon-meta">Ground / Dark · 519 BST</span>
-            <span class="mon-price tabular">₽22,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="krookodile" data-name="Krookodile"
+              data-price="22000" data-tier="C">
+              <span class="mon-name">Krookodile</span>
+              <span class="mon-meta">Ground / Dark · 519 BST</span>
+              <span class="mon-price tabular">₽22,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Aurorus</span>
-            <span class="mon-meta">Rock / Ice · 521 BST</span>
-            <span class="mon-price tabular">₽22,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="aurorus" data-name="Aurorus"
+              data-price="22000" data-tier="C">
+              <span class="mon-name">Aurorus</span>
+              <span class="mon-meta">Rock / Ice · 521 BST</span>
+              <span class="mon-price tabular">₽22,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Mr. Rime</span>
-            <span class="mon-meta">Ice / Psychic · 520 BST</span>
-            <span class="mon-price tabular">₽22,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="mr-rime" data-name="Mr. Rime"
+              data-price="22000" data-tier="C">
+              <span class="mon-name">Mr. Rime</span>
+              <span class="mon-meta">Ice / Psychic · 520 BST</span>
+              <span class="mon-price tabular">₽22,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Machamp</span>
-            <span class="mon-meta">Fighting · 505 BST</span>
-            <span class="mon-price tabular">₽21,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="machamp" data-name="Machamp"
+              data-price="21000" data-tier="C">
+              <span class="mon-name">Machamp</span>
+              <span class="mon-meta">Fighting · 505 BST</span>
+              <span class="mon-price tabular">₽21,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Medicham<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Fighting / Psychic · 510 BST</span>
-            <span class="mon-price tabular">₽21,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="medicham" data-name="Medicham"
+              data-price="21000" data-tier="C">
+              <span class="mon-name">Medicham<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Fighting / Psychic · 510 BST</span>
+              <span class="mon-price tabular">₽21,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Zoroark</span>
-            <span class="mon-meta">Dark · 510 BST</span>
-            <span class="mon-price tabular">₽21,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="zoroark" data-name="Zoroark"
+              data-price="21000" data-tier="C">
+              <span class="mon-name">Zoroark</span>
+              <span class="mon-meta">Dark · 510 BST</span>
+              <span class="mon-price tabular">₽21,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Arboliva</span>
-            <span class="mon-meta">Normal / Grass · 510 BST</span>
-            <span class="mon-price tabular">₽21,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="arboliva" data-name="Arboliva"
+              data-price="21000" data-tier="C">
+              <span class="mon-name">Arboliva</span>
+              <span class="mon-meta">Normal / Grass · 510 BST</span>
+              <span class="mon-price tabular">₽21,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Mabosstiff</span>
-            <span class="mon-meta">Dark · 505 BST</span>
-            <span class="mon-price tabular">₽21,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="mabosstiff" data-name="Mabosstiff"
+              data-price="21000" data-tier="C">
+              <span class="mon-name">Mabosstiff</span>
+              <span class="mon-meta">Dark · 505 BST</span>
+              <span class="mon-price tabular">₽21,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Beedrill<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Bug / Poison · 495 BST</span>
-            <span class="mon-price tabular">₽20,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="beedrill" data-name="Beedrill"
+              data-price="20000" data-tier="C">
+              <span class="mon-name">Beedrill<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Bug / Poison · 495 BST</span>
+              <span class="mon-price tabular">₽20,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Pangoro</span>
-            <span class="mon-meta">Fighting / Dark · 495 BST</span>
-            <span class="mon-price tabular">₽20,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="pangoro" data-name="Pangoro"
+              data-price="20000" data-tier="C">
+              <span class="mon-name">Pangoro</span>
+              <span class="mon-meta">Fighting / Dark · 495 BST</span>
+              <span class="mon-price tabular">₽20,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Mudsdale</span>
-            <span class="mon-meta">Ground · 500 BST</span>
-            <span class="mon-price tabular">₽20,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="mudsdale" data-name="Mudsdale"
+              data-price="20000" data-tier="C">
+              <span class="mon-name">Mudsdale</span>
+              <span class="mon-meta">Ground · 500 BST</span>
+              <span class="mon-price tabular">₽20,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Alcremie</span>
-            <span class="mon-meta">Fairy · 495 BST</span>
-            <span class="mon-price tabular">₽20,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="alcremie" data-name="Alcremie"
+              data-price="20000" data-tier="C">
+              <span class="mon-name">Alcremie</span>
+              <span class="mon-meta">Fairy · 495 BST</span>
+              <span class="mon-price tabular">₽20,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Garganacl</span>
-            <span class="mon-meta">Rock · 500 BST</span>
-            <span class="mon-price tabular">₽20,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="garganacl" data-name="Garganacl"
+              data-price="20000" data-tier="C">
+              <span class="mon-name">Garganacl</span>
+              <span class="mon-meta">Rock · 500 BST</span>
+              <span class="mon-price tabular">₽20,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Vileplume</span>
-            <span class="mon-meta">Grass / Poison · 490 BST</span>
-            <span class="mon-price tabular">₽19,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="vileplume" data-name="Vileplume"
+              data-price="19000" data-tier="C">
+              <span class="mon-name">Vileplume</span>
+              <span class="mon-meta">Grass / Poison · 490 BST</span>
+              <span class="mon-price tabular">₽19,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Paldean (Aqua Breed) Tauros</span>
-            <span class="mon-meta">Fighting / Water · 490 BST</span>
-            <span class="mon-price tabular">₽19,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="tauros-paldea-aqua" data-name="Paldean (Aqua Breed) Tauros"
+              data-price="19000" data-tier="C">
+              <span class="mon-name">Paldean (Aqua Breed) Tauros</span>
+              <span class="mon-meta">Fighting / Water · 490 BST</span>
+              <span class="mon-price tabular">₽19,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Paldean (Blaze Breed) Tauros</span>
-            <span class="mon-meta">Fighting / Fire · 490 BST</span>
-            <span class="mon-price tabular">₽19,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="tauros-paldea-blaze" data-name="Paldean (Blaze Breed) Tauros"
+              data-price="19000" data-tier="C">
+              <span class="mon-name">Paldean (Blaze Breed) Tauros</span>
+              <span class="mon-meta">Fighting / Fire · 490 BST</span>
+              <span class="mon-price tabular">₽19,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Slowking</span>
-            <span class="mon-meta">Water / Psychic · 490 BST</span>
-            <span class="mon-price tabular">₽19,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="slowking" data-name="Slowking"
+              data-price="19000" data-tier="C">
+              <span class="mon-name">Slowking</span>
+              <span class="mon-meta">Water / Psychic · 490 BST</span>
+              <span class="mon-price tabular">₽19,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Toxicroak</span>
-            <span class="mon-meta">Poison / Fighting · 490 BST</span>
-            <span class="mon-price tabular">₽19,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="toxicroak" data-name="Toxicroak"
+              data-price="19000" data-tier="C">
+              <span class="mon-name">Toxicroak</span>
+              <span class="mon-meta">Poison / Fighting · 490 BST</span>
+              <span class="mon-price tabular">₽19,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Reuniclus</span>
-            <span class="mon-meta">Psychic · 490 BST</span>
-            <span class="mon-price tabular">₽19,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="reuniclus" data-name="Reuniclus"
+              data-price="19000" data-tier="C">
+              <span class="mon-name">Reuniclus</span>
+              <span class="mon-meta">Psychic · 490 BST</span>
+              <span class="mon-price tabular">₽19,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Cofagrigus</span>
-            <span class="mon-meta">Ghost · 483 BST</span>
-            <span class="mon-price tabular">₽18,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="cofagrigus" data-name="Cofagrigus"
+              data-price="18000" data-tier="C">
+              <span class="mon-name">Cofagrigus</span>
+              <span class="mon-meta">Ghost · 483 BST</span>
+              <span class="mon-price tabular">₽18,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Salazzle</span>
-            <span class="mon-meta">Poison / Fire · 480 BST</span>
-            <span class="mon-price tabular">₽18,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="salazzle" data-name="Salazzle"
+              data-price="18000" data-tier="C">
+              <span class="mon-name">Salazzle</span>
+              <span class="mon-meta">Poison / Fire · 480 BST</span>
+              <span class="mon-price tabular">₽18,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Runerigus</span>
-            <span class="mon-meta">Ground / Ghost · 483 BST</span>
-            <span class="mon-price tabular">₽18,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="runerigus" data-name="Runerigus"
+              data-price="18000" data-tier="C">
+              <span class="mon-name">Runerigus</span>
+              <span class="mon-meta">Ground / Ghost · 483 BST</span>
+              <span class="mon-price tabular">₽18,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Orthworm</span>
-            <span class="mon-meta">Steel · 480 BST</span>
-            <span class="mon-price tabular">₽18,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="orthworm" data-name="Orthworm"
+              data-price="18000" data-tier="C">
+              <span class="mon-name">Orthworm</span>
+              <span class="mon-meta">Steel · 480 BST</span>
+              <span class="mon-price tabular">₽18,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Mr. Mime</span>
-            <span class="mon-meta">Psychic / Fairy · 460 BST</span>
-            <span class="mon-price tabular">₽16,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="mr-mime" data-name="Mr. Mime"
+              data-price="16000" data-tier="C">
+              <span class="mon-name">Mr. Mime</span>
+              <span class="mon-meta">Psychic / Fairy · 460 BST</span>
+              <span class="mon-price tabular">₽16,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Aromatisse</span>
-            <span class="mon-meta">Fairy · 462 BST</span>
-            <span class="mon-price tabular">₽16,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="aromatisse" data-name="Aromatisse"
+              data-price="16000" data-tier="C">
+              <span class="mon-name">Aromatisse</span>
+              <span class="mon-meta">Fairy · 462 BST</span>
+              <span class="mon-price tabular">₽16,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Thievul</span>
-            <span class="mon-meta">Dark · 455 BST</span>
-            <span class="mon-price tabular">₽16,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="thievul" data-name="Thievul"
+              data-price="16000" data-tier="C">
+              <span class="mon-name">Thievul</span>
+              <span class="mon-meta">Dark · 455 BST</span>
+              <span class="mon-price tabular">₽16,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Liepard</span>
-            <span class="mon-meta">Dark · 446 BST</span>
-            <span class="mon-price tabular">₽15,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="liepard" data-name="Liepard"
+              data-price="15000" data-tier="C">
+              <span class="mon-name">Liepard</span>
+              <span class="mon-meta">Dark · 446 BST</span>
+              <span class="mon-price tabular">₽15,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Wigglytuff</span>
-            <span class="mon-meta">Normal / Fairy · 435 BST</span>
-            <span class="mon-price tabular">₽14,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="wigglytuff" data-name="Wigglytuff"
+              data-price="14000" data-tier="C">
+              <span class="mon-name">Wigglytuff</span>
+              <span class="mon-meta">Normal / Fairy · 435 BST</span>
+              <span class="mon-price tabular">₽14,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Alolan Persian</span>
-            <span class="mon-meta">Dark · 440 BST</span>
-            <span class="mon-price tabular">₽14,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="persian-alola" data-name="Alolan Persian"
+              data-price="14000" data-tier="C">
+              <span class="mon-name">Alolan Persian</span>
+              <span class="mon-meta">Dark · 440 BST</span>
+              <span class="mon-price tabular">₽14,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Morpeko</span>
-            <span class="mon-meta">Electric / Dark · 436 BST</span>
-            <span class="mon-price tabular">₽14,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="morpeko" data-name="Morpeko"
+              data-price="14000" data-tier="C">
+              <span class="mon-name">Morpeko</span>
+              <span class="mon-meta">Electric / Dark · 436 BST</span>
+              <span class="mon-price tabular">₽14,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Squawkabilly</span>
-            <span class="mon-meta">Normal / Flying · 417 BST</span>
-            <span class="mon-price tabular">₽12,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="squawkabilly" data-name="Squawkabilly"
+              data-price="12000" data-tier="C">
+              <span class="mon-name">Squawkabilly</span>
+              <span class="mon-meta">Normal / Flying · 417 BST</span>
+              <span class="mon-price tabular">₽12,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Pikachu</span>
-            <span class="mon-meta">Electric · 320 BST</span>
-            <span class="mon-price tabular">₽10,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="pikachu" data-name="Pikachu"
+              data-price="10000" data-tier="C">
+              <span class="mon-name">Pikachu</span>
+              <span class="mon-meta">Electric · 320 BST</span>
+              <span class="mon-price tabular">₽10,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li></ul>
       </section>
       <section class="tier" style="--tier:#9b8fd6">
@@ -1313,271 +2429,686 @@
           <p class="tier-count tabular">52 <span>· 21.1% of the roster</span></p>
         </header>
         <ul class="mons">
-          <li class="mon">
-            <span class="mon-name">Pinsir<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Bug · 600 BST</span>
-            <span class="mon-price tabular">₽8,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="pinsir" data-name="Pinsir"
+              data-price="8000" data-tier="D">
+              <span class="mon-name">Pinsir<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Bug · 600 BST</span>
+              <span class="mon-price tabular">₽8,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Emboar<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Fire / Fighting · 628 BST</span>
-            <span class="mon-price tabular">₽8,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="emboar" data-name="Emboar"
+              data-price="8000" data-tier="D">
+              <span class="mon-name">Emboar<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Fire / Fighting · 628 BST</span>
+              <span class="mon-price tabular">₽8,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Barbaracle<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Rock / Water · 600 BST</span>
-            <span class="mon-price tabular">₽8,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="barbaracle" data-name="Barbaracle"
+              data-price="8000" data-tier="D">
+              <span class="mon-name">Barbaracle<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Rock / Water · 600 BST</span>
+              <span class="mon-price tabular">₽8,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Goodra</span>
-            <span class="mon-meta">Dragon · 600 BST</span>
-            <span class="mon-price tabular">₽8,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="goodra" data-name="Goodra"
+              data-price="8000" data-tier="D">
+              <span class="mon-name">Goodra</span>
+              <span class="mon-meta">Dragon · 600 BST</span>
+              <span class="mon-price tabular">₽8,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Victreebel<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Grass / Poison · 590 BST</span>
-            <span class="mon-price tabular">₽7,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="victreebel" data-name="Victreebel"
+              data-price="7000" data-tier="D">
+              <span class="mon-name">Victreebel<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Grass / Poison · 590 BST</span>
+              <span class="mon-price tabular">₽7,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Falinks<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Fighting · 570 BST</span>
-            <span class="mon-price tabular">₽7,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="falinks" data-name="Falinks"
+              data-price="7000" data-tier="D">
+              <span class="mon-name">Falinks<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Fighting · 570 BST</span>
+              <span class="mon-price tabular">₽7,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Flareon</span>
-            <span class="mon-meta">Fire · 525 BST</span>
-            <span class="mon-price tabular">₽6,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="flareon" data-name="Flareon"
+              data-price="6000" data-tier="D">
+              <span class="mon-name">Flareon</span>
+              <span class="mon-meta">Fire · 525 BST</span>
+              <span class="mon-price tabular">₽6,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Sharpedo<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Water / Dark · 560 BST</span>
-            <span class="mon-price tabular">₽6,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="sharpedo" data-name="Sharpedo"
+              data-price="6000" data-tier="D">
+              <span class="mon-name">Sharpedo<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Water / Dark · 560 BST</span>
+              <span class="mon-price tabular">₽6,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Chimecho<span class="mega" title="1 Mega Evolution included">M</span></span>
-            <span class="mon-meta">Psychic · 555 BST</span>
-            <span class="mon-price tabular">₽6,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="chimecho" data-name="Chimecho"
+              data-price="6000" data-tier="D">
+              <span class="mon-name">Chimecho<span class="mega" title="1 Mega Evolution included">M</span></span>
+              <span class="mon-meta">Psychic · 555 BST</span>
+              <span class="mon-price tabular">₽6,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Leafeon</span>
-            <span class="mon-meta">Grass · 525 BST</span>
-            <span class="mon-price tabular">₽6,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="leafeon" data-name="Leafeon"
+              data-price="6000" data-tier="D">
+              <span class="mon-name">Leafeon</span>
+              <span class="mon-meta">Grass · 525 BST</span>
+              <span class="mon-price tabular">₽6,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Samurott</span>
-            <span class="mon-meta">Water · 528 BST</span>
-            <span class="mon-price tabular">₽6,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="samurott" data-name="Samurott"
+              data-price="6000" data-tier="D">
+              <span class="mon-name">Samurott</span>
+              <span class="mon-meta">Water · 528 BST</span>
+              <span class="mon-price tabular">₽6,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Florges</span>
-            <span class="mon-meta">Fairy · 552 BST</span>
-            <span class="mon-price tabular">₽6,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="florges" data-name="Florges"
+              data-price="6000" data-tier="D">
+              <span class="mon-name">Florges</span>
+              <span class="mon-meta">Fairy · 552 BST</span>
+              <span class="mon-price tabular">₽6,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Decidueye</span>
-            <span class="mon-meta">Grass / Ghost · 530 BST</span>
-            <span class="mon-price tabular">₽6,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="decidueye" data-name="Decidueye"
+              data-price="6000" data-tier="D">
+              <span class="mon-name">Decidueye</span>
+              <span class="mon-meta">Grass / Ghost · 530 BST</span>
+              <span class="mon-price tabular">₽6,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Tauros</span>
-            <span class="mon-meta">Normal · 490 BST</span>
-            <span class="mon-price tabular">₽5,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="tauros" data-name="Tauros"
+              data-price="5000" data-tier="D">
+              <span class="mon-name">Tauros</span>
+              <span class="mon-meta">Normal · 490 BST</span>
+              <span class="mon-price tabular">₽5,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Paldean (Combat Breed) Tauros</span>
-            <span class="mon-meta">Fighting · 490 BST</span>
-            <span class="mon-price tabular">₽5,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="tauros-paldea-combat" data-name="Paldean (Combat Breed) Tauros"
+              data-price="5000" data-tier="D">
+              <span class="mon-name">Paldean (Combat Breed) Tauros</span>
+              <span class="mon-meta">Fighting · 490 BST</span>
+              <span class="mon-price tabular">₽5,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Luxray</span>
-            <span class="mon-meta">Electric · 523 BST</span>
-            <span class="mon-price tabular">₽5,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="luxray" data-name="Luxray"
+              data-price="5000" data-tier="D">
+              <span class="mon-name">Luxray</span>
+              <span class="mon-meta">Electric · 523 BST</span>
+              <span class="mon-price tabular">₽5,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Roserade</span>
-            <span class="mon-meta">Grass / Poison · 515 BST</span>
-            <span class="mon-price tabular">₽5,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="roserade" data-name="Roserade"
+              data-price="5000" data-tier="D">
+              <span class="mon-name">Roserade</span>
+              <span class="mon-meta">Grass / Poison · 515 BST</span>
+              <span class="mon-price tabular">₽5,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Rampardos</span>
-            <span class="mon-meta">Rock · 495 BST</span>
-            <span class="mon-price tabular">₽5,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="rampardos" data-name="Rampardos"
+              data-price="5000" data-tier="D">
+              <span class="mon-name">Rampardos</span>
+              <span class="mon-meta">Rock · 495 BST</span>
+              <span class="mon-price tabular">₽5,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Bastiodon</span>
-            <span class="mon-meta">Rock / Steel · 495 BST</span>
-            <span class="mon-price tabular">₽5,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="bastiodon" data-name="Bastiodon"
+              data-price="5000" data-tier="D">
+              <span class="mon-name">Bastiodon</span>
+              <span class="mon-meta">Rock / Steel · 495 BST</span>
+              <span class="mon-price tabular">₽5,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Simisage</span>
-            <span class="mon-meta">Grass · 498 BST</span>
-            <span class="mon-price tabular">₽5,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="simisage" data-name="Simisage"
+              data-price="5000" data-tier="D">
+              <span class="mon-name">Simisage</span>
+              <span class="mon-meta">Grass · 498 BST</span>
+              <span class="mon-price tabular">₽5,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Simisear</span>
-            <span class="mon-meta">Fire · 498 BST</span>
-            <span class="mon-price tabular">₽5,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="simisear" data-name="Simisear"
+              data-price="5000" data-tier="D">
+              <span class="mon-name">Simisear</span>
+              <span class="mon-meta">Fire · 498 BST</span>
+              <span class="mon-price tabular">₽5,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Simipour</span>
-            <span class="mon-meta">Water · 498 BST</span>
-            <span class="mon-price tabular">₽5,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="simipour" data-name="Simipour"
+              data-price="5000" data-tier="D">
+              <span class="mon-name">Simipour</span>
+              <span class="mon-meta">Water · 498 BST</span>
+              <span class="mon-price tabular">₽5,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Beartic</span>
-            <span class="mon-meta">Ice · 505 BST</span>
-            <span class="mon-price tabular">₽5,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="beartic" data-name="Beartic"
+              data-price="5000" data-tier="D">
+              <span class="mon-name">Beartic</span>
+              <span class="mon-meta">Ice · 505 BST</span>
+              <span class="mon-price tabular">₽5,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Tyrantrum</span>
-            <span class="mon-meta">Rock / Dragon · 521 BST</span>
-            <span class="mon-price tabular">₽5,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="tyrantrum" data-name="Tyrantrum"
+              data-price="5000" data-tier="D">
+              <span class="mon-name">Tyrantrum</span>
+              <span class="mon-meta">Rock / Dragon · 521 BST</span>
+              <span class="mon-price tabular">₽5,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Gourgeist</span>
-            <span class="mon-meta">Ghost / Grass · 494 BST</span>
-            <span class="mon-price tabular">₽5,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="gourgeist" data-name="Gourgeist"
+              data-price="5000" data-tier="D">
+              <span class="mon-name">Gourgeist</span>
+              <span class="mon-meta">Ghost / Grass · 494 BST</span>
+              <span class="mon-price tabular">₽5,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Avalugg</span>
-            <span class="mon-meta">Ice · 514 BST</span>
-            <span class="mon-price tabular">₽5,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="avalugg" data-name="Avalugg"
+              data-price="5000" data-tier="D">
+              <span class="mon-name">Avalugg</span>
+              <span class="mon-meta">Ice · 514 BST</span>
+              <span class="mon-price tabular">₽5,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Hisuian Avalugg</span>
-            <span class="mon-meta">Ice / Rock · 514 BST</span>
-            <span class="mon-price tabular">₽5,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="avalugg-hisui" data-name="Hisuian Avalugg"
+              data-price="5000" data-tier="D">
+              <span class="mon-name">Hisuian Avalugg</span>
+              <span class="mon-meta">Ice / Rock · 514 BST</span>
+              <span class="mon-price tabular">₽5,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Passimian</span>
-            <span class="mon-meta">Fighting · 490 BST</span>
-            <span class="mon-price tabular">₽5,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="passimian" data-name="Passimian"
+              data-price="5000" data-tier="D">
+              <span class="mon-name">Passimian</span>
+              <span class="mon-meta">Fighting · 490 BST</span>
+              <span class="mon-price tabular">₽5,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Sandaconda</span>
-            <span class="mon-meta">Ground · 510 BST</span>
-            <span class="mon-price tabular">₽5,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="sandaconda" data-name="Sandaconda"
+              data-price="5000" data-tier="D">
+              <span class="mon-name">Sandaconda</span>
+              <span class="mon-meta">Ground · 510 BST</span>
+              <span class="mon-price tabular">₽5,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Polteageist</span>
-            <span class="mon-meta">Ghost · 508 BST</span>
-            <span class="mon-price tabular">₽5,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="polteageist" data-name="Polteageist"
+              data-price="5000" data-tier="D">
+              <span class="mon-name">Polteageist</span>
+              <span class="mon-meta">Ghost · 508 BST</span>
+              <span class="mon-price tabular">₽5,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Forretress</span>
-            <span class="mon-meta">Bug / Steel · 465 BST</span>
-            <span class="mon-price tabular">₽4,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="forretress" data-name="Forretress"
+              data-price="4000" data-tier="D">
+              <span class="mon-name">Forretress</span>
+              <span class="mon-meta">Bug / Steel · 465 BST</span>
+              <span class="mon-price tabular">₽4,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Swalot</span>
-            <span class="mon-meta">Poison · 467 BST</span>
-            <span class="mon-price tabular">₽4,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="swalot" data-name="Swalot"
+              data-price="4000" data-tier="D">
+              <span class="mon-name">Swalot</span>
+              <span class="mon-meta">Poison · 467 BST</span>
+              <span class="mon-price tabular">₽4,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Musharna</span>
-            <span class="mon-meta">Psychic · 487 BST</span>
-            <span class="mon-price tabular">₽4,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="musharna" data-name="Musharna"
+              data-price="4000" data-tier="D">
+              <span class="mon-name">Musharna</span>
+              <span class="mon-meta">Psychic · 487 BST</span>
+              <span class="mon-price tabular">₽4,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Garbodor</span>
-            <span class="mon-meta">Poison · 474 BST</span>
-            <span class="mon-price tabular">₽4,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="garbodor" data-name="Garbodor"
+              data-price="4000" data-tier="D">
+              <span class="mon-name">Garbodor</span>
+              <span class="mon-meta">Poison · 474 BST</span>
+              <span class="mon-price tabular">₽4,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Stunfisk</span>
-            <span class="mon-meta">Ground / Electric · 471 BST</span>
-            <span class="mon-price tabular">₽4,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="stunfisk" data-name="Stunfisk"
+              data-price="4000" data-tier="D">
+              <span class="mon-name">Stunfisk</span>
+              <span class="mon-meta">Ground / Electric · 471 BST</span>
+              <span class="mon-price tabular">₽4,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Galarian Stunfisk</span>
-            <span class="mon-meta">Ground / Steel · 471 BST</span>
-            <span class="mon-price tabular">₽4,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="stunfisk-galar" data-name="Galarian Stunfisk"
+              data-price="4000" data-tier="D">
+              <span class="mon-name">Galarian Stunfisk</span>
+              <span class="mon-meta">Ground / Steel · 471 BST</span>
+              <span class="mon-price tabular">₽4,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Furfrou</span>
-            <span class="mon-meta">Normal · 472 BST</span>
-            <span class="mon-price tabular">₽4,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="furfrou" data-name="Furfrou"
+              data-price="4000" data-tier="D">
+              <span class="mon-name">Furfrou</span>
+              <span class="mon-meta">Normal · 472 BST</span>
+              <span class="mon-price tabular">₽4,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Slurpuff</span>
-            <span class="mon-meta">Fairy · 480 BST</span>
-            <span class="mon-price tabular">₽4,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="slurpuff" data-name="Slurpuff"
+              data-price="4000" data-tier="D">
+              <span class="mon-name">Slurpuff</span>
+              <span class="mon-meta">Fairy · 480 BST</span>
+              <span class="mon-price tabular">₽4,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Trevenant</span>
-            <span class="mon-meta">Ghost / Grass · 474 BST</span>
-            <span class="mon-price tabular">₽4,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="trevenant" data-name="Trevenant"
+              data-price="4000" data-tier="D">
+              <span class="mon-name">Trevenant</span>
+              <span class="mon-meta">Ghost / Grass · 474 BST</span>
+              <span class="mon-price tabular">₽4,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Toucannon</span>
-            <span class="mon-meta">Normal / Flying · 485 BST</span>
-            <span class="mon-price tabular">₽4,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="toucannon" data-name="Toucannon"
+              data-price="4000" data-tier="D">
+              <span class="mon-name">Toucannon</span>
+              <span class="mon-meta">Normal / Flying · 485 BST</span>
+              <span class="mon-price tabular">₽4,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Flapple</span>
-            <span class="mon-meta">Grass / Dragon · 485 BST</span>
-            <span class="mon-price tabular">₽4,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="flapple" data-name="Flapple"
+              data-price="4000" data-tier="D">
+              <span class="mon-name">Flapple</span>
+              <span class="mon-meta">Grass / Dragon · 485 BST</span>
+              <span class="mon-price tabular">₽4,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Appletun</span>
-            <span class="mon-meta">Grass / Dragon · 485 BST</span>
-            <span class="mon-price tabular">₽4,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="appletun" data-name="Appletun"
+              data-price="4000" data-tier="D">
+              <span class="mon-name">Appletun</span>
+              <span class="mon-meta">Grass / Dragon · 485 BST</span>
+              <span class="mon-price tabular">₽4,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Arbok</span>
-            <span class="mon-meta">Poison · 448 BST</span>
-            <span class="mon-price tabular">₽3,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="arbok" data-name="Arbok"
+              data-price="3000" data-tier="D">
+              <span class="mon-name">Arbok</span>
+              <span class="mon-meta">Poison · 448 BST</span>
+              <span class="mon-price tabular">₽3,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Persian</span>
-            <span class="mon-meta">Normal · 440 BST</span>
-            <span class="mon-price tabular">₽3,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="persian" data-name="Persian"
+              data-price="3000" data-tier="D">
+              <span class="mon-name">Persian</span>
+              <span class="mon-meta">Normal · 440 BST</span>
+              <span class="mon-price tabular">₽3,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Qwilfish</span>
-            <span class="mon-meta">Water / Poison · 440 BST</span>
-            <span class="mon-price tabular">₽3,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="qwilfish" data-name="Qwilfish"
+              data-price="3000" data-tier="D">
+              <span class="mon-name">Qwilfish</span>
+              <span class="mon-meta">Water / Poison · 440 BST</span>
+              <span class="mon-price tabular">₽3,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Castform</span>
-            <span class="mon-meta">Normal · 420 BST</span>
-            <span class="mon-price tabular">₽3,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="castform" data-name="Castform"
+              data-price="3000" data-tier="D">
+              <span class="mon-name">Castform</span>
+              <span class="mon-meta">Normal · 420 BST</span>
+              <span class="mon-price tabular">₽3,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Watchog</span>
-            <span class="mon-meta">Normal · 420 BST</span>
-            <span class="mon-price tabular">₽3,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="watchog" data-name="Watchog"
+              data-price="3000" data-tier="D">
+              <span class="mon-name">Watchog</span>
+              <span class="mon-meta">Normal · 420 BST</span>
+              <span class="mon-price tabular">₽3,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Emolga</span>
-            <span class="mon-meta">Electric / Flying · 428 BST</span>
-            <span class="mon-price tabular">₽3,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="emolga" data-name="Emolga"
+              data-price="3000" data-tier="D">
+              <span class="mon-name">Emolga</span>
+              <span class="mon-meta">Electric / Flying · 428 BST</span>
+              <span class="mon-price tabular">₽3,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Diggersby</span>
-            <span class="mon-meta">Normal / Ground · 423 BST</span>
-            <span class="mon-price tabular">₽3,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="diggersby" data-name="Diggersby"
+              data-price="3000" data-tier="D">
+              <span class="mon-name">Diggersby</span>
+              <span class="mon-meta">Normal / Ground · 423 BST</span>
+              <span class="mon-price tabular">₽3,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Dedenne</span>
-            <span class="mon-meta">Electric / Fairy · 431 BST</span>
-            <span class="mon-price tabular">₽3,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="dedenne" data-name="Dedenne"
+              data-price="3000" data-tier="D">
+              <span class="mon-name">Dedenne</span>
+              <span class="mon-meta">Electric / Fairy · 431 BST</span>
+              <span class="mon-price tabular">₽3,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Farfetch'd</span>
-            <span class="mon-meta">Normal / Flying · 377 BST</span>
-            <span class="mon-price tabular">₽2,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="farfetchd" data-name="Farfetch'd"
+              data-price="2000" data-tier="D">
+              <span class="mon-name">Farfetch'd</span>
+              <span class="mon-meta">Normal / Flying · 377 BST</span>
+              <span class="mon-price tabular">₽2,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li>
-          <li class="mon">
-            <span class="mon-name">Ariados</span>
-            <span class="mon-meta">Bug / Poison · 400 BST</span>
-            <span class="mon-price tabular">₽2,000</span>
+          <li>
+            <button type="button" class="mon" aria-pressed="false"
+              data-slug="ariados" data-name="Ariados"
+              data-price="2000" data-tier="D">
+              <span class="mon-name">Ariados</span>
+              <span class="mon-meta">Bug / Poison · 400 BST</span>
+              <span class="mon-price tabular">₽2,000</span>
+              <span class="mon-tick" aria-hidden="true"></span>
+            </button>
           </li></ul>
       </section>
 
   <footer>
+    <p>Tap any Pokémon to put it in your shortlist and watch the outlay against a ₽300,000 opening budget. Tap it again — in the list or in the tiers — to take it out. The shortlist is yours alone: it lives in this browser and is not a signing.</p>
     <p><strong>M</strong> marks a Pokémon whose Mega Evolutions come with it — owning the species grants them, and the price reflects that. <strong>·</strong> marks one that is on the roster but not catchable.</p>
     <p>Tier source: op.gg Pokémon Champions doubles ranked ladder, 262 Pokémon by placement (Season 6, Regulation M-C), captured 2026-09-22.</p>
     <p>Regenerate with <code>npm run tiers:doc</code>. Prices are set by <code>config/economy.ts</code>; the tier of each Pokémon by <code>data/tiers.json</code>.</p>
   </footer>
 </main>
+
+<aside class="cart" id="cart" data-open="true" aria-label="Your shortlist">
+  <button type="button" class="cart-toggle" id="cartToggle" aria-expanded="true" aria-controls="cartBody">
+    <span class="count" id="cartCount">0</span>
+    <span>picked</span>
+    <span class="total tabular" id="cartTotal">₽0</span>
+    <span class="cart-chev" aria-hidden="true">▾</span>
+  </button>
+  <div class="cart-body" id="cartBody">
+    <p class="cart-empty" id="cartEmpty">Tap a Pokémon to start a shortlist.</p>
+    <ol class="cart-list" id="cartList"></ol>
+    <dl class="cart-sums">
+      <div><dt>Squad</dt><dd id="sumCount">0 / 12</dd></div>
+      <div><dt>Outlay</dt><dd id="sumTotal" class="tabular">₽0</dd></div>
+      <div><dt>Left of ₽300,000</dt><dd id="sumLeft" class="tabular">₽300,000</dd></div>
+    </dl>
+    <p class="cart-note" id="cartNote" hidden></p>
+    <button type="button" class="cart-clear" id="cartClear">Clear the shortlist</button>
+  </div>
+</aside>
+
+<script>
+(function () {
+  var BUDGET = 300000;
+  var SQUAD_MAX = 12;
+  var LINEUP = 6;
+  var KEY = 'pkf.shortlist.v1';
+
+  var cart = document.getElementById('cart');
+  var list = document.getElementById('cartList');
+  var empty = document.getElementById('cartEmpty');
+  var note = document.getElementById('cartNote');
+  var toggle = document.getElementById('cartToggle');
+  var body = document.getElementById('cartBody');
+
+  // slug -> {name, price, tier}. A Map keeps insertion order, so the list reads as the order
+  // you picked them rather than re-sorting under your finger.
+  var picked = new Map();
+
+  var money = function (n) { return '₽' + n.toLocaleString('en-US'); };
+  var buttons = function () { return document.querySelectorAll('.mon'); };
+
+  // Storage is a convenience, not a source of truth: a private window or blocked site data
+  // throws here, and the page has to work anyway.
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(Array.from(picked.keys()))); } catch (e) {}
+  }
+  function restore() {
+    var saved = [];
+    try { saved = JSON.parse(localStorage.getItem(KEY) || '[]'); } catch (e) { return; }
+    if (!Array.isArray(saved)) return;
+    var bySlug = {};
+    buttons().forEach(function (b) { bySlug[b.dataset.slug] = b; });
+    saved.forEach(function (slug) {
+      var b = bySlug[slug];
+      // Silently drop anything a repricing has removed from the roster.
+      if (b) picked.set(slug, { name: b.dataset.name, price: +b.dataset.price, tier: b.dataset.tier });
+    });
+  }
+
+  function render() {
+    var total = 0;
+    picked.forEach(function (p) { total += p.price; });
+    var count = picked.size;
+
+    document.getElementById('cartCount').textContent = String(count);
+    document.getElementById('cartTotal').textContent = money(total);
+    document.getElementById('sumCount').textContent = count + ' / ' + SQUAD_MAX;
+    document.getElementById('sumTotal').textContent = money(total);
+
+    var left = BUDGET - total;
+    var leftEl = document.getElementById('sumLeft');
+    leftEl.textContent = (left < 0 ? '-' : '') + money(Math.abs(left));
+    leftEl.classList.toggle('over', left < 0);
+
+    var problems = [];
+    if (left < 0) problems.push('Over budget by ' + money(-left) + '.');
+    if (count > SQUAD_MAX) problems.push('A squad holds ' + SQUAD_MAX + '.');
+    if (count > LINEUP && problems.length === 0) {
+      problems.push('Only ' + LINEUP + ' can start; the rest are reserves.');
+    }
+    note.hidden = problems.length === 0;
+    note.textContent = problems.join(' ');
+    note.style.color = left < 0 || count > SQUAD_MAX ? '' : 'var(--muted)';
+
+    empty.hidden = count > 0;
+    list.textContent = '';
+    picked.forEach(function (p, slug) {
+      var li = document.createElement('li');
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'cart-item';
+      b.style.setProperty('--tier', tierColour(p.tier));
+      b.setAttribute('aria-label', 'Remove ' + p.name + ' from the shortlist');
+      b.innerHTML =
+        '<span class="nm"></span><span class="cart-x" aria-hidden="true">×</span>' +
+        '<span class="tr"></span><span class="pr"></span>';
+      b.querySelector('.nm').textContent = p.name;
+      b.querySelector('.tr').textContent = p.tier;
+      b.querySelector('.pr').textContent = money(p.price);
+      b.addEventListener('click', function () { setPicked(slug, false); });
+      li.appendChild(b);
+      list.appendChild(li);
+    });
+  }
+
+  var COLOURS = {"S":"#ff5c5c","A+":"#ff9f43","A":"#ffd93d","B":"#6bcb77","C":"#4d96ff","D":"#9b8fd6","UR":"#6b7280"};
+  function tierColour(t) { return COLOURS[t] || '#6b7280'; }
+
+  function setPicked(slug, on) {
+    var btn = document.querySelector('.mon[data-slug="' + CSS.escape(slug) + '"]');
+    if (on) {
+      if (!btn) return;
+      picked.set(slug, { name: btn.dataset.name, price: +btn.dataset.price, tier: btn.dataset.tier });
+    } else {
+      picked.delete(slug);
+    }
+    if (btn) btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    save();
+    render();
+  }
+
+  buttons().forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      setPicked(btn.dataset.slug, btn.getAttribute('aria-pressed') !== 'true');
+    });
+  });
+
+  document.getElementById('cartClear').addEventListener('click', function () {
+    picked.clear();
+    buttons().forEach(function (b) { b.setAttribute('aria-pressed', 'false'); });
+    save();
+    render();
+  });
+
+  toggle.addEventListener('click', function () {
+    var open = cart.dataset.open !== 'true';
+    cart.dataset.open = open ? 'true' : 'false';
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
+
+  restore();
+  picked.forEach(function (_p, slug) {
+    var b = document.querySelector('.mon[data-slug="' + CSS.escape(slug) + '"]');
+    if (b) b.setAttribute('aria-pressed', 'true');
+  });
+  // Start collapsed on a phone, where an open sheet would cover the tiers it is about.
+  if (window.matchMedia('(max-width: 999px)').matches) {
+    cart.dataset.open = 'false';
+    toggle.setAttribute('aria-expanded', 'false');
+  }
+  render();
+})();
+</script>

@@ -1,6 +1,6 @@
 {
   "name": "pk-fantasy",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -14,7 +14,9 @@
     "roster:build": "tsx scripts/build-roster.ts",
     "tiers:fetch": "tsx scripts/fetch-tiers.ts",
     "tiers:doc": "tsx scripts/tiers-doc.ts",
-    "market:update": "npm run tiers:fetch && npm run roster:build && npm run db:seed && npm run tiers:doc",
+    "guide:doc": "tsx scripts/draft-guide.ts",
+    "guide:report": "tsx scripts/draft-report.ts",
+    "market:update": "npm run tiers:fetch && npm run roster:build && npm run db:seed && npm run tiers:doc && npm run guide:doc",
     "db:push": "prisma db push",
     "db:seed": "tsx scripts/seed.ts",
     "db:studio": "prisma studio",

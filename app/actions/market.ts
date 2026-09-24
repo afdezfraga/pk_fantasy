@@ -14,15 +14,17 @@ import {
   RosterRuleViolation,
   sellToMarket,
 } from '../../lib/services/ownership.ts';
-import { reportMatch, deleteMatch, MatchError } from '../../lib/services/matches.ts';
+import { reportMatchAndDraw, deleteMatch, MatchError } from '../../lib/services/matches.ts';
+import { buyListing, ListingError, withdrawListing } from '../../lib/services/listings.ts';
 import { proposeTrade, respondToTrade, TradeError } from '../../lib/services/trades.ts';
 import { advanceRound, RoundError } from '../../lib/services/rounds.ts';
 import { updateStanding, LadderError } from '../../lib/services/ladder.ts';
-import { getTier } from '../../lib/ladder.ts';
+import { advanceSeason, SeasonError } from '../../lib/services/seasons.ts';
+import { getTier, type Standing } from '../../lib/ladder.ts';
 import { LeagueError } from '../../lib/services/league.ts';
 import { DraftError } from '../../lib/services/draft.ts';
 import { EffectViolation } from '../../lib/services/effects.ts';
-import { ensurePendingEvent, EventError, EventPendingError } from '../../lib/services/events.ts';
+import { EventError, EventPendingError } from '../../lib/services/events.ts';
 
 export interface ActionState {
   error?: string;
@@ -36,6 +38,7 @@ const KNOWN_ERRORS = [
   MatchError,
   TradeError,
   RoundError,
+  SeasonError,
   LadderError,
   OwnershipConflict,
   RosterRuleViolation,
@@ -43,6 +46,7 @@ const KNOWN_ERRORS = [
   EventError,
   EventPendingError,
   EffectViolation,
+  ListingError,
 ];
 
 /** Domain errors become messages; anything else is a real bug and should surface as one. */
@@ -56,6 +60,30 @@ async function myTeam(leagueId: string, userId: string) {
   const team = await db.team.findUnique({ where: { leagueId_userId: { leagueId, userId } } });
   if (!team) throw new LeagueError("You don't have a team in this league.");
   return team;
+}
+
+/**
+ * The rank fields shared by the report form and the correction dialog: `rung` as
+ * "tierKey:rank", then either the gauge or, in rated tiers, rating and placement.
+ */
+function standingFromForm(formData: FormData): Standing {
+  const [tierKey, rankRaw] = String(formData.get('rung') ?? '').split(':');
+  const tier = getTier(tierKey);
+
+  const number = (key: string): number | null => {
+    const raw = String(formData.get(key) ?? '').trim();
+    if (!raw) return null;
+    const value = Number(raw);
+    return Number.isFinite(value) ? value : null;
+  };
+
+  return {
+    tierKey,
+    rank: tier.ranks === 0 ? null : Number.parseInt(rankRaw, 10) || tier.ranks,
+    progress: Number.parseInt(String(formData.get('progress') ?? '0'), 10) || 0,
+    ratingPoints: number('ratingPoints'),
+    globalPlacement: number('globalPlacement'),
+  };
 }
 
 function refresh(leagueId: string) {
@@ -84,6 +112,42 @@ export async function buyAction(_prev: ActionState, formData: FormData): Promise
     });
     refresh(leagueId);
     return { success: `Signed ${result.label}.` };
+  } catch (error) {
+    return { error: toMessage(error) };
+  }
+}
+
+export async function buyListingAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const user = await requireUser();
+  const leagueId = String(formData.get('leagueId') ?? '');
+  const listingId = String(formData.get('listingId') ?? '');
+
+  try {
+    const team = await myTeam(leagueId, user.id);
+    const result = await buyListing({ listingId, teamId: team.id, actorUserId: user.id });
+    refresh(leagueId);
+    return { success: `Signed ${result.label} for ₽${result.price.toLocaleString()}.` };
+  } catch (error) {
+    return { error: toMessage(error) };
+  }
+}
+
+export async function withdrawListingAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const user = await requireUser();
+  const leagueId = String(formData.get('leagueId') ?? '');
+  const listingId = String(formData.get('listingId') ?? '');
+
+  try {
+    const team = await myTeam(leagueId, user.id);
+    await withdrawListing({ listingId, teamId: team.id, actorUserId: user.id });
+    refresh(leagueId);
+    return { success: 'Taken back off the board.' };
   } catch (error) {
     return { error: toMessage(error) };
   }
@@ -159,13 +223,13 @@ export async function setCaptainAction(
 ): Promise<ActionState> {
   const user = await requireUser();
   const leagueId = String(formData.get('leagueId') ?? '');
-  const pokemonSlug = String(formData.get('pokemonSlug') ?? '') || null;
+  const pokemonSlug = String(formData.get('pokemonSlug') ?? '');
 
   try {
     const team = await myTeam(leagueId, user.id);
     await setCaptain({ leagueId, teamId: team.id, pokemonSlug });
     refresh(leagueId);
-    return { success: pokemonSlug ? 'Armband handed over.' : 'Armband removed.' };
+    return { success: 'Armband handed over.' };
   } catch (error) {
     return { error: toMessage(error) };
   }
@@ -211,24 +275,25 @@ export async function reportMatchAction(
   const won = String(formData.get('won') ?? '') === '1';
   const note = String(formData.get('note') ?? '');
 
-  // Lines arrive as `line:<teamId>:<slug>` = "kos,fainted,benched".
+  // Lines arrive as `line:<teamId>:<slug>` = "kos,fainted". Only Pokémon that were sent out
+  // are reported at all, so none is ever benched; and on a loss every one of them went down.
   const lines: { teamId: string; pokemonSlug: string; kos: number; fainted: boolean; benched: boolean }[] =
     [];
   for (const [key, raw] of formData.entries()) {
     if (!key.startsWith('line:')) continue;
     const [, teamId, pokemonSlug] = key.split(':');
-    const [kos, fainted, benched] = String(raw).split(',');
+    const [kos, fainted] = String(raw).split(',');
     lines.push({
       teamId,
       pokemonSlug,
       kos: Number.parseInt(kos, 10) || 0,
-      fainted: fainted === '1',
-      benched: benched === '1',
+      fainted: !won || fainted === '1',
+      benched: false,
     });
   }
 
   if (lines.length === 0) {
-    return { error: 'Pick the Pokémon you brought to the match.' };
+    return { error: 'Pick the Pokémon you sent out.' };
   }
 
   // Honour-based restrictions the manager ticked. The app can't verify any of them, so it
@@ -240,7 +305,8 @@ export async function reportMatchAction(
   const { homeScore, awayScore } = deriveScore({ won, lines });
 
   try {
-    const result = await reportMatch({
+    // Also closes the round if this match finished it, and draws the next event if it's due.
+    const result = await reportMatchAndDraw({
       leagueId,
       homeTeamId,
       // Every match is a public ladder game against someone outside the league.
@@ -250,13 +316,10 @@ export async function reportMatchAction(
       awayScore,
       lines,
       attested,
+      standing: standingFromForm(formData),
       note,
       reportedById: user.id,
     });
-
-    // A match may bring the next event due. Drawing it here rather than inside the report keeps
-    // a failed draw from rolling back a result somebody has already played.
-    await ensurePendingEvent(leagueId, homeTeamId);
     refresh(leagueId);
 
     const parts = [
@@ -265,6 +328,12 @@ export async function reportMatchAction(
         : won
           ? 'Win recorded.'
           : 'Loss recorded.',
+      ...(result.promotion > 0
+        ? [`New tier reached — promotion bonus \u20bd${result.promotion.toLocaleString()}.`]
+        : []),
+      ...(result.closedRound !== null
+        ? [`That finished round ${result.closedRound}, so the next one has begun.`]
+        : []),
       ...result.lifted,
     ];
     return { success: parts.join(' ') };
@@ -357,21 +426,31 @@ export async function advanceRoundAction(
   }
 }
 
+export async function advanceSeasonAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const user = await requireUser();
+  const leagueId = String(formData.get('leagueId') ?? '');
+
+  try {
+    const result = await advanceSeason({ leagueId, actorUserId: user.id });
+    refresh(leagueId);
+    revalidatePath(`/league/${leagueId}/draft`);
+    return {
+      success: `Season ${result.season} closed. ${result.sold} Pokémon went back to the market; start the draft for season ${result.next} when everyone's ready.`,
+    };
+  } catch (error) {
+    return { error: toMessage(error) };
+  }
+}
+
 export async function updateStandingAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
   const user = await requireUser();
   const leagueId = String(formData.get('leagueId') ?? '');
-  const [tierKey, rankRaw] = String(formData.get('rung') ?? '').split(':');
-  const tier = getTier(tierKey);
-
-  const number = (key: string): number | null => {
-    const raw = String(formData.get(key) ?? '').trim();
-    if (!raw) return null;
-    const value = Number(raw);
-    return Number.isFinite(value) ? value : null;
-  };
 
   try {
     const team = await myTeam(leagueId, user.id);
@@ -379,22 +458,10 @@ export async function updateStandingAction(
       leagueId,
       teamId: team.id,
       actorUserId: user.id,
-      standing: {
-        tierKey,
-        rank: tier.ranks === 0 ? null : Number.parseInt(rankRaw, 10) || tier.ranks,
-        progress: Number.parseInt(String(formData.get('progress') ?? '0'), 10) || 0,
-        ratingPoints: number('ratingPoints'),
-        globalPlacement: number('globalPlacement'),
-      },
+      standing: standingFromForm(formData),
     });
     refresh(leagueId);
-    return {
-      success: result.bonus
-        ? `Now ${result.label} — promotion bonus \u20bd${result.bonus.toLocaleString()}.`
-        : result.baseline
-          ? `Starting rank recorded as ${result.label}. Climbing from here pays a bonus.`
-          : `Rank set to ${result.label}.`,
-    };
+    return { success: `Rank corrected to ${result.label}.` };
   } catch (error) {
     return { error: toMessage(error) };
   }

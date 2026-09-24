@@ -15,9 +15,20 @@ export interface ConstraintView {
   label: string;
   attested: boolean;
   matchesLeft: number;
+  /** Set instead of `matchesLeft` for things that lift after events rather than after matches. */
+  eventsLeft?: number;
 }
 
-function Countdown({ matches }: { matches: number }) {
+function Countdown({ matches, events = 0 }: { matches: number; events?: number }) {
+  // Two clocks, and saying "3 matches left" about something that counts crises would be a lie
+  // the manager only discovers by playing three matches and finding it still there.
+  if (events > 0) {
+    return (
+      <span className="tabular shrink-0 text-[11px] text-muted">
+        {events === 1 ? 'until the next event' : `${events} events left`}
+      </span>
+    );
+  }
   if (matches <= 0) return null;
   return (
     <span className="tabular shrink-0 text-[11px] text-muted">
@@ -82,7 +93,7 @@ function Strip({
                 <span className="ml-1.5 text-[11px] text-muted">· on your word</span>
               )}
             </span>
-            <Countdown matches={constraint.matchesLeft} />
+            <Countdown matches={constraint.matchesLeft} events={constraint.eventsLeft} />
           </li>
         ))}
       </ul>

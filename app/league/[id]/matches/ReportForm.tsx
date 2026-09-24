@@ -6,11 +6,13 @@ import { useFormStatus } from 'react-dom';
 import { valuePerf } from '../../../../config/economy.ts';
 import { SCORING, scoreTeam, streakMultiplier } from '../../../../config/scoring.ts';
 import { money } from '../../../../lib/format.ts';
+import { applyResult, type Standing } from '../../../../lib/ladder.ts';
 import { deriveScore } from '../../../../lib/match.ts';
 import { reportMatchAction, type ActionState } from '../../../actions/market.ts';
 import { Constraints, type ConstraintView } from '../../../components/Constraints.tsx';
 import { PokemonArt } from '../../../components/PokemonImage.tsx';
 import { Button, Field, TierBadge, inputClass } from '../../../components/ui.tsx';
+import { RankFields } from './RankFields.tsx';
 
 export interface Starter {
   slug: string;
@@ -27,18 +29,19 @@ export interface Attestation {
   label: string;
 }
 
+/**
+ * One Pokémon that was sent out. One that stayed in the back isn't reported at all: it neither
+ * scores nor moves in value, so there is nothing to say about it.
+ */
 interface Line {
   kos: number;
   fainted: boolean;
-  /** Brought to the match but never sent out. */
-  benched: boolean;
 }
 
-const EMPTY: Line = { kos: 0, fainted: false, benched: false };
+const EMPTY: Line = { kos: 0, fainted: false };
 
 /** Points a line is worth, mirrored from config/scoring.ts so the form can show it live. */
 function linePoints(line: Line): number {
-  if (line.benched) return SCORING.benched;
   return line.kos * SCORING.koLanded + (line.fainted ? SCORING.fainted : SCORING.survived);
 }
 
@@ -88,6 +91,7 @@ export function ReportForm({
   tierKey,
   tierName,
   streak,
+  standing,
   constraints = [],
   attestations = [],
   banEnforced = true,
@@ -104,13 +108,15 @@ export function ReportForm({
   tierName: string;
   /** Wins in a row going into this match. */
   streak: number;
+  /** The club's rank going into this match — the starting point for the rank after it. */
+  standing: Standing;
   /** Everything in force, shown above the picker so nothing is a surprise. */
   constraints?: ConstraintView[];
   /** The honour-based ones, which the app can't check and so has to ask about. */
   attestations?: Attestation[];
   /**
    * False once the club is down to the bare minimum — a ban must never leave anyone unable to
-   * field a match, so below that line a barred Pokémon may be taken, benched.
+   * field a match, so below that line a barred Pokémon may be reported, at the cost of a forfeit.
    */
   banEnforced?: boolean;
 }) {
@@ -123,30 +129,33 @@ export function ReportForm({
   const full = brought.length >= bringToMatch;
   const allTicked = attestations.every((entry) => ticked[entry.id]);
 
-  // Bringing a barred Pokémon is only possible at all when the club has no legal four without
-  // it — and then it has to stay benched, because sending it out forfeits the match.
+  // Reporting a barred Pokémon is only possible at all when the club has no legal four without
+  // it — and since only Pokémon that were sent out are reported, it means a forfeit.
   const barredAndPlaying = brought.some(
-    (slug) => starters.find((entry) => entry.slug === slug)?.barredBy && !lines[slug].benched,
+    (slug) => starters.find((entry) => entry.slug === slug)?.barredBy,
   );
 
   const toggle = (slug: string) => {
     const next = { ...lines };
     if (slug in next) delete next[slug];
-    else if (!full) {
-      const barred = Boolean(starters.find((entry) => entry.slug === slug)?.barredBy);
-      next[slug] = barred ? { ...EMPTY, benched: true } : EMPTY;
-    }
+    else if (!full) next[slug] = EMPTY;
     setLines(next);
   };
 
   const update = (slug: string, patch: Partial<Line>) =>
     setLines({ ...lines, [slug]: { ...(lines[slug] ?? EMPTY), ...patch } });
 
-  const entered = Object.values(lines);
+  // A lost match ends with everyone you sent out fainted; the server records it that way too.
+  const settled = (line: Line): Line => (won ? line : { ...line, fainted: true });
+  const entered = Object.values(lines).map(settled);
   const score = deriveScore({ won, lines: entered });
 
   // The same calculation the server runs, so what's on screen is the money that lands.
   const nextStreak = won ? streak + 1 : 0;
+  // Where the result should leave the club, as a starting point. The game is the authority, so
+  // the manager checks it and changes it if the game says otherwise. The streak bonus is a
+  // guess at the game's rule, taken from the third win in a row like the money multiplier.
+  const predicted = applyResult(standing, won, nextStreak >= 3);
   const preview = scoreTeam({
     lines: entered.map((line) => ({ pokemonSlug: '', ...line, benched: false })),
     won,
@@ -232,7 +241,7 @@ export function ReportForm({
 
         <div>
           <div className="mb-2 flex items-baseline justify-between">
-            <span className="text-sm font-medium">Who did you bring?</span>
+            <span className="text-sm font-medium">Who did you send out?</span>
             <span className={`text-xs ${full ? 'text-accent' : 'text-muted'}`}>
               {brought.length} of {bringToMatch}
               {full && ' — tap one to swap'}
@@ -278,15 +287,15 @@ export function ReportForm({
                       {selected ? (
                         <span
                           className={`tabular shrink-0 text-xs font-semibold ${
-                            linePoints(line) > 0
+                            linePoints(settled(line)) > 0
                               ? 'text-positive'
-                              : linePoints(line) < 0
+                              : linePoints(settled(line)) < 0
                                 ? 'text-negative'
                                 : 'text-muted'
                           }`}
                         >
-                          {linePoints(line) > 0 ? '+' : ''}
-                          {linePoints(line)}
+                          {linePoints(settled(line)) > 0 ? '+' : ''}
+                          {linePoints(settled(line))}
                         </span>
                       ) : (
                         // No "tap" prompt on a row that can't be tapped — the lineup is full.
@@ -303,32 +312,25 @@ export function ReportForm({
                             onChange={(kos) => update(entry.slug, { kos })}
                           />
                         </span>
-                        <label className="flex items-center gap-1.5 text-xs text-muted">
-                          <input
-                            type="checkbox"
-                            checked={line.fainted}
-                            onChange={(event) =>
-                              update(entry.slug, { fainted: event.target.checked })
-                            }
-                            className="h-4 w-4 accent-[var(--color-negative)]"
-                          />
-                          Fainted
-                        </label>
-                        <label className="flex items-center gap-1.5 text-xs text-muted">
-                          <input
-                            type="checkbox"
-                            checked={line.benched}
-                            onChange={(event) =>
-                              update(entry.slug, { benched: event.target.checked })
-                            }
-                            className="h-4 w-4 accent-[var(--color-accent)]"
-                          />
-                          Never sent out
-                        </label>
+                        {won ? (
+                          <label className="flex items-center gap-1.5 text-xs text-muted">
+                            <input
+                              type="checkbox"
+                              checked={line.fainted}
+                              onChange={(event) =>
+                                update(entry.slug, { fainted: event.target.checked })
+                              }
+                              className="h-4 w-4 accent-[var(--color-negative)]"
+                            />
+                            Fainted
+                          </label>
+                        ) : (
+                          <span className="text-xs text-negative">Fainted — the match was lost</span>
+                        )}
                         <input
                           type="hidden"
                           name={`line:${myTeamId}:${entry.slug}`}
-                          value={`${line.kos},${line.fainted ? 1 : 0},${line.benched ? 1 : 0}`}
+                          value={`${line.kos},${settled(line).fainted ? 1 : 0}`}
                         />
                       </div>
                     )}
@@ -339,9 +341,20 @@ export function ReportForm({
           )}
 
           <p className="mt-2 text-xs text-muted">
-            KOs earn +{SCORING.koLanded}, surviving +{SCORING.survived}, fainting {SCORING.fainted}.
-            Points decide the awards; everyone you send out moves {pct > 0 ? '+' : ''}
-            {pct}% in value for a {won ? 'win' : 'loss'} in {tierName}.
+            Leave off anyone who stayed in the back. Everyone you sent out moves{' '}
+            {pct > 0 ? '+' : ''}
+            {pct}% in value for a {won ? 'win' : 'loss'} in {tierName}, whatever they did. KOs (+
+            {SCORING.koLanded}), surviving (+{SCORING.survived}) and fainting ({SCORING.fainted}) only
+            score points for the awards.
+          </p>
+        </div>
+
+        <div className="rounded-lg border border-line bg-panel-2 p-3">
+          {/* Remounted when the result flips, so the suggestion follows it. */}
+          <RankFields key={won ? 'won' : 'lost'} initial={predicted} label="Your rank after this match" />
+          <p className="mt-2 text-xs text-muted">
+            Filled in from the result — check it against the game. Reaching a new ball tier for the
+            first time this season pays a promotion bonus.
           </p>
         </div>
 
@@ -387,8 +400,8 @@ export function ReportForm({
         {barredAndPlaying && (
           <p className="rounded-lg border border-negative/40 bg-negative/10 px-3 py-2 text-xs text-negative">
             You&rsquo;ve sent out a Pokémon that isn&rsquo;t allowed to play. That&rsquo;s a
-            forfeit — this will be recorded as a loss whatever you tap above. Mark it{' '}
-            <strong>never sent out</strong> to bring it as cover instead.
+            forfeit — this will be recorded as a loss whatever you tap above. If it only came as
+            cover and never left the back, take it off the report.
           </p>
         )}
 

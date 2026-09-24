@@ -27,9 +27,16 @@
     { "key": "champion", "name": "Champion", "short": "CH", "ranks": 0, "progress": 0, "color": "#ffcb05", "rated": true }
   ],
 
-  "_promotionComment": "Paid once, the first time a team reaches each rank or tier. Climbing is the point of the league, so it pays properly.",
+  "_promotionComment": [
+    "Paid for reaching a new ball tier, keyed by the tier reached — the first time in a season,",
+    "and only through a reported match. Ranks inside a tier pay nothing, and neither does leaving",
+    "Beginner: every season starts at Poké Ball 4, so that step is a formality, not a climb.",
+    "A tier missing here pays nothing."
+  ],
   "promotionBonus": {
-    "rank": 4000,
-    "tier": 20000
+    "great": 20000,
+    "ultra": 20000,
+    "master": 20000,
+    "champion": 20000
   }
 }

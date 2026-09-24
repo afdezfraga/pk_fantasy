@@ -143,6 +143,9 @@ export async function claimFreeAgent(tx: Prisma.TransactionClient, input: Acquir
     throw new OwnershipConflict(`${label} was claimed by someone else a moment ago.`);
   }
 
+  // The first Pokémon into an empty squad takes the armband — in a draft, the first pick.
+  await ensureCaptain(tx, input.leagueId, input.teamId);
+
   if (input.price !== 0) {
     await postEntry(tx, {
       leagueId: input.leagueId,
@@ -269,6 +272,9 @@ export async function releaseToMarket(tx: Prisma.TransactionClient, input: Relea
     throw new OwnershipConflict(`${label} moved before the sale went through.`);
   }
 
+  // Selling the captain hands the armband on rather than leaving the club without one.
+  if (ownership.captain) await ensureCaptain(tx, input.leagueId, input.teamId);
+
   await tx.valueChange.create({
     data: {
       leagueId: input.leagueId,
@@ -302,6 +308,40 @@ export async function releaseToMarket(tx: Prisma.TransactionClient, input: Relea
   });
 
   return { label, proceeds };
+}
+
+/**
+ * Gives a squad a captain if it has none. A club with any Pokémon always has one.
+ *
+ * The armband goes to the longest-serving member, which is also what makes the first draft pick
+ * the captain: it is the first one in. Called after every change of owner, so the only way to
+ * lose a captain is to sell the whole squad.
+ */
+export async function ensureCaptain(
+  tx: Prisma.TransactionClient,
+  leagueId: string,
+  teamId: string,
+): Promise<void> {
+  const current = await tx.ownership.count({ where: { leagueId, teamId, captain: true } });
+  if (current > 0) return;
+
+  const successor = await tx.ownership.findFirst({
+    where: { leagueId, teamId },
+    orderBy: [
+      { acquiredAt: { sort: 'asc', nulls: 'last' } },
+      { slot: { sort: 'asc', nulls: 'last' } },
+      { marketValue: 'desc' },
+    ],
+    select: { id: true },
+  });
+  if (!successor) return;
+
+  // Stamped so events can ask how long it has worn the armband. A club that inherits one this
+  // way — first draft pick, or a sale passing it on — starts its tenure now.
+  await tx.ownership.update({
+    where: { id: successor.id },
+    data: { captain: true, captainSince: new Date() },
+  });
 }
 
 /** Squad-size check, shared by every acquisition path. */

@@ -10,7 +10,7 @@ Deployment lives in [DEPLOY.md](DEPLOY.md).
 
 ## Updating the market (repricing every Pokémon)
 
-**Run `npm run market:update`.** It chains the four steps below and takes a couple of minutes.
+**Run `npm run market:update`.** It chains the five steps below and takes a couple of minutes.
 Run the steps individually when something needs checking in between.
 
 ```bash
@@ -18,10 +18,11 @@ npm run tiers:fetch     # scrape the ladder -> data/tiers.json   (add -- --dry t
 npm run roster:build    # recompute prices  -> data/roster.json + .csv
 npm run db:seed         # push the catalog into the database
 npm run tiers:doc       # render the sheet  -> data/tiers.html
+npm run guide:doc       # render the guide  -> data/draft-guide.html
 ```
 
-**Always finish with `tiers:doc`.** Every repricing gets a readable record — see *The document*
-below.
+**Always finish with the documents.** Every repricing gets a readable record — see *The document*
+and *The draft guide* below.
 
 ### Where prices actually come from
 
@@ -119,10 +120,37 @@ to ink on paper and keeps each tier on one page).
 
 It follows the app's own design tokens from `app/globals.css` — same tier colours, so a Pokémon
 reads the same on the sheet as on the market page. If those colours change, update `TIER_COLOUR`
-in [scripts/tiers-doc.ts](scripts/tiers-doc.ts) to match.
+in [scripts/doc-kit.ts](scripts/doc-kit.ts) to match — every document reads it from there.
 
 Regenerate it after **every** market update; it stamps the tier source, capture date and
 Bulbapedia revision, so an old sheet always says what it was built from.
+
+## The draft guide and report
+
+`npm run guide:doc` renders **`data/draft-guide.html`**: the doubles roles (Megas, Fake Out,
+Intimidate, Tailwind, Trick Room, weather, …), the best Pokémon for each, and four scores:
+**Role** and **Power** (judgement), **Value** and **Pick** (computed from Power and the price).
+`market:update` runs it, because Value moves with every reprice. Both the page and its source,
+`data/draft-guide.json`, are committed, like `tiers.html` and `tiers.json`.
+
+`data/draft-guide.json` is **hand-written**, not generated — nothing recreates it. Role scores,
+notes, Power adjustments and squads are judgement (first drafted by Claude from general VGC
+knowledge, not checked against Champions usage data), so treat them as editable opinion.
+
+- **Who qualifies** for a role is data: PokéAPI's `champions` learnsets in `.cache/pokeapi`,
+  pooled across forms (Indeedee's Follow Me is the female's). The cache is gitignored, so on a
+  fresh clone run `roster:build` first; the script says so.
+- **Judgement lives in `data/draft-guide.json`**: Role scores and notes, the few Power
+  adjustments (each with a mechanical reason), and sample squads. The build refuses a
+  hand-scored Pokémon that can't do the job, an unknown slug, or a squad over budget.
+- `npm run guide:report` prints the written report to `reports/draft-report.pdf`;
+  `-- --private` prints the scouting edition to `private/scouting-report.pdf`, with a
+  simulated draft and the notes in `private/scouting-notes.html`. Both folders are gitignored —
+  the private one must never reach history the league can read.
+
+The logic is pure and tested in [lib/roster/draft-guide.ts](lib/roster/draft-guide.ts); the
+tests' canaries (Incineroar has Fake Out and Intimidate, Indeedee redirects) skip when there
+is no cache.
 
 ---
 
@@ -134,7 +162,7 @@ Bulbapedia revision, so an old sheet always says what it was built from.
 - Commit messages: a conventional-commit subject, then a body in prose that argues *why* the
   change is right — not a list of what moved. Match the existing history.
 - Comments explain **why**, not what. The existing ones carry real reasoning — match that.
-- `npm test` (221 tests) and `npm run typecheck` before calling anything done.
+- `npm test` (303 tests) and `npm run typecheck` before calling anything done.
 - `lib/roster/roster.test.ts` asserts Incineroar is top tier. It is the canary for the wrong tier
   list — singles lists put it mid-table. If it fails after a reprice, you fetched singles.
 - Money is always an integer number of Pokédollars. The `Transaction` ledger is the source of

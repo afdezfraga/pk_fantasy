@@ -1,0 +1,394 @@
+{
+  "_comment": [
+    "The judgement half of the draft guide. Render with `npm run guide:doc`.",
+    "",
+    "WHAT IS OPINION AND WHAT IS NOT. Who qualifies for a category (learns Fake Out, has",
+    "Intimidate) is read from PokéAPI's Champions learnsets — you can't add a Pokémon to a",
+    "category here that can't do the job; the build refuses. What lives here is how GOOD each",
+    "one is at it (`role`, 1–10), and the few places where a Pokémon's ladder rank misleads",
+    "about its strength (`power`).",
+    "",
+    "POWER starts from the op.gg doubles rank: #1 is 10, last is 1. An `adjust` moves it, and",
+    "must say why. Keep these rare and mechanical — a price the band can't see, like Huge Power",
+    "on a 420 BST — not a feeling. VALUE and PICK are computed from Power and the shop price,",
+    "so they reprice themselves.",
+    "",
+    "Every hand-scored Pokémon (`picks`) becomes a card; everyone else who qualifies is listed",
+    "under it as a chip. Squads are checked on build: six Pokémon, within the opening budget,",
+    "and the Mega named must belong to a squad member."
+  ],
+
+  "power": {
+    "kangaskhan": { "adjust": 1.5, "why": "Mega Kangaskhan's Parental Bond hits twice — Fake Out, Sucker Punch and Power-Up Punch all double up. It defined 2015 VGC; here it is priced as a B." },
+    "azumarill": { "adjust": 1.5, "why": "Huge Power doubles its Attack. The market prices it off a 420 BST, which badly undersells it." },
+    "medicham": { "adjust": 1.5, "why": "Mega Medicham's Pure Power doubles its Attack, and it has Fake Out. The C-tier price only sees a 410 BST." },
+    "scrafty": { "adjust": 1, "why": "Mega Scrafty keeps Intimidate and gains 135/135 defences on top of Fake Out — a support that is very hard to remove." },
+    "golurk": { "adjust": 1, "why": "Mega Golurk's Unseen Fist sends contact moves straight through Protect — the most-used move in doubles — off 159 Attack." },
+    "typhlosion": { "adjust": 1, "why": "Eruption from full HP is the same nuke Hisuian Typhlosion (an A-tier) throws, at a C-tier price." },
+    "pinsir": { "adjust": 1, "why": "Mega Pinsir's Aerilate turns its Normal moves into strong Flying moves off 155 Attack, for ₽8k." }
+  },
+
+  "categories": [
+    {
+      "key": "megas",
+      "title": "Megas",
+      "kicker": "One per battle",
+      "why": "Mega Evolution is a free power spike, but only one Pokémon per battle can use it. Owning the species gives you its Mega, and the price already includes it. Draft one Mega you really want, not three you can't use together.",
+      "picks": {
+        "kangaskhan": { "role": 9.5, "note": "Parental Bond: every attack hits twice. Double Fake Out chip, double Sucker Punch. The best power-per-₽ Mega on the market." },
+        "charizard": { "role": 9.5, "note": "Mega Charizard Y sets sun on arrival and fires Heat Wave off 159 Sp. Atk. Mega X is there if they've planned for Y." },
+        "gardevoir": { "role": 9, "note": "Pixilate Hyper Voice: a Fairy-type spread nuke off 165 Sp. Atk that hits both foes." },
+        "salamence": { "role": 9, "note": "Intimidate on the way in, then Aerilate turns Double-Edge and Hyper Voice into Flying nukes." },
+        "floette-eternal": { "role": 9, "note": "Fairy Aura on 155 Sp. Atk, plus Light of Ruin. Transfer-only in the game; the league allows it by default." },
+        "metagross": { "role": 8.5, "note": "Tough Claws Iron Head and Zen Headbutt, Bullet Punch to finish, 150 Defence." },
+        "tyranitar": { "role": 8.5, "note": "Sets sand, shrugs off special hits, and Rock Slides off 164 Attack." },
+        "mawile": { "role": 8.5, "note": "Intimidate as it comes in, Huge Power once it Megas. Speed 50 makes it a Trick Room hitter." },
+        "staraptor": { "role": 8, "note": "Contrary turns Close Combat's defence drops into boosts. Intimidate and Tailwind before it Mega Evolves." },
+        "camerupt": { "role": 8, "note": "Sheer Force Eruption at Speed 20: the Trick Room nuke." },
+        "scrafty": { "role": 8, "note": "Keeps Intimidate after Mega Evolving and gains 135/135 defences. Fake Out and Intimidate on something that won't go down." },
+        "dragonite": { "role": 7.5, "note": "Multiscale on a 145 Sp. Atk Mega; Extreme Speed and Tailwind." },
+        "gyarados": { "role": 7.5, "note": "Intimidate first, then Mold Breaker and Dragon Dance once it Megas." },
+        "medicham": { "role": 7.5, "note": "Pure Power doubles Attack; Fake Out and Trick Room support. ₽21k." },
+        "golurk": { "role": 7, "note": "Unseen Fist: contact moves ignore Protect. 159 Attack for ₽28k." },
+        "banette": { "role": 6, "note": "Mega Banette gets Prankster: Will-O-Wisp and Taunt go first, off a 165-Attack Mega. ₽26k." },
+        "chandelure": { "role": 7, "note": "Heat Wave off 175 Sp. Atk; Infiltrator ignores screens and Substitute." },
+        "froslass": { "role": 7, "note": "Sets snow and Aurora Veil in one Pokémon." },
+        "scizor": { "role": 7, "note": "Technician Bullet Punch — priority that actually hurts — plus Tailwind." },
+        "altaria": { "role": 6.5, "note": "Pixilate Hyper Voice spread for ₽70k." },
+        "pinsir": { "role": 6, "note": "Aerilate on 155 Attack for ₽8k. The cheapest Mega worth a slot." }
+      }
+    },
+    {
+      "key": "fake-out",
+      "title": "Fake Out",
+      "kicker": "Buy a free turn",
+      "why": "Fake Out only works on your first turn in, goes first, and makes the target flinch — it loses its move. That free turn is when you set Tailwind or Trick Room, or knock out their threat two-on-one. Nearly every good doubles team brings one.",
+      "picks": {
+        "incineroar": { "role": 10, "note": "The benchmark: Fake Out, Intimidate, Parting Shot. It resets all three every time it switches back in." },
+        "rillaboom": { "role": 9.5, "note": "Fake Out plus priority Grassy Glide under its own terrain." },
+        "sneasler": { "role": 9, "note": "Fake Out, then an Unburden-boosted Close Combat and Dire Claw." },
+        "kangaskhan": { "role": 9, "note": "Parental Bond Fake Out hits twice. The cheapest elite Fake Out at ₽70k." },
+        "grimmsnarl": { "role": 8.5, "note": "Fake Out, Prankster screens and Parting Shot: it buys its partner three turns." },
+        "scrafty": { "role": 8.5, "note": "Fake Out and Intimidate, and its Mega keeps Intimidate." },
+        "sableye": { "role": 7.5, "note": "Fake Out plus Prankster Will-O-Wisp. Mega Sableye's Magic Bounce reflects their support moves." },
+        "weavile": { "role": 7, "note": "Fake Out on a fast attacker, with Ice Shard and Knock Off." },
+        "meowstic": { "role": 7, "note": "Fake Out and Prankster screens for ₽67k." },
+        "lopunny": { "role": 6.5, "note": "Mega Lopunny's Scrappy lets Fake Out hit Ghost types." },
+        "medicham": { "role": 6.5, "note": "Fake Out, then Pure Power punches. ₽21k." },
+        "tinkaton": { "role": 6, "note": "Fake Out, Gigaton Hammer and screens." },
+        "persian-alola": { "role": 6, "note": "The cheapest Fake Out worth bringing, at ₽14k. Its learnset is read from Scarlet/Violet." },
+        "mr-mime": { "role": 5.5, "note": "Fake Out, Wide Guard and Trick Room for ₽16k. Its learnset is read from Sword/Shield." }
+      }
+    },
+    {
+      "key": "intimidate",
+      "title": "Intimidate",
+      "kicker": "Blunt their attackers",
+      "why": "Intimidate drops the Attack of both opponents the moment it comes in. In doubles that is two physical attackers weakened for free, and again every time it switches back in. It is the most valuable ability in the format.",
+      "picks": {
+        "incineroar": { "role": 10, "note": "Intimidate, Fake Out and Parting Shot: it pivots out and comes back to Intimidate again." },
+        "arcanine-hisui": { "role": 9, "note": "Intimidate on a hard-hitting Fire/Rock with Extreme Speed. The best Intimidate to buy later." },
+        "salamence": { "role": 8.5, "note": "Intimidate first, then Mega Salamence's Aerilate takes over." },
+        "scrafty": { "role": 8.5, "note": "Keeps Intimidate after Mega Evolution, on 135/135 defences, with Fake Out." },
+        "staraptor": { "role": 8, "note": "Intimidate plus Tailwind, then Contrary Close Combat." },
+        "mawile": { "role": 8, "note": "Intimidate as it comes in, Huge Power once it Megas." },
+        "gyarados": { "role": 7.5, "note": "Intimidate plus Dragon Dance; Mega Gyarados adds Mold Breaker." },
+        "arcanine": { "role": 7, "note": "Intimidate, Extreme Speed, Will-O-Wisp and Snarl: a full support kit for ₽65k." },
+        "krookodile": { "role": 6.5, "note": "Intimidate and Snarl for ₽22k; its Ground moves hit Fire and Steel." },
+        "wyrdeer": { "role": 6.5, "note": "Intimidate and Trick Room on one ₽23k Pokémon." },
+        "overqwil": { "role": 6, "note": "Intimidate or Swift Swim — fits a rain team." },
+        "tauros-paldea-aqua": { "role": 5.5, "note": "Intimidate on a Fighting/Water type for ₽19k." },
+        "squawkabilly": { "role": 5.5, "note": "Intimidate plus Tailwind for ₽12k. Its learnset is read from Scarlet/Violet." },
+        "manectric": { "role": 5, "note": "Mega Manectric gains Intimidate at 135 Speed." }
+      }
+    },
+    {
+      "key": "tailwind",
+      "title": "Tailwind",
+      "kicker": "Double your speed",
+      "why": "Tailwind doubles your side's Speed for four turns. Moving first is how you win doubles: you hit before they do, and knock things out before they act. It is the speed control for teams that want to go fast.",
+      "picks": {
+        "whimsicott": { "role": 10, "note": "Prankster Tailwind goes before almost anything. It also has Moonblast, Encore and screens." },
+        "pelipper": { "role": 9, "note": "Tailwind and rain together — the best speed control in the game, if you can afford it." },
+        "talonflame": { "role": 8.5, "note": "Gale Wings gives priority Tailwind at full HP, and a priority Brave Bird." },
+        "aerodactyl": { "role": 8, "note": "Tailwind, Rock Slide flinches and Wide Guard." },
+        "staraptor": { "role": 8, "note": "Intimidate, then Tailwind, then Mega Contrary Close Combat." },
+        "vivillon-high-plains": { "role": 7, "note": "Tailwind, Sleep Powder, Rage Powder and Friend Guard: all-round support for ₽92k." },
+        "corviknight": { "role": 7, "note": "Mirror Armor bounces Intimidate back; a bulky Tailwind setter." },
+        "salamence": { "role": 7, "note": "Tailwind on an Intimidate Mega." },
+        "volcarona": { "role": 6.5, "note": "Tailwind or Rage Powder, then Quiver Dance." },
+        "kleavor": { "role": 6, "note": "Tailwind, Rock Slide and Stone Axe for ₽110k." },
+        "skarmory": { "role": 6, "note": "Tailwind on a Steel/Flying wall; Mega Skarmory hits hard." },
+        "pidgeot": { "role": 5.5, "note": "Tailwind, and Mega Pidgeot's No Guard Hurricane never misses. ₽28k." },
+        "squawkabilly": { "role": 5.5, "note": "Tailwind and Intimidate for ₽12k." }
+      }
+    },
+    {
+      "key": "trick-room",
+      "title": "Trick Room",
+      "kicker": "Slowest moves first",
+      "why": "Trick Room reverses turn order for four turns, so the slowest Pokémon move first. It lets a cheap, slow, heavy-hitting team beat a fast, expensive one. The setter has to survive the turn it uses it, which is why Fake Out and redirection matter so much.",
+      "picks": {
+        "farigiraf": { "role": 10, "note": "Armor Tail blocks Fake Out and all other priority aimed at its side. The setter that can't be stopped." },
+        "indeedee": { "role": 9.5, "note": "Psychic Surge blocks priority, Follow Me protects the partner, and it sets Trick Room too." },
+        "hatterene": { "role": 9, "note": "Magic Bounce reflects Taunt. At Speed 29 it is also its own Trick Room attacker." },
+        "sinistcha": { "role": 8.5, "note": "Rage Powder, Hospitality heals and Trick Room: a whole support kit in one ₽193k pick." },
+        "oranguru": { "role": 8, "note": "Trick Room and Instruct (makes the partner attack again), and Inner Focus stops Fake Out flinches. ₽54k." },
+        "armarouge": { "role": 7.5, "note": "Trick Room, Wide Guard, Ally Switch and Expanding Force." },
+        "mimikyu": { "role": 7, "note": "Disguise soaks the first hit, so its Trick Room goes up." },
+        "cofagrigus": { "role": 6.5, "note": "Trick Room for ₽18k, on a bulky Ghost." },
+        "banette": { "role": 6, "note": "Trick Room, then Mega Banette's Prankster Will-O-Wisp. ₽26k." },
+        "reuniclus": { "role": 6, "note": "Magic Guard Trick Room with a real attack afterwards. ₽19k." },
+        "slowking-galar": { "role": 6, "note": "Trick Room and Regenerator on a Poison/Psychic type." },
+        "wyrdeer": { "role": 6, "note": "Trick Room and Intimidate for ₽23k." },
+        "musharna": { "role": 4.5, "note": "₽4k Trick Room, if the budget is gone." }
+      }
+    },
+    {
+      "key": "tr-attackers",
+      "title": "Trick Room attackers",
+      "kicker": "Slow and heavy",
+      "why": "Pokémon slow enough (Speed 55 or below) to move first under Trick Room, and strong enough to be worth it. The ladder undervalues these because outside Trick Room they are slow — which makes them cheap.",
+      "picks": {
+        "torkoal": { "role": 9.5, "note": "Speed 20 and Drought: sun-boosted Eruption before anything else moves." },
+        "camerupt": { "role": 9, "note": "Mega Camerupt: Speed 20, Sheer Force Eruption." },
+        "kingambit": { "role": 9, "note": "Speed 50 and Supreme Overlord. Sucker Punch works outside Trick Room too." },
+        "hatterene": { "role": 8.5, "note": "Speed 29, 136 Sp. Atk, and it sets its own Trick Room." },
+        "mawile": { "role": 8.5, "note": "Mega Mawile: Huge Power at Speed 50." },
+        "golisopod": { "role": 8, "note": "Speed 40, First Impression; the Mega's Tough Claws." },
+        "rhyperior": { "role": 7, "note": "Speed 40, 140 Attack, Rock Slide and High Horsepower. ₽24k." },
+        "conkeldurr": { "role": 7, "note": "Guts, Mach Punch and Wide Guard. ₽57k." },
+        "snorlax": { "role": 6.5, "note": "Speed 30; Curse or Belly Drum under Trick Room. ₽62k." },
+        "crabominable": { "role": 6.5, "note": "Mega Crabominable: 157 Attack, Iron Fist, Speed 33, Wide Guard." },
+        "drampa": { "role": 6.5, "note": "Mega Drampa: Berserk and 160 Sp. Atk at Speed 36." },
+        "golurk": { "role": 6.5, "note": "Speed 55; Mega Golurk punches through Protect." },
+        "ampharos": { "role": 5.5, "note": "Mega Ampharos: 165 Sp. Atk and Mold Breaker at Speed 45." },
+        "mudsdale": { "role": 5, "note": "Speed 35 with Stamina. ₽20k." }
+      }
+    },
+    {
+      "key": "redirection",
+      "title": "Redirection",
+      "kicker": "Take the hits",
+      "why": "Follow Me and Rage Powder pull every single-target attack onto the user. Your partner gets a free turn to set up, set Trick Room, or attack without being focused down. Only a handful of Pokémon on the roster can do it, so it's scarce.",
+      "picks": {
+        "indeedee": { "role": 10, "note": "Follow Me inside its own Psychic Terrain. Only the female learns Follow Me — bring her." },
+        "sinistcha": { "role": 9, "note": "Rage Powder and Hospitality, on a Trick Room setter." },
+        "vivillon-high-plains": { "role": 8, "note": "Rage Powder, Friend Guard, Tailwind and Sleep Powder: the cheapest full support at ₽92k." },
+        "clefable": { "role": 7.5, "note": "Follow Me on a bulky Fairy; Mega Clefable's Magic Bounce reflects status moves." },
+        "maushold": { "role": 7.5, "note": "Follow Me and Friend Guard, plus Population Bomb." },
+        "volcarona": { "role": 7, "note": "Rage Powder, then Quiver Dance. Tailwind too." },
+        "scovillain": { "role": 6, "note": "Rage Powder and Chlorophyll in sun." },
+        "ariados": { "role": 3, "note": "₽2k Rage Powder — only if the budget is gone." }
+      }
+    },
+    {
+      "key": "rain",
+      "title": "Rain",
+      "kicker": "Setters and sweepers",
+      "why": "Rain boosts Water moves by half, weakens Fire, and doubles the Speed of Swift Swim users. It needs a setter (Drizzle) and a user. The two setters here cost ₽190k and ₽316k, so rain is a big commitment in the draft.",
+      "picks": {
+        "pelipper": { "role": 10, "note": "Drizzle, Tailwind, Wide Guard and Hurricane. ₽16k out of reach at the draft." },
+        "basculegion": { "role": 9.5, "note": "Swift Swim and Last Respects. The reason rain is a top archetype." },
+        "politoed": { "role": 9, "note": "The rain setter you can draft: Drizzle, Perish Song and Icy Wind." },
+        "archaludon": { "role": 8.5, "note": "Electro Shot fires in one turn in rain and boosts its Sp. Atk." },
+        "swampert": { "role": 7.5, "note": "Mega Swampert gets Swift Swim: 150 Attack, doubled Speed in rain." },
+        "overqwil": { "role": 5.5, "note": "Swift Swim or Intimidate for ₽58k." }
+      }
+    },
+    {
+      "key": "sun",
+      "title": "Sun",
+      "kicker": "Setters and sweepers",
+      "why": "Sun boosts Fire moves by half, weakens Water, and doubles the Speed of Chlorophyll users. Torkoal makes sun the best-value weather in this draft: an A+ setter for ₽178k that is also a Trick Room nuke.",
+      "picks": {
+        "torkoal": { "role": 10, "note": "Drought on a Speed-20 Eruption user: sun and Trick Room offence in one pick." },
+        "charizard": { "role": 9.5, "note": "Mega Charizard Y is the sun setter and the attacker in one." },
+        "venusaur": { "role": 8, "note": "Chlorophyll Sleep Powder. Mega Venusaur's Thick Fat is there for the other plan." },
+        "whimsicott": { "role": 7, "note": "Chlorophyll is its other ability, but Prankster is almost always the better choice." },
+        "ninetales": { "role": 6.5, "note": "The cheap Drought setter at ₽57k, with Heat Wave and Will-O-Wisp." },
+        "scovillain": { "role": 6.5, "note": "Chlorophyll and Rage Powder; Mega Scovillain's Spicy Spray." },
+        "vileplume": { "role": 6, "note": "Chlorophyll Sleep Powder for ₽19k." },
+        "houndoom": { "role": 5, "note": "Mega Houndoom: Solar Power on 140 Sp. Atk." },
+        "heliolisk": { "role": 5, "note": "Solar Power on a fast Electric type. ₽53k." }
+      }
+    },
+    {
+      "key": "sand",
+      "title": "Sand",
+      "kicker": "Setters and sweepers",
+      "why": "Sand chips everything that isn't Rock, Ground or Steel, raises Rock types' Sp. Def, and doubles the Speed of Sand Rush users. Tyranitar and Excadrill are the classic pair, and both are affordable A+ picks, though not together.",
+      "picks": {
+        "tyranitar": { "role": 9.5, "note": "Sand Stream on arrival; Mega Tyranitar is a 164-Attack tank." },
+        "excadrill": { "role": 9, "note": "Sand Rush doubles its Speed. Mega Excadrill's Piercing Drill." },
+        "garchomp": { "role": 8, "note": "Mega Garchomp's Sand Force, and Earthquake." },
+        "hippowdon": { "role": 6, "note": "A ₽23k sand setter; bulky, with Sand Force." },
+        "lycanroc": { "role": 6, "note": "Sand Rush and Accelerock. ₽54k." },
+        "houndstone": { "role": 5, "note": "Sand Rush and Last Respects. ₽54k." }
+      }
+    },
+    {
+      "key": "snow",
+      "title": "Snow",
+      "kicker": "Veil and Blizzard",
+      "why": "Snow raises Ice types' Defence, makes Blizzard never miss, and unlocks Aurora Veil, which halves the damage your side takes for five turns. Aurora Veil is the reason to play snow.",
+      "picks": {
+        "ninetales-alola": { "role": 9.5, "note": "Snow Warning, then Aurora Veil on its first turn." },
+        "froslass": { "role": 8, "note": "Mega Froslass sets snow; Aurora Veil and a Blizzard that never misses." },
+        "abomasnow": { "role": 7, "note": "Snow Warning and never-miss Blizzard; the Mega is a Trick Room attacker." },
+        "vanilluxe": { "role": 6.5, "note": "Snow Warning, Aurora Veil and Ally Switch for ₽62k." },
+        "aurorus": { "role": 5, "note": "Snow Warning and Aurora Veil for ₽22k." }
+      }
+    },
+    {
+      "key": "terrain",
+      "title": "Terrain",
+      "kicker": "Rewrite the field",
+      "why": "Terrain changes the rules for five turns. Psychic Terrain blocks all priority moves, including Fake Out. Grassy Terrain heals and makes Grassy Glide go first. Electric Terrain powers up Electric moves and prevents sleep. Only four Pokémon set one on arrival.",
+      "picks": {
+        "rillaboom": { "role": 10, "note": "Grassy Surge: Grassy Glide gets priority, Earthquake is halved, and everyone heals each turn." },
+        "indeedee": { "role": 10, "note": "Psychic Surge blocks all priority against grounded Pokémon: no Fake Out, no Sucker Punch." },
+        "raichu": { "role": 7.5, "note": "Mega Raichu X sets Electric Terrain." },
+        "pincurchin": { "role": 7, "note": "Electric Surge, and Lightning Rod pulls in Electric moves. ₽97k. Its learnset is read from Scarlet/Violet." }
+      }
+    },
+    {
+      "key": "spread",
+      "title": "Spread attackers",
+      "kicker": "Hit both foes",
+      "why": "Spread moves hit both opponents at once for three-quarters damage each: more total damage than any single-target move. Listed here only when the move gets a same-type boost (STAB) or is Eruption or Water Spout — otherwise half the roster qualifies on a coverage Rock Slide.",
+      "picks": {
+        "torkoal": { "role": 9.5, "note": "Eruption in its own sun, under Trick Room." },
+        "charizard": { "role": 9, "note": "Mega Charizard Y's sun-boosted Heat Wave." },
+        "gardevoir": { "role": 9, "note": "Pixilate Hyper Voice off 165 Sp. Atk." },
+        "sylveon": { "role": 9, "note": "Pixilate Hyper Voice — Fairy spread damage without a Mega. ₽200k." },
+        "gholdengo": { "role": 9, "note": "Make It Rain: Steel spread damage, and Good as Gold blocks status moves." },
+        "typhlosion-hisui": { "role": 8.5, "note": "Eruption plus Shadow Ball. ₽117k." },
+        "camerupt": { "role": 8.5, "note": "Eruption, Heat Wave and Earthquake; Mega Sheer Force." },
+        "floette-eternal": { "role": 8, "note": "Dazzling Gleam from a 155 Sp. Atk Mega." },
+        "volcarona": { "role": 7.5, "note": "Heat Wave after a Quiver Dance." },
+        "armarouge": { "role": 7.5, "note": "Heat Wave with Expanding Force support." },
+        "tyranitar": { "role": 7.5, "note": "Rock Slide flinches off 164 Attack." },
+        "typhlosion": { "role": 7, "note": "Eruption for ₽23k — the cheapest nuke in the game." },
+        "aerodactyl": { "role": 7, "note": "Rock Slide at 130 Speed: flinches the slower foe." },
+        "excadrill": { "role": 7, "note": "Earthquake; Sand Rush makes it go first." },
+        "zoroark-hisui": { "role": 7, "note": "Hyper Voice off 125 Sp. Atk on a Normal/Ghost type." },
+        "chandelure": { "role": 7, "note": "Heat Wave off a 175 Sp. Atk Mega." }
+      }
+    },
+    {
+      "key": "priority",
+      "title": "Priority attackers",
+      "kicker": "Always go first",
+      "why": "Priority moves go before normal moves whatever the Speed, and still go first under Trick Room. They pick off weakened Pokémon and punish speed control. Psychic Terrain and Armor Tail block them.",
+      "picks": {
+        "rillaboom": { "role": 10, "note": "Grassy Glide gets priority in its own terrain — a full-power STAB move that goes first." },
+        "kingambit": { "role": 9.5, "note": "Supreme Overlord Sucker Punch gets stronger for every fainted ally." },
+        "azumarill": { "role": 8.5, "note": "Huge Power Aqua Jet. ₽43k." },
+        "arcanine-hisui": { "role": 8, "note": "Extreme Speed on a Fire/Rock Intimidate." },
+        "dragonite": { "role": 8, "note": "Extreme Speed, with Multiscale to survive the hit back." },
+        "lucario": { "role": 8, "note": "Extreme Speed, Bullet Punch and Vacuum Wave: priority of three types." },
+        "scizor": { "role": 8, "note": "Technician Bullet Punch." },
+        "talonflame": { "role": 8, "note": "Gale Wings Brave Bird at full HP." },
+        "metagross": { "role": 7.5, "note": "Tough Claws Bullet Punch once Mega." },
+        "mawile": { "role": 7.5, "note": "Huge Power Sucker Punch." },
+        "arcanine": { "role": 7, "note": "Extreme Speed and Intimidate for ₽65k." },
+        "conkeldurr": { "role": 7, "note": "Mach Punch with Guts." },
+        "sirfetchd": { "role": 7, "note": "First Impression and Grassy Glide. Its learnset is read from Sword/Shield." },
+        "mamoswine": { "role": 6.5, "note": "Ice Shard, with Earthquake behind it." }
+      }
+    },
+    {
+      "key": "utility",
+      "title": "Utility and disruption",
+      "kicker": "Win the long game",
+      "why": "The support moves that decide close matches. Prankster (status moves go first), Wide Guard and Quick Guard (block spread or priority moves for a turn), sleep, Aurora Veil, Parting Shot, Instruct, Perish Song, Ally Switch and Friend Guard. Cards also show screens, Will-O-Wisp and Icy Wind.",
+      "picks": {
+        "grimmsnarl": { "role": 9.5, "note": "Prankster Reflect and Light Screen, Parting Shot and Fake Out." },
+        "whimsicott": { "role": 9, "note": "Prankster Tailwind, Encore and screens." },
+        "ninetales-alola": { "role": 9, "note": "Aurora Veil on the turn it arrives." },
+        "sableye": { "role": 8, "note": "Prankster Will-O-Wisp and Fake Out; Mega Sableye's Magic Bounce." },
+        "oranguru": { "role": 8, "note": "Instruct: your partner's big attack happens twice." },
+        "vivillon-high-plains": { "role": 7.5, "note": "Sleep Powder, Rage Powder and Friend Guard." },
+        "klefki": { "role": 7.5, "note": "Prankster screens and Thunder Wave. ₽51k." },
+        "araquanid": { "role": 7, "note": "Wide Guard, and Water Bubble doubles its Water moves and blocks burns. ₽49k." },
+        "meowstic": { "role": 7, "note": "Prankster screens, Quick Guard and Fake Out." },
+        "venusaur": { "role": 7, "note": "Sleep Powder, faster in sun." },
+        "aegislash": { "role": 6.5, "note": "Wide Guard and King's Shield." },
+        "politoed": { "role": 6.5, "note": "Perish Song to end a stalemate." },
+        "vileplume": { "role": 6, "note": "Sleep Powder for ₽19k." },
+        "liepard": { "role": 5.5, "note": "Prankster and Fake Out for ₽15k." }
+      }
+    },
+    {
+      "key": "budget",
+      "title": "Budget gems",
+      "kicker": "₽60k and under",
+      "why": "Six picks from ₽300,000 is ₽50,000 a Pokémon on average. These are the picks that do a real job for that or less, so the rest of the budget can go on one star. Role score here is what you get for the money.",
+      "picks": {
+        "azumarill": { "role": 9, "note": "Huge Power Aqua Jet and Belly Drum. The best Pokémon under ₽50k." },
+        "oranguru": { "role": 8, "note": "Trick Room and Instruct for ₽54k." },
+        "samurott-hisui": { "role": 7.5, "note": "Sharpness Razor Shell and Ceaseless Edge. #90 on the ladder, priced at the bottom of B." },
+        "typhlosion": { "role": 7.5, "note": "₽23k Eruption." },
+        "araquanid": { "role": 7.5, "note": "Wide Guard and Water Bubble for ₽49k." },
+        "medicham": { "role": 7, "note": "A Pure Power Mega with Fake Out for ₽21k." },
+        "klefki": { "role": 7, "note": "Prankster screens for ₽51k." },
+        "krookodile": { "role": 7, "note": "Intimidate for ₽22k." },
+        "wyrdeer": { "role": 7, "note": "Intimidate and Trick Room for ₽23k." },
+        "golurk": { "role": 6.5, "note": "Mega Golurk goes through Protect. ₽28k." },
+        "banette": { "role": 6, "note": "Trick Room plus a Prankster Mega for ₽26k." },
+        "persian-alola": { "role": 6.5, "note": "Fake Out for ₽14k." },
+        "ninetales": { "role": 6, "note": "Drought for ₽57k." },
+        "rhyperior": { "role": 6, "note": "A Trick Room hitter for ₽24k." },
+        "cofagrigus": { "role": 6, "note": "Trick Room for ₽18k." },
+        "squawkabilly": { "role": 6, "note": "Intimidate and Tailwind for ₽12k." },
+        "pinsir": { "role": 5.5, "note": "An Aerilate Mega for ₽8k." }
+      }
+    },
+    {
+      "key": "save-up",
+      "title": "Save-up targets",
+      "kicker": "Not for the draft",
+      "why": "Every S-tier costs more than the whole ₽300,000 opening budget, so nobody drafts one. They come later, from win money. Early wins pay ₽1–2k, Ultra Ball ₽10k and Master Ball ₽25k, multiplied on streaks. Role score here is how much one would change a squad you already have.",
+      "picks": {
+        "incineroar": { "role": 10, "note": "Intimidate, Fake Out and Parting Shot. It improves every team." },
+        "indeedee": { "role": 9.5, "note": "Psychic Terrain and Follow Me. ₽330k." },
+        "rillaboom": { "role": 9.5, "note": "Grassy Surge, Fake Out and Grassy Glide. ₽352k." },
+        "pelipper": { "role": 9, "note": "The nearest S at ₽316k — ₽16k over the opening budget. Rain plus Tailwind." },
+        "sneasler": { "role": 9, "note": "The #2 Pokémon on the ladder, and the cheapest of the top five at ₽344k." },
+        "kingambit": { "role": 9, "note": "Sucker Punch and Supreme Overlord; works with or without Trick Room. ₽360k." },
+        "farigiraf": { "role": 8.5, "note": "Armor Tail Trick Room. ₽348k." },
+        "basculegion": { "role": 8.5, "note": "Needs a rain setter to shine, so it pays off only with Politoed or Pelipper. ₽352k." },
+        "gholdengo": { "role": 8.5, "note": "Make It Rain and Good as Gold. ₽360k." },
+        "charizard": { "role": 8.5, "note": "Both Megas; X or Y keeps opponents guessing. ₽394k." }
+      }
+    }
+  ],
+
+  "squads": [
+    {
+      "name": "One star, Tailwind",
+      "idea": "Spend on the best Tailwind in the draft and fill with bargains. Whimsicott sets Tailwind on turn one, Typhlosion's Eruption hits both foes before they move, two Intimidates blunt physical attackers, and Azumarill cleans up with Aqua Jet.",
+      "mega": "sharpedo",
+      "slugs": ["whimsicott", "typhlosion", "azumarill", "krookodile", "wyrdeer", "sharpedo"]
+    },
+    {
+      "name": "Budget Trick Room",
+      "idea": "No star at all. Two setters (Oranguru, Cofagrigus) and four slow hitters, with Mega Mawile the centrepiece. Under Trick Room these outspeed teams worth twice as much, and a head-to-head win over a pricier club earns +10 upset points.",
+      "mega": "mawile",
+      "slugs": ["oranguru", "cofagrigus", "mawile", "rhyperior", "conkeldurr", "krookodile"]
+    },
+    {
+      "name": "Mega Kangaskhan balance",
+      "idea": "Mega Kangaskhan's double-hitting Fake Out and Sucker Punch at the centre. Arcanine brings Intimidate and Extreme Speed, Klefki sets Prankster screens, Squawkabilly sets Tailwind, and Typhlosion and Hisuian Samurott add damage.",
+      "mega": "kangaskhan",
+      "slugs": ["kangaskhan", "arcanine", "samurott-hisui", "klefki", "typhlosion", "squawkabilly"]
+    },
+    {
+      "name": "Torkoal sun",
+      "idea": "Torkoal sets sun on arrival and Erupts. Wyrdeer sets Trick Room, so Torkoal moves first. Alolan Persian's Fake Out protects the setter, Vileplume puts things to sleep and Typhlosion adds a second Eruption. Mega Golurk covers what Fire can't.",
+      "mega": "golurk",
+      "slugs": ["torkoal", "wyrdeer", "persian-alola", "vileplume", "typhlosion", "golurk"]
+    }
+  ]
+}

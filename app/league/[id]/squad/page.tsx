@@ -3,7 +3,7 @@ import { notFound, redirect } from 'next/navigation';
 import { getSessionUser } from '../../../../lib/auth/session.ts';
 import { money } from '../../../../lib/format.ts';
 import { getClubPage } from '../../../../lib/services/clubpage.ts';
-import { activeEffects } from '../../../../lib/services/effects.ts';
+import { activeEffects, lineupCap } from '../../../../lib/services/effects.ts';
 import { pendingEvent } from '../../../../lib/services/events.ts';
 import { getLeagueContext } from '../../../../lib/services/league.ts';
 import { Awards } from '../../../components/Awards.tsx';
@@ -57,6 +57,7 @@ export default async function ClubPage({ params }: { params: Promise<{ id: strin
           label: effect.label,
           attested: effect.attested,
           matchesLeft: effect.matchesLeft,
+          eventsLeft: effect.eventsLeft,
         }))}
       />
 
@@ -86,7 +87,7 @@ export default async function ClubPage({ params }: { params: Promise<{ id: strin
         <LineupBoard
           leagueId={id}
           squad={cards}
-          lineupSize={config.lineupSize}
+          lineupSize={lineupCap(effects, config.lineupSize)}
           bringToMatch={config.bringToMatch}
         />
       )}

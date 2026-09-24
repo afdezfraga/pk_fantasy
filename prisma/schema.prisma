@@ -50,8 +50,12 @@ model League {
   config         String
   /// SETUP | DRAFTING | ACTIVE | COMPLETE
   status         String   @default("SETUP")
-  /// Current round. Advancing it clears waivers and resets the per-round pay cap.
+  /// Current round. Advancing it clears waivers and resets the per-round pay cap. Rounds keep
+  /// counting across seasons, so a round number always names one stretch of time.
   round          Int      @default(1)
+  /// Current season. A new one resets every rank and sends all but each captain back to the
+  /// market for a fresh draft — see lib/services/seasons.ts.
+  season         Int      @default(1)
   createdAt      DateTime @default(now())
 
   commissioner User          @relation("Commissioner", fields: [commissionerId], references: [id])
@@ -62,6 +66,7 @@ model League {
   draft        Draft?
   matches      Match[]
   trades       TradeOffer[]
+  listings     Listing[]
   events       LeagueEvent[]
 }
 
@@ -97,16 +102,18 @@ model Team {
   /// position comes from the Champions ladder standing below.
   points Int @default(0)
 
-  /// Current Champions ladder standing, self-reported. See lib/ladder.ts.
-  tierKey         String    @default("beginner")
+  /// Current Champions ladder standing, self-reported. See lib/ladder.ts. Everyone starts a
+  /// season at Poké Ball 4, as the game does.
+  tierKey         String    @default("poke")
   /// Counts down within a tier: 4 is the bottom, 1 the top. Null for tiers without sub-ranks.
-  ladderRank      Int?
+  ladderRank      Int?      @default(4)
   ladderProgress  Int       @default(0)
   /// Rated tiers (Master Ball, Champion) use a rating and a global placement instead of a gauge.
   ratingPoints    Float?
   globalPlacement Int?
-  /// Highest rung ever reached, so promotion bonuses are paid once and never farmed by
-  /// demoting and re-climbing.
+  /// Highest rung a reported match has reached this season. A tier promotion pays only above
+  /// it, so correcting your rank down and re-climbing can't collect the same bonus twice. Reset
+  /// with the season; a hand correction never raises it.
   bestRung        Int       @default(0)
   standingUpdated DateTime?
 
@@ -190,11 +197,15 @@ model Ownership {
 
   /// In the team's starting lineup. Only starters may be reported in a match.
   /// Cleared whenever the Pokémon leaves a squad, so a sale can't leave a phantom slot filled.
-  starter Boolean @default(false)
+  starter      Boolean   @default(false)
   /// Shirt number and order within the squad, set by dragging cards around. Null sorts last.
-  slot    Int?
-  /// The club captain. At most one per team.
-  captain Boolean @default(false)
+  slot         Int?
+  /// The club captain. Exactly one per team that owns anything: the first signing takes it and
+  /// a sale passes it on — see `ensureCaptain` in lib/services/ownership.ts.
+  captain      Boolean   @default(false)
+  /// When the armband was handed over. Null on rows that predate the column, which read as
+  /// "has always had it" — the honest answer for a squad nobody has reshuffled.
+  captainSince DateTime?
 
   /// What the current owner paid.
   acquiredPrice Int       @default(0)
@@ -340,6 +351,11 @@ model Match {
   streak      Int      @default(0)
   /// What the home team was paid for it — 0 for a loss, or beyond the round's pay cap.
   reward      Int      @default(0)
+  /// The reporting team's rank either side of this match: JSON `{ standing, bestRung }` before,
+  /// JSON `Standing` after. Kept so deleting the match can put the rank back — but only while
+  /// nothing has moved it since, because a later report is the player confirming where they are.
+  rankBefore  String?
+  rankAfter   String?
   /// Every event constraint in force when this was played, frozen at report time.
   /// JSON `MatchConstraint[]` — see lib/services/effects.ts. Kept on the row rather than
   /// looked up later so a result always remembers what it was played under, and editing the
@@ -353,6 +369,7 @@ model Match {
   awayTeam     Team?              @relation("AwayMatches", fields: [awayTeamId], references: [id], onDelete: Cascade)
   stats        MatchPokemonStat[]
   valueChanges ValueChange[]
+  rankEvents   RankEvent[]
 
   @@index([leagueId, round])
   @@index([leagueId, playedAt])
@@ -439,6 +456,42 @@ model TradeItem {
   @@index([offerId])
 }
 
+/// A Pokémon one club has put on the open market at a fixed price.
+///
+/// Unlike a `TradeOffer`, which names the club it is aimed at, a listing is public: any club in
+/// the league may take it at the asking price, first come first served. It exists because a
+/// contract standoff has a third answer beyond paying up and stonewalling — letting the Pokémon
+/// find out for itself what anybody else would pay.
+model Listing {
+  id          String @id @default(cuid())
+  leagueId    String
+  /// The selling club. A bare string, like the event tables: a listing outlives a deleted team.
+  teamId      String
+  pokemonSlug String
+
+  /// What any other club must pay. Frozen when the listing opens, so the asking price is the
+  /// price on the board rather than one that drifts as the Pokémon plays.
+  price     Int
+  /// OPEN | SOLD | WITHDRAWN | EXPIRED
+  status    String   @default("OPEN")
+  /// When it comes off the board unsold. Real days rather than rounds: a round can close in an
+  /// evening, and an offer half the league never saw is not an offer. A listing may not be
+  /// withdrawn before this — putting a Pokémon up is a commitment, not an advertisement.
+  openUntil DateTime
+
+  /// Who took it, once somebody has.
+  soldToTeamId String?
+  /// Why it went up, for the market board: an event, or the manager's own choice.
+  reason       String  @default("MANAGER")
+
+  createdAt  DateTime  @default(now())
+  resolvedAt DateTime?
+
+  league League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+
+  @@index([leagueId, status])
+}
+
 // --- events -----------------------------------------------------------------------------------
 
 /// A random event, and the decision a club made about it.
@@ -503,6 +556,9 @@ model ActiveEffect {
 
   /// Matches this club must play before it lifts. Counted down at report time.
   matchesLeft Int  @default(0)
+  /// Events this club must be dealt before it lifts, for things measured in events rather than
+  /// matches — a favour spent in the dressing room lasts a run of crises, not a run of games.
+  eventsLeft  Int  @default(0)
   /// The round this came into force.
   round       Int  @default(1)
   /// Round at which it lifts instead, for effects measured in rounds rather than matches.
@@ -534,12 +590,16 @@ model RankEvent {
   /// Rungs climbed; negative when a player slips back.
   rungDelta Int
   /// Bonus paid for this promotion, if any.
-  bonus     Int    @default(0)
-  round     Int    @default(1)
+  bonus     Int     @default(0)
+  round     Int     @default(1)
+  /// The match that moved the rank. Null for a hand correction. Not a cascade: deleting a match
+  /// removes its rank event only when it also puts the rank back — see `deleteMatch`.
+  matchId   String?
 
   createdAt DateTime @default(now())
 
-  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  team  Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  match Match? @relation(fields: [matchId], references: [id], onDelete: SetNull)
 
   @@index([leagueId, createdAt])
 }

@@ -25,6 +25,8 @@ export interface MatchRow {
   tierName: string | null;
   reward: number;
   streak: number;
+  /** The reporting club's rank after the match, e.g. "Great Ball 4". Null for older reports. */
+  rankAfter: string | null;
   /** What was in force when this was played, frozen onto the row at report time. */
   constraints: MatchConstraint[];
   valueChanges: { pokemonSlug: string; delta: number; pct: number }[];
@@ -182,6 +184,7 @@ export function MatchHistory({
                   <div className="flex items-center justify-between gap-3 border-t border-line pt-2">
                     <span className="text-xs text-muted">
                       {match.tierName ?? 'Ladder'}
+                      {match.rankAfter && ` → ${match.rankAfter}`}
                       {match.streak >= 3 && ` · ${match.streak}-win streak`} ·{' '}
                       {match.reportedBy ? `reported by ${match.reportedBy}` : 'reporter unknown'} ·{' '}
                       {new Date(match.playedAt).toLocaleDateString()}

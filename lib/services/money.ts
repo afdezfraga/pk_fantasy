@@ -18,6 +18,8 @@ export type TransactionType =
   | 'EVENT'
   /** A ladder promotion bonus. Shared `EVENT` with the above until events became decisions. */
   | 'PROMOTION'
+  /** A squad sold back to the market when a season closes — see lib/services/seasons.ts. */
+  | 'SEASON_END'
   | 'ADJUSTMENT';
 
 export interface PostEntry {

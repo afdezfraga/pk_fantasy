@@ -4,7 +4,9 @@ import { getSessionUser } from '../../../../lib/auth/session.ts';
 import { db } from '../../../../lib/db.ts';
 import { parseTypes, pokemonLabel } from '../../../../lib/format.ts';
 import { getLeagueContext } from '../../../../lib/services/league.ts';
+import { openListings } from '../../../../lib/services/listings.ts';
 import { NavTabs, Panel } from '../../../components/ui.tsx';
+import { ListingBoard } from './ListingBoard.tsx';
 import { MarketTable, PriceBands, ValueRules } from './MarketTable.tsx';
 
 export const dynamic = 'force-dynamic';
@@ -26,6 +28,11 @@ export default async function MarketPage({ params }: { params: Promise<{ id: str
 
   const owned = rows.filter((row) => row.teamId).length;
 
+  const listings = await openListings(id);
+  const bySlug = new Map(rows.map((row) => [row.pokemonSlug, row]));
+  const teams = await db.team.findMany({ where: { leagueId: id }, select: { id: true, name: true } });
+  const teamNames = new Map(teams.map((team) => [team.id, team.name]));
+
   return (
     <div className="flex flex-col gap-5">
       <NavTabs leagueId={id} active="market" />
@@ -39,6 +46,36 @@ export default async function MarketPage({ params }: { params: Promise<{ id: str
           <PriceBands />
         </div>
       </Panel>
+
+      {listings.length > 0 && (
+        <Panel title={`On the board · ${listings.length}`}>
+          <p className="mb-3 text-sm text-muted">
+            Pokémon another club has put up at a fixed price. First to sign takes it, and nobody
+            can pull one back off the board while it is up.
+          </p>
+          <ListingBoard
+            leagueId={id}
+            cash={myTeam?.cash ?? 0}
+            canBuy={Boolean(myTeam)}
+            listings={listings.map((listing) => {
+              const row = bySlug.get(listing.pokemonSlug);
+              return {
+                id: listing.id,
+                slug: listing.pokemonSlug,
+                label: row ? pokemonLabel(row.pokemon) : listing.pokemonSlug,
+                tier: row?.pokemon.tier ?? 'UR',
+                iconUrl: row?.pokemon.iconUrl ?? null,
+                price: listing.price,
+                value: row?.marketValue ?? listing.price,
+                sellerName: teamNames.get(listing.teamId) ?? 'A club',
+                mine: listing.teamId === myTeam?.id,
+                fromEvent: listing.reason === 'EVENT',
+                openUntil: listing.openUntil.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }),
+              };
+            })}
+          />
+        </Panel>
+      )}
 
       <Panel title={`Market · ${owned} of ${rows.length} owned`}>
         <p className="mb-3 text-sm text-muted">

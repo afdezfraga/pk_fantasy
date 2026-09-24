@@ -170,9 +170,16 @@ you climb ranks 4 → 1, each with a progress gauge that differs by tier (Poké 
 4, Ultra Ball 5). At Master Ball it switches to a rating and a global placement, e.g.
 *Master Ball 4 · 1,703.462 pts · top 123,329*.
 
-You **report your own rank**; the game is the authority and the app just records it. Reaching a
-new rank pays a promotion bonus — the first rank you enter is taken as your starting position,
-so joining already in Ultra Ball isn't a payday.
+Everyone starts a season at **Poké Ball 4**, as the game does. You **report your rank with each
+match result** — the form fills in where the result should leave you, and you check it against
+the game, which is the authority. Reaching a new ball tier — Great, Ultra, Master, Champion — pays
+a promotion bonus the first time you get there in a season; ranks inside a tier, and leaving
+Beginner, pay nothing. One match can climb at most one tier, a loss can't promote you, and the
+game never demotes a tier, so the app refuses those.
+
+If the rank on file is simply wrong — you didn't start at Poké Ball 4, or a report got it wrong —
+the rank panel's **Correct** button opens a dialog to set it by hand. A correction never pays a
+bonus and doesn't count as reaching a tier, so a real climb afterwards still pays.
 
 **Unequal play is expected.** One player might log 40 matches in a week and another 5. So:
 
@@ -180,6 +187,19 @@ so joining already in Ultra Ball isn't a payday.
 - Only the first **10 matches per round** pay out. Beyond that, matches still count toward your
   rank and toward your Pokémon's form — they just stop paying, so nobody can simply out-grind
   the league and buy the market.
+- A round **closes by itself** once at least half the clubs have played those 10. The
+  commissioner can also close it early.
+
+## Seasons
+
+The commissioner can end a season from the league page. Every club goes back to Poké Ball 4, and
+every Pokémon except each club's **captain** is sold back to the market at its current value. The
+league then waits in setup for a new draft — new players can join with the invite code in between
+— and the captain is the one Pokémon a club carries from season to season.
+
+A club always has a captain once it owns anything: the first Pokémon drafted takes the armband,
+and if the captain is sold or traded, it passes to the longest-serving Pokémon left. You can hand
+it to anyone in the squad, but not take it away.
 
 ## Money, and what a Pokémon is worth
 
@@ -195,7 +215,8 @@ thing that pays is **winning**, and how much depends on where you won it:
 | Champion | ₽100,000 |
 
 A winning run multiplies that: **×3 from your third straight win, ×5 from the fifth**. A loss pays
-nothing at all — it never costs you money either. Promotions pay their bonus on top, once.
+nothing at all — it never costs you money either. Reaching a new ball tier pays ₽20,000 on top,
+once a season per tier (set per tier in `data/ranks.json`).
 
 A Pokémon's **value** is separate from its shop price, and it is what you get back if you release
 it:
@@ -203,9 +224,10 @@ it:
 - **Signing costs the full shop price, and the Pokémon is then worth 45% of it.** Signing and
   flipping loses money; a squad is a commitment, not a portfolio.
 - **Every match it plays moves it**, by a percentage set by the ladder tier the match was in:
-  Poké Ball +3/−3, Great Ball +4/−3, Ultra Ball +5/−2, Master Ball +6/−2. Winning low barely
-  helps and losing low hurts; at the top it's the other way round. Pokémon you brought but never
-  sent out don't move.
+  Poké Ball +3/−3, Great Ball +4/−3, Ultra Ball +5/−2, Master Ball and Champion +6/−2. Winning
+  low barely helps and losing low hurts; at the top it's the other way round. Only the result
+  counts — KOs and fainting score fantasy points, never value — and a Pokémon that stayed in the
+  back isn't reported, so it doesn't move.
 - Value never falls below ₽1,000, and deleting a match takes back exactly what it moved.
 
 ## Your squad, your six, your four
@@ -228,8 +250,9 @@ the order they line up in — drop a substitute onto a starter and the two swap.
 has a **Bench**/**Start** button, because a drag is hard work on a phone, and the board is
 keyboard-operable. The same page holds your crest, your captain and the club honours.
 
-Reporting a match is: tap **Won** or **Lost**, tap the four you brought, set their KOs, mark who
-went down. The scoreline is derived from that — KOs you landed against Pokémon of yours that
+Reporting a match is: tap **Won** or **Lost**, tap the ones you sent out, set their KOs, mark who
+went down, and confirm your rank after it. On a loss everyone you sent out counts as fainted,
+because that's how a doubles match is lost. The scoreline is derived from that — KOs you landed against Pokémon of yours that
 fainted — because a doubles match ends when one side is out of Pokémon, so asking for a score
 separately is asking twice for the same information.
 
@@ -259,15 +282,21 @@ sponsor asks how many of your next five you think you'll win, and pays — or ch
 said. The league wants your money locked away for two rounds at 15%.
 
 **One lands the moment the draft ends**, before your first match, and then roughly every five
-matches you report — jittered, so you can't count the timing and plan around it. Closing a round
-draws a league-wide one that every club answers for itself.
+matches you report — jittered, so you can't count the timing and plan around it.
+
+Closing a round draws one **league-wide** event instead: the same template, with its shared
+details settled once, handed to every club at the same moment. Some of those are decisions each
+club answers for itself; a change to the rules everybody plays under is not, and simply applies
+— a regulation that hit Water-types hit Water-types everywhere, and a club does not get to opt
+out of it.
 
 ### What the app can and can't check
 
 The app never watches a battle, so consequences come in two kinds and it's honest about which:
 
 - **Enforced.** "Charizard is out injured" — it's greyed out in the match picker and the report
-  is refused. So are type bans, bring limits, transfer freezes, money and value. A freeze stops
+  is refused. So are type bans, a shortened lineup — five names on the sheet instead of six,
+  though you still take four into the match — transfer freezes, money and value. A freeze stops
   signings, sales and trades alike, and lifts when the round turns.
 - **On your word.** "No Mega Evolution for four matches" — the app can't tell, so it asks. You
   tick a box when you report, and what you claimed is stored on the result and shown in the feed
@@ -277,6 +306,10 @@ Anything you *agreed to* — a sponsor target, a league bond — is shown apart 
 to you, and a target counts up as you play: *"Sponsor target — 1 of 2 wins"*. A wager settles the
 moment the answer is certain rather than when its window runs out, so a run you can no longer
 rescue is called at the match it died, not three matches later.
+
+Every answer goes into the league feed as it happens — which club, which branch, what it cost,
+and whether it was left to the assistant — so a decision taken quietly is still a decision the
+rest of the league can read.
 
 Whatever's in force is shown on your club page, above the report form, and on every result it
 affected — and when it ends you're told, in the league feed and on the page: *"Kangaskhan has been
@@ -292,9 +325,9 @@ that:
 - **A bill you can't pay puts you in the red.** Event charges are the only thing in the app that
   may push a balance negative. Debt is then its own punishment — you can't sign anyone until you've
   sold or won your way back into the black.
-- **A ban never stops you fielding a match.** Down to exactly four usable Pokémon, a barred one
-  can still be *brought* — but only benched. Send it out and the match is recorded as a loss,
-  because that's a forfeit.
+- **A ban never stops you fielding a match.** Down to fewer than four usable Pokémon, a barred one
+  can still be reported — but only Pokémon that were sent out are reported, so that's a forfeit
+  and the match is recorded as a loss. If it only came as cover, leave it off.
 - **The commissioner can force one through**, and `eventsEnabled: 0` turns the system off.
 
 ### Writing your own
@@ -313,7 +346,7 @@ And a win is worth ₽1,000 in the beginner tier and ₽100,000 in Champion, so 
 win-rewards (`rewardWins`) or as a share of the balance (`pct` + `min`) rather than flat, or one
 figure is pocket change to one club and a season's earnings to another.
 
-Two dials in `config/economy.ts`: `eventEveryMatches` for pacing, and `eventSeverity` for when a
+Two dials in `config/economy.ts`: `eventEveryMin`/`eventEveryMax` for pacing, and `eventSeverity` for when a
 season tells you the deck is too harsh — it scales what an option costs and how long its
 consequences last, the two quantities that unambiguously mean "worse" when they're bigger. Value
 percentages and one-off payments are left alone, since a scaler that can't tell a gain from a
@@ -364,6 +397,26 @@ Every acquisition path — draft, market, trade, auction, waiver — goes throug
 hand a Pokémon over need to release and sign inside one transaction, and SQLite won't nest one, so
 `claimFreeAgent` and `releaseToMarket` are the same guarded writes taking a caller's transaction
 rather than opening their own. `acquireFreeAgent` and `sellToMarket` are thin wrappers over them.
+
+### The board
+
+A **listing** is a Pokémon one club has put up at a fixed price, which any other club may simply
+take — first to sign gets it. A `TradeOffer` names the club it's aimed at and has to be accepted;
+a listing is public and needs nobody's agreement.
+
+Three rules make it a market rather than a bluff:
+
+- **The price is frozen when the listing opens** — its market value plus whatever premium put it
+  there. A board whose prices move while you read it is not a board.
+- **It runs for five full days**, on the clock rather than on rounds. A round can close in an
+  evening, and an offer half the league never saw is not an offer.
+- **It cannot be taken back.** A listing you could pull the moment somebody showed interest would
+  be a way to find out what your rivals want without ever selling them anything. Putting a
+  Pokémon up is a commitment.
+
+Nobody comes? It's still yours, it comes off the board on its own, and your club is told. The
+sale itself is a transfer, not a trip through free agency: the Pokémon keeps its value and moves
+straight from one squad to the other, arriving as a reserve so the new manager picks their own six.
 
 Money works the same way: `Team.cash` is a cache, the `Transaction` ledger is the truth, and
 `verifyLedger()` asserts they agree. Debits are guarded on `cash >= amount` inside the UPDATE, so
@@ -456,7 +509,8 @@ don't have a second server already holding port 3000.
 - [x] **Competition.** Ladder ranks, match logging, per-Pokémon scoring, streak rewards with a cap.
 - [x] **The club.** Crests, the squad board, honours, per-Pokémon stats, promotion bonuses.
 - [x] **Events.** Decisions with consequences, battle-rule restrictions, triggered events.
-- [ ] **Later.** Seasons and playoffs, contract expiry, auctions, FAAB waivers, value charts.
+- [x] **Seasons.** Rounds that close themselves, season resets, captains carried over.
+- [ ] **Later.** Playoffs, contract expiry, auctions, FAAB waivers, value charts.
 
 ## Data sources
 

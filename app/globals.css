@@ -40,3 +40,42 @@ body {
 .tabular {
   font-variant-numeric: tabular-nums;
 }
+
+/*
+ * Good news, and it should look like it.
+ *
+ * The deck is tuned to take things away, so the rare event that hands a club something — the
+ * backer at the bottom of the table, a crisis that inverted into a virtue — is worth more than
+ * another yellow-bordered card. Gold, lit from inside, breathing slowly.
+ */
+.fortune {
+  border-color: var(--color-accent);
+  background:
+    radial-gradient(120% 140% at 50% -20%, rgb(255 203 5 / 0.22), transparent 60%),
+    var(--color-panel);
+  box-shadow:
+    0 0 0 1px rgb(255 203 5 / 0.35),
+    0 0 34px -10px rgb(255 203 5 / 0.75);
+  animation: fortune-breathe 4s ease-in-out infinite;
+}
+
+@keyframes fortune-breathe {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 1px rgb(255 203 5 / 0.35),
+      0 0 34px -10px rgb(255 203 5 / 0.75);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px rgb(255 203 5 / 0.6),
+      0 0 46px -6px rgb(255 203 5 / 0.95);
+  }
+}
+
+/* A glow that pulses is decoration, and decoration is the first thing to go. */
+@media (prefers-reduced-motion: reduce) {
+  .fortune {
+    animation: none;
+  }
+}

@@ -22,8 +22,9 @@ export function AdvanceRound({ leagueId, round }: { leagueId: string; round: num
     <form action={action} className="flex flex-col gap-2">
       <input type="hidden" name="leagueId" value={leagueId} />
       <p className="text-xs text-muted">
-        Closing the round releases anyone on waivers back to the market and starts everyone&rsquo;s
-        match pay allowance again. Nobody is charged for anything.
+        The round closes by itself once enough clubs have played it out. Closing it early releases
+        anyone on waivers back to the market and starts everyone&rsquo;s match pay allowance
+        again. Nobody is charged for anything.
       </p>
       {state.error && <p className="text-sm text-negative">{state.error}</p>}
       {state.success && (

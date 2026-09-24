@@ -5,7 +5,9 @@
 import { randomInt } from 'node:crypto';
 
 import { LEAGUE_DEFAULTS, type LeagueConfig } from '../../config/economy.ts';
+import { SEASON_START, rungNumber } from '../ladder.ts';
 import { db } from '../db.ts';
+import { standingColumns } from './ladder.ts';
 import { parseConfig } from './ownership.ts';
 
 /** Ambiguous characters (O/0, I/1) are omitted — these get read aloud and typed on phones. */
@@ -128,6 +130,10 @@ async function createTeamRow(
       name: name.trim(),
       cash: config.startingCash,
       waiverPriority: teamCount,
+      // Where the game starts everybody. Set here as well as in the schema so a league joined
+      // mid-way through a later season starts in the same place as everyone else did.
+      ...standingColumns(SEASON_START),
+      bestRung: rungNumber(SEASON_START),
     },
   });
 

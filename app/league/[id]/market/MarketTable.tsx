@@ -5,6 +5,7 @@ import { useFormStatus } from 'react-dom';
 
 import { TIER_PRICE_BANDS, TIERS, VALUE_RULES, buyValue } from '../../../../config/economy.ts';
 import { money, moneyShort } from '../../../../lib/format.ts';
+import { LADDER } from '../../../../lib/ladder.ts';
 import { buyAction, sellAction, type ActionState } from '../../../actions/market.ts';
 import { PokemonIcon } from '../../../components/PokemonImage.tsx';
 import { Button, TierBadge, TypePills, inputClass } from '../../../components/ui.tsx';
@@ -325,13 +326,8 @@ export function MarketTable({
 
 /** "How value changes", written straight from the rules the server applies. */
 export function ValueRules() {
-  const tiers = ['poke', 'great', 'ultra', 'master'] as const;
-  const names: Record<string, string> = {
-    poke: 'Poké Ball',
-    great: 'Great Ball',
-    ultra: 'Ultra Ball',
-    master: 'Master Ball',
-  };
+  // Every tier a season can be played in. Beginner is left off: everyone starts at Poké Ball 4.
+  const tiers = LADDER.tiers.filter((tier) => tier.key !== 'beginner' && VALUE_RULES.perf[tier.key]);
 
   return (
     <div className="grid gap-3 sm:grid-cols-3">
@@ -359,17 +355,19 @@ export function ValueRules() {
             </tr>
           </thead>
           <tbody>
-            {tiers.map((key) => (
-              <tr key={key}>
-                <td className="py-0.5">{names[key]}</td>
-                <td className="py-0.5 text-right text-positive">+{VALUE_RULES.perf[key].win}%</td>
-                <td className="py-0.5 text-right text-negative">{VALUE_RULES.perf[key].loss}%</td>
+            {tiers.map((tier) => (
+              <tr key={tier.key}>
+                <td className="py-0.5">{tier.name}</td>
+                <td className="py-0.5 text-right text-positive">+{VALUE_RULES.perf[tier.key].win}%</td>
+                <td className="py-0.5 text-right text-negative">{VALUE_RULES.perf[tier.key].loss}%</td>
               </tr>
             ))}
           </tbody>
         </table>
         <p className="mt-1 text-xs text-muted">
-          Only Pokémon that were sent out move. Winning low barely pays; losing high barely costs.
+          Every Pokémon you sent out moves by the result alone — KOs and fainting don&rsquo;t
+          change it, and one that stayed in the back doesn&rsquo;t move. Winning low barely pays;
+          losing high barely costs.
         </p>
       </div>
     </div>

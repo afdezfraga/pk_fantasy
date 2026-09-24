@@ -105,32 +105,33 @@ export async function updateCrest(input: CrestInput & { teamId: string; userId: 
 }
 
 /**
- * Makes one Pokémon the club captain, or clears the armband.
+ * Hands the armband to another Pokémon in the squad.
  *
- * The captain is presentation — the armband on the card and the name in the header. It changes
- * nothing about scoring, which is why it doesn't live in the lineup rules.
+ * The captain is mostly presentation — the armband on the card and the name in the header —
+ * though events weigh heavier on it. A club with Pokémon always has one: the first signing
+ * takes it and a sale passes it on (see `ensureCaptain`), so it can be moved but not removed.
  */
-export async function setCaptain(input: {
-  leagueId: string;
-  teamId: string;
-  pokemonSlug: string | null;
-}) {
+export async function setCaptain(input: { leagueId: string; teamId: string; pokemonSlug: string }) {
   return db.$transaction(async (tx) => {
+    const target = await tx.ownership.findUnique({
+      where: {
+        leagueId_pokemonSlug: { leagueId: input.leagueId, pokemonSlug: input.pokemonSlug },
+      },
+    });
+    if (!target || target.teamId !== input.teamId) {
+      throw new ClubError("That Pokémon isn't on your squad.");
+    }
+
     await tx.ownership.updateMany({
       where: { leagueId: input.leagueId, teamId: input.teamId, captain: true },
-      data: { captain: false },
+      data: { captain: false, captainSince: null },
     });
-    if (!input.pokemonSlug) return { captain: null };
-
-    const promoted = await tx.ownership.updateMany({
-      where: {
-        leagueId: input.leagueId,
-        teamId: input.teamId,
-        pokemonSlug: input.pokemonSlug,
-      },
-      data: { captain: true },
+    // The clock starts again. Events that ask for a settled dressing room are asking about
+    // this date, so handing the armband around has a cost that is not merely cosmetic.
+    await tx.ownership.update({
+      where: { id: target.id },
+      data: { captain: true, captainSince: new Date() },
     });
-    if (promoted.count !== 1) throw new ClubError("That Pokémon isn't on your squad.");
     return { captain: input.pokemonSlug };
   });
 }

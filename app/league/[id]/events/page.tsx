@@ -15,6 +15,15 @@ import { EventCard } from './EventCard.tsx';
 
 export const dynamic = 'force-dynamic';
 
+/** Good news rather than a problem — the gold treatment, same as the league feed. */
+function fortune(event: { detail: string }): boolean {
+  try {
+    return (JSON.parse(event.detail || '{}') as { tone?: string }).tone === 'fortune';
+  } catch {
+    return false;
+  }
+}
+
 export default async function EventsPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await getSessionUser();
   if (!user) redirect('/login');
@@ -65,8 +74,7 @@ export default async function EventsPage({ params }: { params: Promise<{ id: str
             eventId={pending.id}
             title={pending.title}
             description={pending.description}
-            delegable={(JSON.parse(pending.detail || '{}').delegable ?? true) as boolean}
-            isCommissioner={isCommissioner}
+            fortune={JSON.parse(pending.detail || '{}').tone === 'fortune'}
             options={parseChoices(pending.choices).map((option) => ({
               key: option.key,
               label: option.label,
@@ -89,6 +97,7 @@ export default async function EventsPage({ params }: { params: Promise<{ id: str
               label: effect.label,
               attested: effect.attested,
               matchesLeft: effect.matchesLeft,
+              eventsLeft: effect.eventsLeft,
             }))}
           />
         </Panel>
@@ -106,8 +115,21 @@ export default async function EventsPage({ params }: { params: Promise<{ id: str
               const choice = parseChoices(event.choices).find(
                 (option) => option.key === event.choiceKey,
               );
+              // A virtue never went PENDING, so it lands straight in here. It is the one row in
+              // this list that is unambiguously good news, and it is shown the way it arrived.
+              const lucky = fortune(event);
               return (
-                <li key={event.id} className="flex flex-col gap-1 py-3 first:pt-0 last:pb-0">
+                <li
+                  key={event.id}
+                  className={`flex flex-col gap-1 py-3 first:pt-0 last:pb-0 ${
+                    lucky ? 'fortune -mx-2 my-1 rounded-lg border px-3' : ''
+                  }`}
+                >
+                  {lucky && (
+                    <div className="text-[11px] font-semibold tracking-[0.14em] text-accent uppercase">
+                      Your luck has turned
+                    </div>
+                  )}
                   <div className="flex items-baseline justify-between gap-3">
                     <span
                       className={`text-sm font-semibold ${
@@ -121,13 +143,7 @@ export default async function EventsPage({ params }: { params: Promise<{ id: str
                     </span>
                   </div>
                   <p className="text-xs leading-relaxed text-muted">{event.description}</p>
-                  {choice && (
-                    <p className="text-xs text-accent">
-                      You chose: {choice.label}
-                      {event.status === 'DELEGATED' && ' (your assistant decided)'}
-                      {event.status === 'FORCED' && ' (forced through by the commissioner)'}
-                    </p>
-                  )}
+                  {choice && <p className="text-xs text-accent">You chose: {choice.label}</p>}
                 </li>
               );
             })}

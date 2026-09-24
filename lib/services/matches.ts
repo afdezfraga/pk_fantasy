@@ -3,7 +3,8 @@
  *
  * A win pays the reward for the ladder tier it was played in, multiplied by the winning streak.
  * Every Pokémon that took part moves in value by that tier's percentage, up for a win and down for
- * a loss.
+ * a loss — what it did in the match (KOs, fainting) only scores fantasy points. A report also
+ * carries the club's new ladder rank, which is how ranks normally move and promotions get paid.
  *
  * Reporting is free-for-all: anyone can report any match. Every result records who entered it,
  * and deleting a result reverses its payouts and value moves rather than patching balances, so the
@@ -26,9 +27,12 @@ import {
   type LiveEffect,
   type MatchConstraint,
 } from './effects.ts';
+import { sameStanding, type Standing } from '../ladder.ts';
 import { ensurePendingEvent, EventPendingError, pendingEvent } from './events.ts';
+import { assertMatchMove, recordStanding, standingColumns, standingOf, validate } from './ladder.ts';
 import { audit, postEntry } from './money.ts';
 import { parseConfig } from './ownership.ts';
+import { closeRoundIfDone } from './rounds.ts';
 import { recordValue } from './value.ts';
 
 export class MatchError extends Error {
@@ -56,6 +60,11 @@ export interface ReportInput {
    * records the answer — the same honour system the scoreline itself runs on.
    */
   attested?: string[];
+  /**
+   * The reporting club's ladder rank after this match, as the game shows it. Optional so a bare
+   * result still works; the report form always sends it.
+   */
+  standing?: Standing;
   note?: string;
   reportedById: string;
 }
@@ -106,6 +115,14 @@ export async function reportMatch(input: ReportInput) {
     where: { leagueId: input.leagueId, id: { in: teamIds } },
   });
   if (teams.length !== teamIds.length) throw new MatchError('Both teams must be in this league.');
+
+  // Checked against the result the player actually got in the game, not the one a surrender
+  // records below: forfeiting here is a league penalty, and the ladder rank moved all the same.
+  const homeBefore = standingOf(teams.find((team) => team.id === input.homeTeamId)!);
+  if (input.standing) {
+    validate(input.standing);
+    assertMatchMove(homeBefore, input.standing, input.homeScore > input.awayScore);
+  }
 
   // Only score Pokémon the reporting teams actually own — otherwise a typo could award points
   // for someone else's Pokémon.
@@ -161,6 +178,7 @@ export async function reportMatch(input: ReportInput) {
     lines: homeLines.map((line) => ({ pokemonSlug: line.pokemonSlug, benched: line.benched })),
     attested: input.attested ?? [],
     bringToMatch: config.bringToMatch,
+    lineupSize: config.lineupSize,
   });
 
   // Sending out a Pokémon that may not play forfeits the match. The app records that rather
@@ -227,10 +245,34 @@ export async function reportMatch(input: ReportInput) {
       },
     });
 
+    let promotion = 0;
+    if (input.standing) {
+      const moved = await recordStanding(tx, {
+        leagueId: input.leagueId,
+        teamId: input.homeTeamId,
+        standing: input.standing,
+        actorUserId: input.reportedById,
+        source: 'MATCH',
+        matchId: match.id,
+      });
+      promotion = moved.bonus;
+      await tx.match.update({
+        where: { id: match.id },
+        data: {
+          rankBefore: JSON.stringify({ standing: moved.before, bestRung: moved.bestRungBefore }),
+          rankAfter: JSON.stringify(input.standing),
+        },
+      });
+    }
+
     const results: { teamId: string; points: number; money: number; streak: number }[] = [];
 
     for (const side of sides) {
-      const lines = input.lines.filter((line) => line.teamId === side.teamId);
+      // A lost match ends with every Pokémon you sent out down, so a loss is recorded that way
+      // whatever was ticked — it only moves points, since value follows the result alone.
+      const lines = input.lines
+        .filter((line) => line.teamId === side.teamId)
+        .map((line) => (side.won || line.benched ? line : { ...line, fainted: true }));
       const score = scoreTeam({
         lines,
         won: side.won,
@@ -307,9 +349,12 @@ export async function reportMatch(input: ReportInput) {
     await tx.match.update({ where: { id: match.id }, data: { reward: results[0].money } });
 
     // A payment plan is charged per match, and may push a club into the red — it agreed to it,
-    // and being unable to report would be the worse punishment.
+    // and being unable to report would be the worse punishment. An instalment that falls due
+    // only on a defeat is the one kind of debt a manager can play their way out of, so it is
+    // settled against the result rather than against the fixture.
     for (const effect of homeEffects) {
       if (effect.kind !== 'UPKEEP') continue;
+      if (effect.params.onLoss && homeWon) continue;
       await chargeForEvent(tx, {
         leagueId: input.leagueId,
         teamId: input.homeTeamId,
@@ -352,21 +397,25 @@ export async function reportMatch(input: ReportInput) {
       paid: withinPayCap,
       paidThisRound: paidThisRound + 1,
       surrendered,
+      promotion,
       lifted: lifted.map((effect) => effect.liftedMessage),
     };
   });
 }
 
 /**
- * Reports a match, then draws the club's next event if this one brought it due.
+ * Reports a match, closes the round if this match finished it, then draws the club's next
+ * event if this one brought it due.
  *
- * The draw sits outside the match transaction on purpose: an event failing to draw must never
- * roll back a result somebody has already played.
+ * Both follow-ups sit outside the match transaction on purpose: a round failing to close or an
+ * event failing to draw must never roll back a result somebody has already played. The round
+ * goes first so an event drawn afterwards is stamped with the round it arrived in.
  */
 export async function reportMatchAndDraw(input: ReportInput) {
   const result = await reportMatch(input);
+  const closed = await closeRoundIfDone(input.leagueId);
   const event = await ensurePendingEvent(input.leagueId, input.homeTeamId);
-  return { ...result, drewEvent: event !== null };
+  return { ...result, closedRound: closed?.round ?? null, drewEvent: event !== null };
 }
 
 /**
@@ -471,6 +520,36 @@ export async function deleteMatch(input: { matchId: string; actorUserId: string 
       where: { id: match.homeTeamId },
       data: { eventCountdown: { increment: 1 } },
     });
+
+    // Put the rank back, and take back any promotion it paid — but only while the club still
+    // stands where this match left it. Once a later report or correction has moved the rank,
+    // the player has confirmed where they really are, and the climb stands with its bonus.
+    if (match.rankBefore && match.rankAfter) {
+      const team = await tx.team.findUnique({ where: { id: match.homeTeamId } });
+      const after = JSON.parse(match.rankAfter) as Standing;
+      if (team && sameStanding(standingOf(team), after)) {
+        const before = JSON.parse(match.rankBefore) as { standing: Standing; bestRung: number };
+        await tx.team.update({
+          where: { id: team.id },
+          data: { ...standingColumns(before.standing), bestRung: before.bestRung },
+        });
+
+        const promotions = await tx.transaction.findMany({
+          where: { relatedId: match.id, type: 'PROMOTION', teamId: team.id },
+        });
+        for (const promotion of promotions) {
+          await postEntry(tx, {
+            leagueId: match.leagueId,
+            teamId: team.id,
+            type: 'PROMOTION',
+            amount: -promotion.amount,
+            description: 'Reversed — match deleted',
+            relatedId: match.id,
+          });
+        }
+        await tx.rankEvent.deleteMany({ where: { matchId: match.id } });
+      }
+    }
 
     await tx.match.delete({ where: { id: match.id } });
 

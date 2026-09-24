@@ -8,7 +8,7 @@
 import { db } from '../db.ts';
 import { assertTransfersOpen } from './effects.ts';
 import { audit, postEntry } from './money.ts';
-import { OwnershipConflict, RosterRuleViolation, parseConfig } from './ownership.ts';
+import { ensureCaptain, OwnershipConflict, RosterRuleViolation, parseConfig } from './ownership.ts';
 
 export class TradeError extends Error {
   constructor(message: string) {
@@ -187,12 +187,14 @@ export async function respondToTrade(input: {
       });
     }
 
-    // Both squads must still be legal afterwards.
+    // Both squads must still be legal afterwards, and both keep a captain: one that was traded
+    // away leaves the armband behind, and a squad the trade fills from empty gets one.
     for (const teamId of [offer.fromTeamId, offer.toTeamId]) {
       const squadSize = await tx.ownership.count({ where: { teamId } });
       if (squadSize > config.squadMax) {
         throw new RosterRuleViolation('That trade would overfill a squad.');
       }
+      await ensureCaptain(tx, offer.leagueId, teamId);
     }
 
     await tx.tradeOffer.update({

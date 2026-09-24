@@ -7,14 +7,30 @@ import { money, pokemonLabel, signedMoney } from '../../../lib/format.ts';
 import { getLeagueContext } from '../../../lib/services/league.ts';
 import { ensurePendingEvent, getEvents, pendingEvent } from '../../../lib/services/events.ts';
 import { getRankEvents, sortByLadder, standingOf } from '../../../lib/services/ladder.ts';
+import { roundProgress } from '../../../lib/services/rounds.ts';
 import { ClubCrest, crestOf } from '../../components/ClubCrest.tsx';
 import { PokemonIcon } from '../../components/PokemonImage.tsx';
 import { RankBadge, RankGauge } from '../../components/RankBadge.tsx';
 import { Empty, NavTabs, Panel, Stat } from '../../components/ui.tsx';
 import { AdvanceRound } from './AdvanceRound.tsx';
+import { AdvanceSeason } from './AdvanceSeason.tsx';
 import { StartDraftForm } from './StartDraftForm.tsx';
 
 export const dynamic = 'force-dynamic';
+
+/** A restriction ending, as opposed to the other notices the feed carries. */
+function lifted(event: { status: string; templateKey: string }): boolean {
+  return event.status === 'NOTICE' && event.templateKey.startsWith('lifted:');
+}
+
+/** A windfall, on its way through the feed. Gold, the same as the card it came from. */
+function fortune(event: { detail: string }): boolean {
+  try {
+    return (JSON.parse(event.detail || '{}') as { tone?: string }).tone === 'fortune';
+  } catch {
+    return false;
+  }
+}
 
 export default async function LeagueHome({ params }: { params: Promise<{ id: string }> }) {
   const user = await getSessionUser();
@@ -47,6 +63,8 @@ export default async function LeagueHome({ params }: { params: Promise<{ id: str
       _count: { _all: true },
     }),
   ]);
+
+  const progress = league.status === 'ACTIVE' ? await roundProgress(id, league.round) : null;
 
   const matchesByTeam = new Map(matchCounts.map((row) => [row.homeTeamId, row._count._all]));
 
@@ -137,9 +155,11 @@ export default async function LeagueHome({ params }: { params: Promise<{ id: str
       {league.status === 'SETUP' && (
         <Panel title="Getting started">
           <p className="mb-3 text-sm text-muted">
-            {league.teams.length > 1
-              ? "Share this invite code so the rest can join. Once everyone's in, run the draft to share out the Pokémon."
-              : 'Share this invite code if you want company — or just start the draft and play a solo career.'}
+            {league.season > 1
+              ? `Season ${league.season} is about to begin. Everyone kept their captain and starts again at Poké Ball 4 — run the draft to share out the rest. New players can still join with the code.`
+              : league.teams.length > 1
+                ? "Share this invite code so the rest can join. Once everyone's in, run the draft to share out the Pokémon."
+                : 'Share this invite code if you want company — or just start the draft and play a solo career.'}
           </p>
           <div className="mb-4 rounded-lg border border-accent/30 bg-accent/10 px-4 py-3 text-center">
             <div className="text-[11px] uppercase tracking-wide text-muted">Invite code</div>
@@ -159,9 +179,22 @@ export default async function LeagueHome({ params }: { params: Promise<{ id: str
         </Panel>
       )}
 
-      {league.status === 'ACTIVE' && isCommissioner && (
-        <Panel title={`Round ${league.round}`}>
-          <AdvanceRound leagueId={id} round={league.round} />
+      {league.status === 'ACTIVE' && progress && (
+        <Panel title={`Season ${league.season} · Round ${league.round}`}>
+          <p className="text-sm text-muted">
+            The round closes by itself once {progress.needed} of {progress.teams}{' '}
+            {progress.teams === 1 ? 'club has' : 'clubs have'} played all {progress.matchesEach}{' '}
+            paid matches.{' '}
+            <span className="text-ink">
+              {progress.done} {progress.done === 1 ? 'has' : 'have'} so far.
+            </span>
+          </p>
+          {isCommissioner && (
+            <div className="mt-3 grid gap-3 border-t border-line pt-3 sm:grid-cols-2">
+              <AdvanceRound leagueId={id} round={league.round} />
+              <AdvanceSeason leagueId={id} season={league.season} />
+            </div>
+          )}
         </Panel>
       )}
 
@@ -189,15 +222,19 @@ export default async function LeagueHome({ params }: { params: Promise<{ id: str
               <li
                 key={event.id}
                 className={`rounded-lg border px-3 py-2 ${
-                  // A restriction lifting is good news, and reads as such.
-                  event.status === 'NOTICE'
-                    ? 'border-positive/40 bg-positive/10'
-                    : 'border-line bg-panel-2'
+                  // A restriction lifting is good news, and reads as such. A club's own decision
+                  // is not news of that kind — it is simply what happened — so it stays neutral.
+                  // A windfall is the exception, and carries its gold through to the feed.
+                  fortune(event)
+                    ? 'fortune'
+                    : lifted(event)
+                      ? 'border-positive/40 bg-positive/10'
+                      : 'border-line bg-panel-2'
                 }`}
               >
                 <div
                   className={`text-xs font-semibold ${
-                    event.status === 'NOTICE' ? 'text-positive' : 'text-accent'
+                    lifted(event) && !fortune(event) ? 'text-positive' : 'text-accent'
                   }`}
                 >
                   {event.title}

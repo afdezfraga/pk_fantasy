@@ -14,8 +14,9 @@ import type { Prisma } from '@prisma/client';
 
 import type { LeagueConfig } from '../../config/economy.ts';
 import { db } from '../db.ts';
+import { activeEffects, lineupCap } from './effects.ts';
 import { audit } from './money.ts';
-import { parseConfig, RosterRuleViolation } from './ownership.ts';
+import { ensureCaptain, parseConfig, RosterRuleViolation } from './ownership.ts';
 
 /**
  * Gives a team a sensible lineup if it has none at all.
@@ -55,7 +56,11 @@ export async function getLineup(leagueId: string, teamId: string) {
   const league = await db.league.findUniqueOrThrow({ where: { id: leagueId } });
   const config = parseConfig(league.config);
 
-  await db.$transaction(async (tx) => ensureLineup(tx, leagueId, teamId, config));
+  await db.$transaction(async (tx) => {
+    await ensureLineup(tx, leagueId, teamId, config);
+    // Squads from before captains were automatic may have none. Same lazy repair as the lineup.
+    await ensureCaptain(tx, leagueId, teamId);
+  });
 
   // Squad order is the manager's own: the shirt numbers they dragged the cards into. Rows with
   // no number yet (a league from before the board existed) fall in behind, dearest first.
@@ -94,8 +99,14 @@ export async function setLineup(input: {
     const league = await tx.league.findUniqueOrThrow({ where: { id: input.leagueId } });
     const config = parseConfig(league.config);
 
-    if (input.starters.length > config.lineupSize) {
-      throw new RosterRuleViolation(`Only ${config.lineupSize} Pokémon can start.`);
+    // An event can shorten the sheet, so the cap is read from what is in force rather than from
+    // the league config alone. Read on `tx`, because this is inside the write transaction.
+    const cap = lineupCap(
+      await activeEffects(input.leagueId, input.teamId, tx),
+      config.lineupSize,
+    );
+    if (input.starters.length > cap) {
+      throw new RosterRuleViolation(`Only ${cap} Pokémon can start.`);
     }
 
     const squad = await tx.ownership.findMany({

@@ -28,7 +28,8 @@ export const LADDER = {
   winProgress: ranksFile.winProgress,
   streakBonusProgress: ranksFile.streakBonusProgress,
   lossProgress: ranksFile.lossProgress,
-  promotionBonus: ranksFile.promotionBonus,
+  /** Keyed by the tier reached. See `promotionRewards`. */
+  promotionBonus: ranksFile.promotionBonus as Record<string, number>,
 };
 
 export interface Standing {
@@ -42,9 +43,10 @@ export interface Standing {
   globalPlacement: number | null;
 }
 
-export const UNRANKED: Standing = {
-  tierKey: 'beginner',
-  rank: null,
+/** Where every club starts a season, as the game starts everyone: Poké Ball 4, gauge empty. */
+export const SEASON_START: Standing = {
+  tierKey: 'poke',
+  rank: 4,
   progress: 0,
   ratingPoints: null,
   globalPlacement: null,
@@ -129,7 +131,13 @@ export function formatDetail(standing: Standing): string | null {
  */
 export function applyResult(standing: Standing, won: boolean, onStreak = false): Standing {
   const tier = getTier(standing.tierKey);
-  if (tier.rated || tier.ranks === 0) return standing; // rated tiers are entered by hand
+  if (tier.rated) return standing; // rated tiers are entered by hand
+  if (tier.ranks === 0) {
+    // Beginner has no gauge to fill: a win is simply the way out of it.
+    const next = LADDER.tiers[tierIndex(standing.tierKey) + 1];
+    if (!won || !next) return standing;
+    return { ...standing, tierKey: next.key, rank: next.ranks || null, progress: 0 };
+  }
 
   const delta = won
     ? LADDER.winProgress + (onStreak ? LADDER.streakBonusProgress : 0)
@@ -196,4 +204,61 @@ export function rungNumber(standing: Standing): number {
     count += Math.max(tier.ranks, 1);
   }
   return count;
+}
+
+/** The tier a rung number falls in — the inverse of `rungNumber`, as far as tiers go. */
+export function tierAtRung(rung: number): LadderTier {
+  let count = 0;
+  for (const tier of LADDER.tiers) {
+    count += Math.max(tier.ranks, 1);
+    if (rung < count) return tier;
+  }
+  return LADDER.tiers[LADDER.tiers.length - 1];
+}
+
+export interface PromotionReward {
+  tierKey: string;
+  name: string;
+  amount: number;
+}
+
+/**
+ * The bonuses a move from `before` to `after` earns: one for each ball tier entered that lies
+ * above the season's peak.
+ *
+ * Only tiers pay, not ranks — Poké Ball 2 to Poké Ball 1 is the grind, Poké Ball 1 to Great
+ * Ball 4 is the achievement. `peakRung` is the best rung already reached by a match this season,
+ * so a player who corrects their rank down and climbs back isn't paid for the same tier twice.
+ *
+ * Counted from `before`'s tier rather than the peak's, so a rank typed in by hand can never be
+ * the start of a payout: correcting yourself up to Ultra Ball and then winning inside it earns
+ * nothing, because no match crossed into Ultra Ball.
+ */
+export function promotionRewards(
+  before: Standing,
+  after: Standing,
+  peakRung: number,
+): PromotionReward[] {
+  const peak = tierIndex(tierAtRung(peakRung).key);
+  const from = Math.max(tierIndex(before.tierKey), peak);
+  const to = tierIndex(after.tierKey);
+
+  const rewards: PromotionReward[] = [];
+  for (let index = from + 1; index <= to; index += 1) {
+    const tier = LADDER.tiers[index];
+    const amount = LADDER.promotionBonus[tier.key] ?? 0;
+    if (amount > 0) rewards.push({ tierKey: tier.key, name: tier.name, amount });
+  }
+  return rewards;
+}
+
+/** True when two standings describe the same place on the ladder. */
+export function sameStanding(a: Standing, b: Standing): boolean {
+  return (
+    a.tierKey === b.tierKey &&
+    (a.rank ?? null) === (b.rank ?? null) &&
+    a.progress === b.progress &&
+    (a.ratingPoints ?? null) === (b.ratingPoints ?? null) &&
+    (a.globalPlacement ?? null) === (b.globalPlacement ?? null)
+  );
 }

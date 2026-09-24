@@ -34,30 +34,70 @@ export const EFFECT_KINDS = {
   // Roster — enforced.
   /** Named Pokémon cannot be fielded. Injury, loan, suspension, a strike. */
   POKEMON_OUT: { attested: false, scope: 'pokemon' },
-  /** Named Pokémon must appear in every match, or the report is refused. */
+  /**
+   * Named Pokémon must take the field in every match, or the report is refused.
+   *
+   * Not "must open": the only thing a result records is whether a Pokémon was benched — brought
+   * and never sent out — so taking the field is what the app can actually police. Opening the
+   * match is `MUST_LEAD`, which has to be asked rather than checked.
+   */
   MUST_FIELD: { attested: false, scope: 'pokemon' },
   /** No Pokémon of this type may be fielded. */
   TYPE_BAN: { attested: false, scope: 'team' },
-  /** Bring fewer than `bringToMatch` to a match. */
-  BRING_LIMIT: { attested: false, scope: 'team' },
+  /**
+   * The registered lineup may hold only `count`, instead of `lineupSize`.
+   *
+   * It does not touch how many go into a match: Champions is four out of a registered six, and
+   * an event that changed that would be changing the game rather than the club. What it takes
+   * away is the sixth name on the sheet, and with it the cover the manager was rotating through.
+   */
+  LINEUP_LIMIT: { attested: false, scope: 'team' },
   /** No buying, selling or trading while in force. */
   TRANSFER_FREEZE: { attested: false, scope: 'team' },
   /** One Pokémon leaves, one named free agent arrives. No money changes hands. */
   SWAP_OFFER: { attested: false, scope: 'pokemon', instant: true },
   /** One Pokémon leaves, two cheaper free agents arrive. Depth in exchange for quality. */
   RELEASE_FOR_TWO: { attested: false, scope: 'pokemon', instant: true },
+  /** One Pokémon is sold back to the market at the price the offer named. */
+  SELL_TO_MARKET: { attested: false, scope: 'pokemon', instant: true },
+  /** The named Pokémon goes on the public board at a price, for any club to take. */
+  LIST_FOR_SALE: { attested: false, scope: 'pokemon', instant: true },
+  /**
+   * One roll on a published table of absences, taken the moment the club accepts the gamble.
+   *
+   * The odds are printed on the button before it is pressed — Blood Bowl's casualty table, which
+   * works because you knew what you were risking. Rolled at resolve rather than at draw for the
+   * same reason the prize in `GIFT_POKEMON` is: a gamble whose answer already exists somewhere
+   * in the database is not a gamble.
+   */
+  INJURY_ROLL: { attested: false, scope: 'pokemon', instant: true },
+  /**
+   * A free agent from one of the named tiers arrives for nothing, drawn when the club says yes.
+   *
+   * Which one is deliberately not settled at draw time, unlike everything else in the deck: the
+   * offer is a tier, not a name, and the gamble is the point. A club that wanted certainty had
+   * the money on the other button.
+   */
+  GIFT_POKEMON: { attested: false, scope: 'team', instant: true },
 
   // Money and value — enforced, applied once unless noted.
   /** A share of the club's balance, with a floor so a broke club still feels it. */
   CASH_PCT: { attested: false, scope: 'team', instant: true },
   /** A flat amount. Only where a percentage makes no sense. */
   CASH: { attested: false, scope: 'team', instant: true },
-  /** Charged every match while in force — the payment plan. */
+  /**
+   * Charged per match while in force — the payment plan.
+   *
+   * With `onLoss` it is charged only on the matches the club loses, which turns an instalment
+   * into something a manager can play their way out of.
+   */
   UPKEEP: { attested: false, scope: 'team' },
   /** One Pokémon's value moves once. */
   VALUE_MOVE: { attested: false, scope: 'pokemon', instant: true },
   /** Every Pokémon of a type moves once. */
   TYPE_VALUE_SHIFT: { attested: false, scope: 'team', instant: true },
+  /** Every Pokémon in the squad moves once — what a dressing room costs when it turns. */
+  SQUAD_VALUE_SHIFT: { attested: false, scope: 'team', instant: true },
   /** Win rewards multiplied while in force. */
   PAYOUT_MULT: { attested: false, scope: 'team' },
   /** Value moves damped or amplified while in force. */
@@ -74,17 +114,48 @@ export const EFFECT_KINDS = {
   NO_WEATHER: { attested: true, scope: 'team' },
   NO_TERRAIN: { attested: true, scope: 'team' },
   NO_STATUS_MOVES: { attested: true, scope: 'either' },
+  /** Every *attacking* move must be same-type. Status moves are unaffected, whatever their type. */
   STAB_ONLY: { attested: true, scope: 'either' },
+  /** No *attacking* move may be same-type. Status moves are unaffected, whatever their type. */
   NO_STAB: { attested: true, scope: 'either' },
+  /** No switching by hand. A switch a move causes — Volt Switch, Parting Shot, Roar — is fine. */
   NO_SWITCHING: { attested: true, scope: 'team' },
   ZERO_EVS: { attested: true, scope: 'pokemon' },
   NO_ITEM: { attested: true, scope: 'pokemon' },
   FIXED_ITEM: { attested: true, scope: 'pokemon' },
   MUST_LEAD: { attested: true, scope: 'pokemon' },
   NO_PROTECT: { attested: true, scope: 'team' },
+  /** Nothing that moves first, including priority a field condition grants. */
+  NO_PRIORITY: { attested: true, scope: 'either' },
 } as const;
 
 export type EffectKind = keyof typeof EFFECT_KINDS;
+
+/**
+ * Pairs of effects that cannot both be honoured, in either order.
+ *
+ * Two restrictions that contradict each other do not make a club's life twice as hard — they
+ * make reporting impossible, and since every one of these counts down only when a match is
+ * reported, nothing ever lifts. "Garchomp is out injured" and "Garchomp must play" is a club
+ * that can never log another game. So the newer one wins and the older is torn up: the most
+ * recent thing to happen to a squad is the thing that is true about it.
+ */
+const CONTRADICTIONS: [EffectKind, EffectKind][] = [
+  // Out injured, suspended or rested, against a promise that it plays.
+  ['POKEMON_OUT', 'MUST_FIELD'],
+  ['POKEMON_OUT', 'MUST_LEAD'],
+  // Attack only with STAB, against attack with anything but.
+  ['STAB_ONLY', 'NO_STAB'],
+  // No held item, against holding a named one.
+  ['NO_ITEM', 'FIXED_ITEM'],
+];
+
+/** Whether two effects could ever be honoured at the same time. */
+export function contradicts(a: EffectKind, b: EffectKind): boolean {
+  return CONTRADICTIONS.some(
+    ([one, other]) => (a === one && b === other) || (a === other && b === one),
+  );
+}
 
 /** Whether an effect is about one Pokémon, the whole club, or either. */
 export function effectScope(kind: EffectKind): 'pokemon' | 'team' | 'either' {
@@ -120,8 +191,14 @@ export interface EffectParams {
   slug?: string;
   /** The Pokémon arriving in a release-for-two, pinned at draw time. */
   slugs?: string[];
-  /** How far from the leaving Pokémon's value a substitute may be, if the pinned one is gone. */
-  band?: number;
+  /** Market tiers a gifted Pokémon may come from, best first. */
+  tiers?: string[];
+  /** The faces of an injury table: how many matches out, one entry per equally likely outcome. */
+  faces?: number[];
+  /** An instalment that only falls due on a defeat. */
+  onLoss?: boolean;
+  /** What the arrival in a swap gains over the Pokémon that left, as a percentage of its value. */
+  bonusPct?: number;
   // A wager, and its running tally.
   wins?: number;
   outOf?: number;
@@ -137,6 +214,8 @@ export interface LiveEffect {
   pokemonSlug: string | null;
   params: EffectParams;
   matchesLeft: number;
+  /** Events this club must be dealt before it lifts, for favours measured in crises. */
+  eventsLeft: number;
   untilRound: number | null;
   attested: boolean;
   label: string;
@@ -181,6 +260,7 @@ function toLive(row: {
   pokemonSlug: string | null;
   params: string;
   matchesLeft: number;
+  eventsLeft: number;
   untilRound: number | null;
   attested: boolean;
   label: string;
@@ -193,6 +273,7 @@ function toLive(row: {
     pokemonSlug: row.pokemonSlug,
     params: parseParams(row.params),
     matchesLeft: row.matchesLeft,
+    eventsLeft: row.eventsLeft,
     untilRound: row.untilRound,
     attested: row.attested,
     label: row.label,
@@ -240,10 +321,10 @@ export function valueMultiplier(effects: LiveEffect[]): number {
     .reduce((product, effect) => product * (effect.params.times ?? 1), 1);
 }
 
-/** How many Pokémon may be taken into a match, once any `BRING_LIMIT` is applied. */
-export function bringLimit(effects: LiveEffect[], configured: number): number {
+/** How many Pokémon may be registered as starters, once any `LINEUP_LIMIT` is applied. */
+export function lineupCap(effects: LiveEffect[], configured: number): number {
   const limits = effects
-    .filter((effect) => effect.kind === 'BRING_LIMIT')
+    .filter((effect) => effect.kind === 'LINEUP_LIMIT')
     .map((effect) => effect.params.count ?? configured);
   return Math.max(1, Math.min(configured, ...limits));
 }
@@ -360,16 +441,21 @@ export function enforce(input: {
   lines: ReportedLine[];
   attested: string[];
   bringToMatch: number;
+  lineupSize: number;
 }): EnforcementResult {
   const { effects, squad, lines, attested } = input;
   const played = lines.filter((line) => !line.benched);
   const { reasons, usable } = banned(effects, squad);
 
-  const limit = bringLimit(effects, input.bringToMatch);
-  if (lines.length > limit) {
-    const effect = effects.find((candidate) => candidate.kind === 'BRING_LIMIT');
+  // A shortened lineup is checked against who is registered, not against who played: the
+  // manager still picks four, out of a sheet with one fewer name on it. Refusing here rather
+  // than trimming the lineup behind their back keeps the choice of who drops out theirs.
+  const cap = lineupCap(effects, input.lineupSize);
+  const registered = squad.filter((member) => member.starter).length;
+  if (registered > cap) {
+    const effect = effects.find((candidate) => candidate.kind === 'LINEUP_LIMIT');
     throw new EffectViolation(
-      `${effect?.label ?? 'A restriction'} — you may only bring ${limit} to a match.`,
+      `${effect?.label ?? 'A restriction'} — only ${cap} of your squad can be registered. Drop one to the bench on the Club page.`,
     );
   }
 
@@ -397,6 +483,11 @@ export function enforce(input: {
 
   for (const effect of effects) {
     if (effect.kind !== 'MUST_FIELD' || !effect.pokemonSlug) continue;
+    // A Pokémon that may not play is excused from a promise that it will. `addEffect` tears up
+    // the pair that would cause this, but a type ban bars a Pokémon it never names, and rows
+    // written before that rule existed are still out there. Either way the club must be able to
+    // report: a restriction that contradicts another one may not cost somebody their season.
+    if (reasons.has(effect.pokemonSlug)) continue;
     const brought = played.some((line) => line.pokemonSlug === effect.pokemonSlug);
     if (!brought) throw new EffectViolation(`${effect.label} — it has to play this match.`);
   }
@@ -436,6 +527,8 @@ export interface EffectSpec {
   pokemonSlug?: string | null;
   params?: EffectParams;
   matches?: number;
+  /** Counted down when the club is dealt its next event, rather than when it plays. */
+  events?: number;
   /** The round it comes into force. */
   round?: number;
   untilRound?: number | null;
@@ -453,6 +546,8 @@ export async function addEffect(
   tx: Prisma.TransactionClient,
   input: EffectSpec & { leagueId: string; teamId: string; sourceEventId?: string | null },
 ): Promise<void> {
+  await supersede(tx, input);
+
   await tx.activeEffect.create({
     data: {
       leagueId: input.leagueId,
@@ -461,6 +556,7 @@ export async function addEffect(
       kind: input.kind,
       params: JSON.stringify(input.params ?? {}),
       matchesLeft: input.matches ?? 0,
+      eventsLeft: input.events ?? 0,
       round: input.round ?? 1,
       untilRound: input.untilRound ?? null,
       attested: isAttested(input.kind),
@@ -469,6 +565,52 @@ export async function addEffect(
       sourceEventId: input.sourceEventId ?? null,
     },
   });
+}
+
+/**
+ * Tears up whatever the new effect contradicts, and says so.
+ *
+ * Scope is deliberately generous: a club-wide "no STAB attacking moves" contradicts a promise
+ * made about one Pokémon, so a null slug on either side counts as a collision. Erring towards
+ * clearing is safe — the worst case is a restriction ending early — while erring the other way
+ * is a club that cannot report a match.
+ */
+async function supersede(
+  tx: Prisma.TransactionClient,
+  input: EffectSpec & { leagueId: string; teamId: string },
+): Promise<void> {
+  const rows = await tx.activeEffect.findMany({
+    where: { leagueId: input.leagueId, teamId: input.teamId },
+  });
+
+  const torn = rows
+    .map(toLive)
+    .filter((effect): effect is LiveEffect => effect !== null)
+    .filter((effect) => contradicts(effect.kind, input.kind))
+    .filter(
+      (effect) =>
+        effect.pokemonSlug === null ||
+        input.pokemonSlug == null ||
+        effect.pokemonSlug === input.pokemonSlug,
+    );
+  if (torn.length === 0) return;
+
+  await tx.activeEffect.deleteMany({ where: { id: { in: torn.map((effect) => effect.id) } } });
+
+  for (const effect of torn) {
+    await tx.leagueEvent.create({
+      data: {
+        leagueId: input.leagueId,
+        teamId: input.teamId,
+        round: input.round ?? 1,
+        templateKey: `lifted:${effect.kind.toLowerCase()}`,
+        title: 'Overtaken',
+        description: `${effect.label} no longer applies. ${input.label}`,
+        detail: JSON.stringify({ kind: effect.kind, pokemonSlug: effect.pokemonSlug, superseded: true }),
+        status: 'NOTICE',
+      },
+    });
+  }
 }
 
 /** What a percentage-of-cash charge actually costs, never less than its floor. */
@@ -515,6 +657,47 @@ export async function chargeForEvent(
 }
 
 /** Moves one owned Pokémon's value, through `recordValue` so the trail explains the number. */
+/**
+ * Puts one Pokémon's value at an absolute number rather than moving it by a percentage.
+ *
+ * A swap needs this: the arrival's stored value is a shop price, and what it should be worth to
+ * this club is a margin over the Pokémon that left. Multiplying the number it came in with would
+ * just carry the shop's scale across.
+ */
+export async function setValue(
+  tx: Prisma.TransactionClient,
+  input: {
+    leagueId: string;
+    teamId: string;
+    pokemonSlug: string;
+    to: number;
+    /** Left out, the move records the percentage it actually was. */
+    pct?: number;
+    round: number;
+  },
+): Promise<void> {
+  const row = await tx.ownership.findUnique({
+    where: { leagueId_pokemonSlug: { leagueId: input.leagueId, pokemonSlug: input.pokemonSlug } },
+  });
+  if (!row || row.teamId !== input.teamId || row.marketValue === input.to) return;
+
+  const moved = row.marketValue
+    ? Math.round(((input.to - row.marketValue) / row.marketValue) * 100)
+    : 0;
+
+  await recordValue(tx, {
+    ownershipId: row.id,
+    leagueId: input.leagueId,
+    teamId: input.teamId,
+    pokemonSlug: input.pokemonSlug,
+    reason: 'EVENT',
+    from: row.marketValue,
+    to: input.to,
+    pct: input.pct ?? moved,
+    round: input.round,
+  });
+}
+
 export async function moveValue(
   tx: Prisma.TransactionClient,
   input: { leagueId: string; teamId: string; pokemonSlug: string; pct: number; round: number },
@@ -566,6 +749,30 @@ export async function moveTypeValue(
   return moved;
 }
 
+/** Every Pokémon a club owns moves, which is what a squad-wide loss of faith looks like. */
+export async function moveSquadValue(
+  tx: Prisma.TransactionClient,
+  input: { leagueId: string; teamId: string; pct: number; round: number },
+): Promise<number> {
+  const rows = await tx.ownership.findMany({
+    where: { leagueId: input.leagueId, teamId: input.teamId },
+    select: { pokemonSlug: true },
+  });
+
+  let moved = 0;
+  for (const row of rows) {
+    const delta = await moveValue(tx, {
+      leagueId: input.leagueId,
+      teamId: input.teamId,
+      pokemonSlug: row.pokemonSlug,
+      pct: input.pct,
+      round: input.round,
+    });
+    if (delta !== 0) moved += 1;
+  }
+  return moved;
+}
+
 // --- expiry -------------------------------------------------------------------------------------
 
 /**
@@ -597,6 +804,39 @@ export async function tickEffects(
       await tx.activeEffect.update({
         where: { id: row.id },
         data: { matchesLeft: row.matchesLeft - 1 },
+      });
+      continue;
+    }
+    await tx.activeEffect.delete({ where: { id: row.id } });
+    if (live) lifted.push(live);
+  }
+
+  await announceLifted(tx, { ...input, lifted });
+  return lifted;
+}
+
+/**
+ * Counts down everything measured in events, and announces what that lifts.
+ *
+ * Called when a club is dealt its next event, so "your captain cannot step in again for five
+ * events" is five crises rather than five games — a favour in the dressing room is spent on
+ * trouble, and a club that plays ten quiet matches has not repaid it.
+ */
+export async function tickEventEffects(
+  tx: Prisma.TransactionClient,
+  input: { leagueId: string; teamId: string; round: number },
+): Promise<LiveEffect[]> {
+  const rows = await tx.activeEffect.findMany({
+    where: { leagueId: input.leagueId, teamId: input.teamId, eventsLeft: { gt: 0 } },
+  });
+
+  const lifted: LiveEffect[] = [];
+  for (const row of rows) {
+    const live = toLive(row);
+    if (row.eventsLeft > 1) {
+      await tx.activeEffect.update({
+        where: { id: row.id },
+        data: { eventsLeft: row.eventsLeft - 1 },
       });
       continue;
     }
@@ -765,6 +1005,69 @@ export async function expireByRound(
   }
 }
 
+/**
+ * Tears up everything in force, for a season that has ended.
+ *
+ * A restriction outlives the thing it was about. `advanceSeason` sells every Pokémon but the
+ * captain and puts every club back to the bottom rung, so a `MUST_FIELD` on a Pokémon another
+ * club now owns would block match reports forever, a lineup limit would apply to a squad that
+ * no longer exists, and a five-match wager set in October would settle against a side drafted
+ * in March. None of them describe the new season, so none of them survive it.
+ *
+ * Money that a club put in is money a club gets back. Locked stakes return at face value and
+ * wagers are torn up as a push — no reward, no penalty — because the club never got the matches
+ * it was promised, and charging it for a target the league itself made unreachable would be
+ * the league keeping the stake.
+ */
+export async function clearEffectsForSeason(
+  tx: Prisma.TransactionClient,
+  input: { leagueId: string; round: number },
+): Promise<{ cleared: number; refunded: number }> {
+  const rows = await tx.activeEffect.findMany({ where: { leagueId: input.leagueId } });
+  let refunded = 0;
+
+  for (const row of rows) {
+    const live = toLive(row);
+    if (!live) continue;
+
+    // A stake comes back as it went in. The interest was for seeing the term out.
+    const stake = live.kind === 'ESCROW' ? (live.params.amount ?? 0) : 0;
+    if (stake > 0) {
+      refunded += stake;
+      await postEntry(tx, {
+        leagueId: input.leagueId,
+        teamId: row.teamId,
+        type: 'EVENT',
+        amount: stake,
+        description: `${live.label} — returned, season over`,
+        relatedId: row.sourceEventId ?? undefined,
+        round: input.round,
+      });
+    }
+
+    if (live.kind === 'ESCROW' || live.kind === 'PLEDGE') {
+      await tx.leagueEvent.create({
+        data: {
+          leagueId: input.leagueId,
+          teamId: row.teamId,
+          round: input.round,
+          templateKey: `lifted:${live.kind.toLowerCase()}`,
+          title: live.kind === 'PLEDGE' ? 'Target called off' : 'Stake returned',
+          description:
+            live.kind === 'PLEDGE'
+              ? `${live.label}: the season ended before the matches did. Nothing paid, nothing forfeited.`
+              : `${live.label}: returned in full when the season closed.`,
+          detail: JSON.stringify({ kind: live.kind, seasonEnd: true }),
+          status: 'NOTICE',
+        },
+      });
+    }
+  }
+
+  const { count } = await tx.activeEffect.deleteMany({ where: { leagueId: input.leagueId } });
+  return { cleared: count, refunded };
+}
+
 async function announceLifted(
   tx: Prisma.TransactionClient,
   input: { leagueId: string; teamId: string; round: number; lifted: LiveEffect[] },
@@ -788,7 +1091,9 @@ async function announceLifted(
 /** Notices a club has not seen yet, newest first — the "this just lifted" banner. */
 export async function recentlyLifted(leagueId: string, teamId: string, take = 3) {
   return db.leagueEvent.findMany({
-    where: { leagueId, teamId, status: 'NOTICE' },
+    // Only restrictions ending. The feed carries other notices — what a club chose, chiefly —
+    // and telling somebody about the decision they just took is noise, not news.
+    where: { leagueId, teamId, status: 'NOTICE', templateKey: { startsWith: 'lifted:' } },
     orderBy: { createdAt: 'desc' },
     take,
   });

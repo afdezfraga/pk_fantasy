@@ -162,7 +162,7 @@ is no cache.
 - Commit messages: a conventional-commit subject, then a body in prose that argues *why* the
   change is right — not a list of what moved. Match the existing history.
 - Comments explain **why**, not what. The existing ones carry real reasoning — match that.
-- `npm test` (238 tests) and `npm run typecheck` before calling anything done.
+- `npm test` (303 tests) and `npm run typecheck` before calling anything done.
 - `lib/roster/roster.test.ts` asserts Incineroar is top tier. It is the canary for the wrong tier
   list — singles lists put it mid-table. If it fails after a reprice, you fetched singles.
 - Money is always an integer number of Pokédollars. The `Transaction` ledger is the source of

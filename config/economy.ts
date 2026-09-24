@@ -112,16 +112,22 @@ export const LEAGUE_DEFAULTS = {
    */
   eventsEnabled: 1,
   /**
-   * Matches a club reports between events.
+   * Fewest matches a club reports between events.
    *
    * Counted per club rather than per round, because rounds close whenever the commissioner
    * gets round to it while matches are the clock every manager actually feels. It also means
    * the player logging forty matches a week meets more crises than the one logging five,
    * which pulls the same direction as `PAYOUTS.paidMatchesPerRound`.
    */
-  eventEveryMatches: 5,
-  /** Spread either side of that, so the timing can't be counted and played around. */
-  eventJitter: 1,
+  eventEveryMin: 5,
+  /**
+   * And at most this many, drawn uniformly across the range.
+   *
+   * A window rather than a figure with a spread either side of it: the timing cannot be counted
+   * and played around, and the range is what it says it is rather than something to work out
+   * from a midpoint. Wide enough that a club is never sure whether the next match brings one.
+   */
+  eventEveryMax: 10,
   /**
    * Percentage scaler on every event cost and penalty.
    *

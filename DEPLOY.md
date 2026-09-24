@@ -161,6 +161,27 @@ Three things to know:
 - **`--build` after any data change.** `data/` is baked into the image, so a repricing only
   reaches the container when you rebuild. Without it you will seed yesterday's roster.
 
+### Reaching it from a phone on the same wifi
+
+Testing on a real phone needs a different arrangement, because Caddy serves exactly one
+hostname. Ask it for `192.168.x.x` and the TLS handshake fails before HTTP starts — it has no
+certificate for that address, only for the name you configured.
+
+Rather than teach Caddy a second name and have every device click through a warning from a CA it
+does not trust, skip the proxy:
+
+```bash
+docker compose -f docker-compose.yml -f deploy/compose.lan.yml up -d --build
+```
+
+Then open **http://<this machine's LAN IP>:3000** on the phone — `hostname -I` or
+`ip -4 addr show scope global` will tell you the address.
+
+That override publishes the app directly and sets `ALLOW_INSECURE_COOKIE=1`, which is required:
+without it the `secure` session cookie is dropped over plain HTTP and logins do nothing at all.
+**It must never be used on anything reachable from the internet** — it is the one setting that
+turns a working login into a session anyone on the network can copy.
+
 Tear it down with `docker compose down`. Add `-v` only if you also want to throw away the test
 league — on the server that flag destroys the real one.
 

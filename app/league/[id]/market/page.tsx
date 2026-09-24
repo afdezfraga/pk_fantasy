@@ -6,6 +6,7 @@ import { parseTypes, pokemonLabel } from '../../../../lib/format.ts';
 import { getLeagueContext } from '../../../../lib/services/league.ts';
 import { openListings } from '../../../../lib/services/listings.ts';
 import { NavTabs, Panel } from '../../../components/ui.tsx';
+import { ListForSaleForm } from './ListForSaleForm.tsx';
 import { ListingBoard } from './ListingBoard.tsx';
 import { MarketTable, PriceBands, ValueRules } from './MarketTable.tsx';
 
@@ -29,6 +30,17 @@ export default async function MarketPage({ params }: { params: Promise<{ id: str
   const owned = rows.filter((row) => row.teamId).length;
 
   const listings = await openListings(id);
+  // Anything already up cannot be listed twice, so it is not offered.
+  const onBoard = new Set(listings.map((listing) => listing.pokemonSlug));
+  const sellable = myTeam
+    ? rows
+        .filter((row) => row.teamId === myTeam.id && !onBoard.has(row.pokemonSlug))
+        .map((row) => ({
+          slug: row.pokemonSlug,
+          label: pokemonLabel(row.pokemon),
+          value: row.marketValue,
+        }))
+    : [];
   const bySlug = new Map(rows.map((row) => [row.pokemonSlug, row]));
   const teams = await db.team.findMany({ where: { leagueId: id }, select: { id: true, name: true } });
   const teamNames = new Map(teams.map((team) => [team.id, team.name]));
@@ -47,11 +59,17 @@ export default async function MarketPage({ params }: { params: Promise<{ id: str
         </div>
       </Panel>
 
+      {myTeam && (
+        <Panel title="Sell to the league">
+          <ListForSaleForm leagueId={id} squad={sellable} />
+        </Panel>
+      )}
+
       {listings.length > 0 && (
         <Panel title={`On the board · ${listings.length}`}>
           <p className="mb-3 text-sm text-muted">
-            Pokémon another club has put up at a fixed price. First to sign takes it, and nobody
-            can pull one back off the board while it is up.
+            Pokémon a club has put up at a fixed price. First to sign takes it. A manager may pull
+            their own back at any time — but one an event put there stays until it runs out.
           </p>
           <ListingBoard
             leagueId={id}

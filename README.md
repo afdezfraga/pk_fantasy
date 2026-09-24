@@ -404,15 +404,25 @@ A **listing** is a Pokémon one club has put up at a fixed price, which any othe
 take — first to sign gets it. A `TradeOffer` names the club it's aimed at and has to be accepted;
 a listing is public and needs nobody's agreement.
 
-Three rules make it a market rather than a bluff:
+Anyone can put one of their own Pokémon up, from the **Market** page. Four rules make it a market
+rather than a bluff:
 
 - **The price is frozen when the listing opens** — its market value plus whatever premium put it
   there. A board whose prices move while you read it is not a board.
-- **It runs for five full days**, on the clock rather than on rounds. A round can close in an
-  evening, and an offer half the league never saw is not an offer.
-- **It cannot be taken back.** A listing you could pull the moment somebody showed interest would
-  be a way to find out what your rivals want without ever selling them anything. Putting a
-  Pokémon up is a commitment.
+- **You choose how long it runs**, anywhere from an hour to a week, on the clock rather than on
+  rounds. A round can close in an evening, and an offer half the league never saw is not an offer.
+  An hour is a real tactic: put something up before tonight's matches and see if anyone bites.
+- **You can take your own back whenever you like.** The seller picks the window, so anyone wanting
+  to fish for interest can simply post for an hour — there is nothing left to protect by forcing a
+  manager to watch their own squad be sold out from under them.
+- **A Pokémon has one listing at a time**, and it dies with the ownership: sell it, trade it, or
+  lose it to an event, and the listing comes straight off the board rather than advertising
+  something its seller can no longer deliver.
+
+**An event's listing is the exception.** When a decision puts a Pokémon up — *let it explore its
+options* — that one runs the full five days and **cannot be withdrawn**. It outranks a listing you
+had already posted for the same Pokémon, replacing your terms with its own: putting your own price
+up is not a way to pre-empt what an event is about to do with it.
 
 Nobody comes? It's still yours, it comes off the board on its own, and your club is told. The
 sale itself is a transfer, not a trip through free agency: the Pokémon keeps its value and moves

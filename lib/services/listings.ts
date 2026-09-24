@@ -37,20 +37,38 @@ export class ListingError extends Error {
   }
 }
 
-/** The shortest a listing may run. Long enough that every club has had a chance to see it. */
+/**
+ * How long a listing a *decision* put up must run. Long enough that every club has had a chance
+ * to see it, and the deck is validated against it so no event can post a token one.
+ */
 export const LISTING_MIN_DAYS = 5;
 
-const DAY = 24 * 60 * 60 * 1000;
+/**
+ * The window a manager may choose from.
+ *
+ * An hour is short enough to be a real tactic — put something up at a price, see if anyone bites
+ * before tonight's matches — and a week is long enough that nothing sits on the board forever
+ * being forgotten about.
+ */
+export const LISTING_MIN_HOURS = 1;
+export const LISTING_MAX_HOURS = 7 * 24;
+
+const HOUR = 60 * 60 * 1000;
 
 export interface ListInput {
   leagueId: string;
   teamId: string;
   pokemonSlug: string;
   price: number;
-  /** How long it stays up. Never less than `LISTING_MIN_DAYS`. */
-  days?: number;
+  /** How long it stays up, in hours. Clamped to the manager's window unless an event set it. */
+  hours?: number;
   /** EVENT when a decision put it there, MANAGER when somebody chose to. */
   reason?: string;
+}
+
+/** An event's listing is a consequence, not an offer: the club does not get to take it back. */
+export function isLocked(listing: { reason: string; status: string }): boolean {
+  return listing.status === 'OPEN' && listing.reason === 'EVENT';
 }
 
 /** Puts a Pokémon on the board, inside a transaction the caller already opened. */
@@ -62,23 +80,58 @@ export async function openListing(tx: Prisma.TransactionClient, input: ListInput
     throw new ListingError('You no longer own that Pokémon.');
   }
 
-  // One board entry per Pokémon. Two open listings would let two clubs each buy it.
+  // One board entry per Pokémon, always. Two open listings would let two clubs each buy it.
   const existing = await tx.listing.findFirst({
     where: { leagueId: input.leagueId, pokemonSlug: input.pokemonSlug, status: 'OPEN' },
   });
-  if (existing) throw new ListingError('That Pokémon is already on the market.');
 
-  const days = Math.max(LISTING_MIN_DAYS, Math.round(input.days ?? LISTING_MIN_DAYS));
+  const fromEvent = (input.reason ?? 'MANAGER') === 'EVENT';
+
+  if (existing) {
+    // A manager cannot list the same Pokémon twice; they must take the first one down.
+    if (!fromEvent) throw new ListingError('That Pokémon is already on the market.');
+
+    // A decision outranks a choice. Putting your Pokémon up at your own price is not a way to
+    // pre-empt what an event is about to do with it, so the event's terms replace yours.
+    await tx.listing.updateMany({
+      where: { id: existing.id, status: 'OPEN' },
+      data: { status: 'SUPERSEDED', resolvedAt: new Date() },
+    });
+  }
+
+  const hours = fromEvent
+    ? Math.max(LISTING_MIN_DAYS * 24, Math.round(input.hours ?? LISTING_MIN_DAYS * 24))
+    : Math.min(LISTING_MAX_HOURS, Math.max(LISTING_MIN_HOURS, Math.round(input.hours ?? 24)));
+
   return tx.listing.create({
     data: {
       leagueId: input.leagueId,
       teamId: input.teamId,
       pokemonSlug: input.pokemonSlug,
       price: Math.max(0, Math.round(input.price)),
-      openUntil: new Date(Date.now() + days * DAY),
-      reason: input.reason ?? 'MANAGER',
+      openUntil: new Date(Date.now() + hours * HOUR),
+      reason: fromEvent ? 'EVENT' : 'MANAGER',
     },
   });
+}
+
+/**
+ * Takes a Pokémon's listing off the board because the Pokémon itself has gone.
+ *
+ * Every path that moves a Pokémon between squads calls this. A listing is a promise to sell
+ * something you own, so the moment you stop owning it the promise has to go with it — otherwise
+ * the board advertises a Pokémon its seller cannot deliver, and the buyer's guarded UPDATE fails
+ * with a conflict they did nothing to cause.
+ */
+export async function cancelListingsFor(
+  tx: Prisma.TransactionClient,
+  input: { leagueId: string; pokemonSlug: string },
+): Promise<number> {
+  const { count } = await tx.listing.updateMany({
+    where: { leagueId: input.leagueId, pokemonSlug: input.pokemonSlug, status: 'OPEN' },
+    data: { status: 'CANCELLED', resolvedAt: new Date() },
+  });
+  return count;
 }
 
 /** The manager's own route onto the board, for a Pokémon no event asked about. */
@@ -228,11 +281,17 @@ export async function buyListing(input: {
 }
 
 /**
- * Takes a listing back off the board — which, while it is running, nobody may do.
+ * Takes a listing back off the board.
  *
- * Kept rather than removed because a listing that has run its time and expired is a different
- * thing from one somebody is still looking at, and a future board where a club sets its own
- * longer window will want this. Today every listing runs the minimum, so this always refuses.
+ * A manager may do this whenever they like. The earlier rule — that putting a Pokémon up was a
+ * commitment for the whole window — was there to stop a club fishing for who wanted what and
+ * pulling the listing the moment somebody showed interest. That worry does not survive contact
+ * with a board where the seller also chooses the window: anyone who wants to fish can simply
+ * post for an hour. What it actually cost was the ordinary case, a manager who changed their
+ * mind and had to watch their own squad be sold out from under them for five days.
+ *
+ * An event's listing is the exception, and the reason the distinction exists: that one is a
+ * consequence of a decision already taken, so the club does not get to undo it by clicking.
  */
 export async function withdrawListing(input: {
   listingId: string;
@@ -244,9 +303,9 @@ export async function withdrawListing(input: {
     if (!listing || listing.teamId !== input.teamId || listing.status !== 'OPEN') {
       throw new ListingError('That listing is no longer open.');
     }
-    if (listing.openUntil > new Date()) {
+    if (isLocked(listing)) {
       throw new ListingError(
-        `It stays on the board until ${listing.openUntil.toDateString()}. Putting a Pokémon up is a commitment.`,
+        'A decision put that one on the board, so it stays there until it runs out or somebody takes it.',
       );
     }
 

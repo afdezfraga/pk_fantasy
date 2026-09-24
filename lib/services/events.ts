@@ -1486,7 +1486,9 @@ async function applyEffect(
           teamId: input.teamId,
           pokemonSlug: effect.pokemonSlug,
           price: effect.params.amount ?? 0,
-          days: effect.params.count,
+          // The deck writes this window in days; the board keeps hours, so managers can post
+          // something for an afternoon without the deck having to learn fractions.
+          hours: effect.params.count ? effect.params.count * 24 : undefined,
           reason: 'EVENT',
         });
         return;

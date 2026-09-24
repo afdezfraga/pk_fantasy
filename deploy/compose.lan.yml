@@ -1,0 +1,18 @@
+# Testing on the LAN — a phone, a tablet, someone else's laptop.
+#
+#   docker compose -f docker-compose.yml -f deploy/compose.lan.yml up -d --build
+#   http://<this machine's LAN IP>:3000
+#
+# Caddy serves exactly one hostname, so reaching it by IP fails the TLS handshake before HTTP
+# starts. Rather than teach it a second name and have every device click through a warning from
+# a CA it does not trust, this skips the proxy: the app is published directly over plain HTTP.
+#
+# Which means the session cookie has to stop being `secure`, or logins silently do nothing —
+# the browser accepts the password and drops the cookie. ALLOW_INSECURE_COOKIE exists for this
+# exact case and must never be set on anything reachable from the internet.
+services:
+  app:
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    environment:
+      ALLOW_INSECURE_COOKIE: "1"

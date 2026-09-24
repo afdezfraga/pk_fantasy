@@ -15,7 +15,14 @@ import {
   sellToMarket,
 } from '../../lib/services/ownership.ts';
 import { reportMatchAndDraw, deleteMatch, MatchError } from '../../lib/services/matches.ts';
-import { buyListing, ListingError, withdrawListing } from '../../lib/services/listings.ts';
+import {
+  buyListing,
+  listForSale,
+  ListingError,
+  LISTING_MAX_HOURS,
+  LISTING_MIN_HOURS,
+  withdrawListing,
+} from '../../lib/services/listings.ts';
 import { proposeTrade, respondToTrade, TradeError } from '../../lib/services/trades.ts';
 import { advanceRound, RoundError } from '../../lib/services/rounds.ts';
 import { updateStanding, LadderError } from '../../lib/services/ladder.ts';
@@ -130,6 +137,40 @@ export async function buyListingAction(
     const result = await buyListing({ listingId, teamId: team.id, actorUserId: user.id });
     refresh(leagueId);
     return { success: `Signed ${result.label} for ₽${result.price.toLocaleString()}.` };
+  } catch (error) {
+    return { error: toMessage(error) };
+  }
+}
+
+export async function listForSaleAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const user = await requireUser();
+  const leagueId = String(formData.get('leagueId') ?? '');
+  const pokemonSlug = String(formData.get('pokemonSlug') ?? '');
+  const price = Number(formData.get('price'));
+  const hours = Number(formData.get('hours'));
+
+  if (!Number.isFinite(price) || price < 0) {
+    return { error: 'Name a price in Pokédollars.' };
+  }
+  if (!Number.isFinite(hours) || hours < LISTING_MIN_HOURS || hours > LISTING_MAX_HOURS) {
+    return { error: `A listing runs between ${LISTING_MIN_HOURS} hour and ${LISTING_MAX_HOURS / 24} days.` };
+  }
+
+  try {
+    const team = await myTeam(leagueId, user.id);
+    await listForSale({
+      leagueId,
+      teamId: team.id,
+      pokemonSlug,
+      price: Math.round(price),
+      hours: Math.round(hours),
+      actorUserId: user.id,
+    });
+    refresh(leagueId);
+    return { success: `On the board at ₽${Math.round(price).toLocaleString()}.` };
   } catch (error) {
     return { error: toMessage(error) };
   }

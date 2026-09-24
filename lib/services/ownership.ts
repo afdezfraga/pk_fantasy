@@ -26,6 +26,7 @@ import type { Prisma } from '@prisma/client';
 import { buyValue, LEAGUE_DEFAULTS, VALUE_RULES, type LeagueConfig } from '../../config/economy.ts';
 import { db } from '../db.ts';
 import { assertTransfersOpen } from './effects.ts';
+import { cancelListingsFor } from './listings.ts';
 import { audit, postEntry, type TransactionType } from './money.ts';
 import { recordValue } from './value.ts';
 
@@ -271,6 +272,9 @@ export async function releaseToMarket(tx: Prisma.TransactionClient, input: Relea
   if (released.count !== 1) {
     throw new OwnershipConflict(`${label} moved before the sale went through.`);
   }
+
+  // It is no longer this club's to sell, so it cannot stay on the board as though it were.
+  await cancelListingsFor(tx, { leagueId: input.leagueId, pokemonSlug: input.pokemonSlug });
 
   // Selling the captain hands the armband on rather than leaving the club without one.
   if (ownership.captain) await ensureCaptain(tx, input.leagueId, input.teamId);

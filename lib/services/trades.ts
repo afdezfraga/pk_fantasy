@@ -9,6 +9,7 @@ import { db } from '../db.ts';
 import { assertTransfersOpen } from './effects.ts';
 import { audit, postEntry } from './money.ts';
 import { ensureCaptain, OwnershipConflict, RosterRuleViolation, parseConfig } from './ownership.ts';
+import { cancelListingsFor } from './listings.ts';
 
 export class TradeError extends Error {
   constructor(message: string) {
@@ -155,6 +156,11 @@ export async function respondToTrade(input: {
       if (moved.count !== 1) {
         throw new OwnershipConflict('One of those Pokémon changed hands — the trade is off.');
       }
+
+      // Either club may have had this one on the open board. It has a new owner now, so the
+      // listing goes with the Pokémon rather than outliving the squad that posted it.
+      await cancelListingsFor(tx, { leagueId: offer.leagueId, pokemonSlug: slug });
+
       await tx.valueChange.create({
         data: {
           leagueId: offer.leagueId,

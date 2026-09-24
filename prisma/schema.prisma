@@ -56,6 +56,10 @@ model League {
   /// Current season. A new one resets every rank and sends all but each captain back to the
   /// market for a fresh draft — see lib/services/seasons.ts.
   season         Int      @default(1)
+  /// When the event board on show closes and the next one opens. Null until the first board.
+  /// Moved with a guarded update against the value the caller saw, like `round`, so two page
+  /// loads arriving after the close cannot both open a board.
+  boardUntil     DateTime?
   createdAt      DateTime @default(now())
 
   commissioner User          @relation("Commissioner", fields: [commissionerId], references: [id])
@@ -68,6 +72,7 @@ model League {
   trades       TradeOffer[]
   listings     Listing[]
   events       LeagueEvent[]
+  auctions     EventAuction[]
 }
 
 model Team {
@@ -117,8 +122,9 @@ model Team {
   bestRung        Int       @default(0)
   standingUpdated DateTime?
 
-  /// Matches this club must report before its next random event. Counts down at report time;
-  /// 0 draws one on the next page load, which is what a league that predates events wants.
+  /// Matches this club must report before it is next checked for an event it caused. Counts
+  /// down at report time; 0 checks on the next page load. Only triggered events arrive this way
+  /// — the rest of the deck is auctioned on the event board.
   eventCountdown Int @default(0)
 
   createdAt DateTime @default(now())
@@ -530,6 +536,84 @@ model LeagueEvent {
 
   @@index([leagueId, round])
   @@index([leagueId, teamId, status])
+}
+
+/// One event on the board, up for a sealed reverse auction.
+///
+/// The board is how the untriggered deck reaches clubs: rather than a problem landing on whoever
+/// is due, it is put up for everybody, and each club says how little it would take to be paid to
+/// live with it. Lowest bid takes it — and the money — when the board closes. The template is
+/// the same for everybody, but what it would do is not, so each club's version is an
+/// `EventOffer` of its own.
+model EventAuction {
+  id          String @id @default(cuid())
+  leagueId    String
+  templateKey String
+  title       String
+  /// The round the board opened in.
+  round       Int
+
+  /// Real time, not rounds: a board is a standing invitation, and a round can close in an
+  /// evening. Set from the league's `eventBoardHours` when the board opens.
+  closesAt DateTime
+  /// OPEN | AWARDED | UNCLAIMED — nobody bid | CANCELLED — a new season swept it away
+  status   String   @default("OPEN")
+
+  winnerTeamId String?
+  winningBid   Int?
+  /// The LeagueEvent the winner was dealt.
+  eventId      String?
+  settledAt    DateTime?
+  createdAt    DateTime  @default(now())
+
+  league League       @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  offers EventOffer[]
+  bids   EventBid[]
+
+  @@index([leagueId, status])
+  @@index([leagueId, createdAt])
+}
+
+/// What one auctioned event would do to one club, frozen so the club bids on what it read.
+///
+/// Rewritten, not kept, when a Pokémon it names leaves the club before the board closes: an
+/// offer about somebody else's Pokémon is not an offer, so the same template is dealt again
+/// against the squad as it now stands.
+model EventOffer {
+  id        String @id @default(cuid())
+  auctionId String
+  /// A bare string, like the other event tables.
+  teamId    String
+
+  description String
+  /// JSON `{ subject, tone?, announcement? }`.
+  detail      String
+  /// JSON `StoredOption[]`, as `LeagueEvent.choices`.
+  choices     String
+  /// Why this club may not bid, when the template's requirements shut it out.
+  closedReason String?
+
+  updatedAt DateTime @updatedAt
+
+  auction EventAuction @relation(fields: [auctionId], references: [id], onDelete: Cascade)
+
+  @@unique([auctionId, teamId])
+}
+
+/// A sealed bid: what a club asks to be paid to take the event on.
+///
+/// One per club per auction, enforced by the unique index rather than by a check somebody could
+/// race past, and never updated — a bid is final the moment it is placed.
+model EventBid {
+  id        String   @id @default(cuid())
+  auctionId String
+  teamId    String
+  amount    Int
+  createdAt DateTime @default(now())
+
+  auction EventAuction @relation(fields: [auctionId], references: [id], onDelete: Cascade)
+
+  @@unique([auctionId, teamId])
 }
 
 /// A consequence still in force: an injury, a ban, a payout multiplier, a promise to battle

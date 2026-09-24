@@ -5,6 +5,7 @@ import { getSessionUser } from '../../../lib/auth/session.ts';
 import { db } from '../../../lib/db.ts';
 import { money, pokemonLabel, signedMoney } from '../../../lib/format.ts';
 import { getLeagueContext } from '../../../lib/services/league.ts';
+import { sweepBoard } from '../../../lib/services/board.ts';
 import { ensurePendingEvent, getEvents, pendingEvent } from '../../../lib/services/events.ts';
 import { getRankEvents, sortByLadder, standingOf } from '../../../lib/services/ladder.ts';
 import { roundProgress } from '../../../lib/services/rounds.ts';
@@ -70,8 +71,10 @@ export default async function LeagueHome({ params }: { params: Promise<{ id: str
 
   // The league hub is the page people land on, so it is the likeliest place for a due event to
   // arrive. The draw is idempotent and guarded, so doing it here costs nothing.
-  if (myTeam && league.status === 'ACTIVE' && config.eventsEnabled) {
-    await ensurePendingEvent(id, myTeam.id);
+  // The same goes for the event board closing, which is what hands its winners their events.
+  if (league.status === 'ACTIVE' && config.eventsEnabled) {
+    await sweepBoard(id);
+    if (myTeam) await ensurePendingEvent(id, myTeam.id);
   }
   const pending = myTeam ? await pendingEvent(id, myTeam.id) : null;
 

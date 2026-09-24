@@ -105,14 +105,36 @@ export const LEAGUE_DEFAULTS = {
   waiverHoldRounds: 1,
 
   /**
-   * Random events: problems a manager answers, drawn every few matches. See data/events.json.
+   * Events: problems a manager answers. See data/events.json.
    *
    * Set to 0 for a league that just wants to grind the ladder — nothing else changes, and a
    * league already running picks the default up through `parseConfig`.
    */
   eventsEnabled: 1,
   /**
-   * Fewest matches a club reports between events.
+   * How long the event board stays open, in hours, before its bids are opened and the next
+   * board goes up.
+   *
+   * Hours rather than rounds for the same reason a listing runs on the clock: a round can close
+   * in an evening, and a sealed bid half the league never had the chance to place is not an
+   * auction. A day by default; a league that meets weekly might want three.
+   */
+  eventBoardHours: 24,
+  /** How many events each board puts up. */
+  eventBoardSize: 2,
+  /**
+   * The most a club may ask to be paid to take an event on.
+   *
+   * A reverse auction settles on the lowest ask, which only works while somebody else is
+   * asking. With one eligible club — or one player — there is nobody to undercut, and without a
+   * ceiling the only rival to a ₽5,000,000 ask would be common decency.
+   */
+  eventBidMax: 50_000,
+  /**
+   * Fewest matches a club reports between checks for an event it caused.
+   *
+   * Only the triggered events — a forgotten Pokémon, a burnt-out four, a churned squad, the
+   * backer at the bottom — arrive this way. Everything else in the deck goes on the board.
    *
    * Counted per club rather than per round, because rounds close whenever the commissioner
    * gets round to it while matches are the clock every manager actually feels. It also means

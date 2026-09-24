@@ -5,6 +5,7 @@ import { getSessionUser } from '../../../../lib/auth/session.ts';
 import { db } from '../../../../lib/db.ts';
 import { parseTypes, pokemonLabel } from '../../../../lib/format.ts';
 import { activeEffects, banned, parseConstraints } from '../../../../lib/services/effects.ts';
+import { sweepBoard } from '../../../../lib/services/board.ts';
 import { ensurePendingEvent, pendingEvent } from '../../../../lib/services/events.ts';
 import { getLeagueContext } from '../../../../lib/services/league.ts';
 import { getLineup } from '../../../../lib/services/lineup.ts';
@@ -41,8 +42,10 @@ export default async function MatchesPage({ params }: { params: Promise<{ id: st
   ]);
 
   // Opening this page is one of the moments an event can arrive — the draw is lazy.
-  if (myTeam && league.status === 'ACTIVE' && context.config.eventsEnabled) {
-    await ensurePendingEvent(id, myTeam.id);
+  // A board that has closed deals its winners their events, which may block this very form.
+  if (league.status === 'ACTIVE' && context.config.eventsEnabled) {
+    await sweepBoard(id);
+    if (myTeam) await ensurePendingEvent(id, myTeam.id);
   }
   const pending = myTeam ? await pendingEvent(id, myTeam.id) : null;
 

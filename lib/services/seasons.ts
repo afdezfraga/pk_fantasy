@@ -102,6 +102,15 @@ export async function advanceSeason(input: { leagueId: string; actorUserId: stri
       data: { status: 'CANCELLED', resolvedAt: new Date() },
     });
 
+    // So does the event board: every offer on it names a squad that is about to be sold, and a
+    // bid placed against last season's Pokémon settling into next season's would pay a club for
+    // an event it never read. The next board opens once the new draft is done.
+    await tx.eventAuction.updateMany({
+      where: { leagueId: input.leagueId, status: 'OPEN' },
+      data: { status: 'CANCELLED', settledAt: new Date() },
+    });
+    await tx.league.update({ where: { id: input.leagueId }, data: { boardUntil: null } });
+
     // One draft per league at a time; the new season gets a fresh one.
     await tx.draft.deleteMany({ where: { leagueId: input.leagueId } });
 

@@ -4,6 +4,7 @@ import { useActionState, useState } from 'react';
 import { useFormStatus } from 'react-dom';
 
 import { createLeagueAction, joinLeagueAction, type FormState } from './actions/league.ts';
+import { BoardFields } from './components/BoardFields.tsx';
 import { Button, ErrorNote, Field, Panel, inputClass } from './components/ui.tsx';
 
 function Submit({ label }: { label: string }) {
@@ -41,6 +42,14 @@ export function LobbyForms() {
           <Field label="Your team name">
             <input name="teamName" required className={inputClass} placeholder="Pallet Town Pidgeots" />
           </Field>
+          <details className="rounded-lg border border-line bg-panel-2 px-3 py-2">
+            <summary className="cursor-pointer text-sm font-medium text-ink">Event board</summary>
+            <p className="mt-2 text-xs text-muted">
+              Events go up on a board and clubs bid, sealed, for how little they&rsquo;d take to be
+              paid to live with one. Lowest bid wins it. You can change these later.
+            </p>
+            <BoardFields />
+          </details>
           <ErrorNote>{createState.error}</ErrorNote>
           <p className="text-xs text-muted">
             You'll be the commissioner: you set the rules, run the draft and advance the rounds.

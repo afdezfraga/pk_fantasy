@@ -4,7 +4,11 @@ import { useActionState } from 'react';
 import { useFormStatus } from 'react-dom';
 
 import { money } from '../../../../lib/format.ts';
-import { buyListingAction, type ActionState } from '../../../actions/market.ts';
+import {
+  buyListingAction,
+  withdrawListingAction,
+  type ActionState,
+} from '../../../actions/market.ts';
 import { PokemonIcon } from '../../../components/PokemonImage.tsx';
 import { Button, TierBadge } from '../../../components/ui.tsx';
 
@@ -54,8 +58,9 @@ export function ListingBoard({
   canBuy: boolean;
 }) {
   const [buyState, buy] = useActionState<ActionState, FormData>(buyListingAction, {});
-  const message = buyState.error ?? buyState.success;
-  const failed = Boolean(buyState.error);
+  const [pullState, withdraw] = useActionState<ActionState, FormData>(withdrawListingAction, {});
+  const message = buyState.error ?? buyState.success ?? pullState.error ?? pullState.success;
+  const failed = Boolean(buyState.error ?? pullState.error);
 
   if (listings.length === 0) {
     return (
@@ -115,9 +120,17 @@ export function ListingBoard({
                 </span>
 
                 {listing.mine ? (
-                  // No take-backs. A listing you could pull the moment somebody showed interest
-                  // would be a way of finding out what your rivals want without ever selling.
-                  <span className="shrink-0 text-xs text-muted italic">Committed</span>
+                  listing.fromEvent ? (
+                    // A decision put this one up. Being able to click it away would undo the
+                    // consequence the manager already accepted.
+                    <span className="shrink-0 text-xs text-muted italic">Forced — committed</span>
+                  ) : (
+                    <form action={withdraw}>
+                      <input type="hidden" name="leagueId" value={leagueId} />
+                      <input type="hidden" name="listingId" value={listing.id} />
+                      <Submit>Take it down</Submit>
+                    </form>
+                  )
                 ) : (
                   <form action={buy}>
                     <input type="hidden" name="leagueId" value={leagueId} />

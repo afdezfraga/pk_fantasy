@@ -263,9 +263,9 @@ upkeep, so nothing bleeds you — but nothing tops you up either until you start
 
 ## Events
 
-Every few matches something goes wrong at your club, and you decide what to do about it. **You
-can't report another match until you have.** That's the whole shape of it: an event is a problem
-with two or three answers, none of them free.
+Things go wrong at a club, and the manager decides what to do about it. **You can't report
+another match while an event is waiting for an answer.** That's the whole shape of it: an event is
+a problem with two or three answers, none of them free.
 
 The best ones cost no money at all. A sulking star has to be run at zero EVs for five matches; the
 pitch is being relaid so you can't set weather or terrain; the coach has a philosophy and you're
@@ -281,14 +281,43 @@ Recruitment offers two free agents for one of your best, and lets you pick which
 sponsor asks how many of your next five you think you'll win, and pays — or charges — on what you
 said. The league wants your money locked away for two rounds at 15%.
 
-**One lands the moment the draft ends**, before your first match, and then roughly every five
-matches you report — jittered, so you can't count the timing and plan around it.
+### The event board
 
-Closing a round draws one **league-wide** event instead: the same template, with its shared
-details settled once, handed to every club at the same moment. Some of those are decisions each
-club answers for itself; a change to the rules everybody plays under is not, and simply applies
-— a regulation that hit Water-types hit Water-types everywhere, and a club does not get to opt
-out of it.
+Most events aren't dealt to anybody. They go up on the **event board**, two at a time by
+default, and every club bids on each one — **what it would want to be paid to take it on**. It's
+a reverse auction: when the board closes the lowest bid wins, the club is paid its bid and handed
+the event to answer, and the next board goes up.
+
+- **Sealed and final.** One bid per club per event, never shown to anybody else, and it can't be
+  changed or withdrawn. When the board closes the league feed names the winner and what they were
+  paid — the losing bids stay sealed.
+- **Ties go to the club lower down the table.**
+- **Nobody bids, nobody gets it.** The event simply goes away.
+- **Every club sees its own version.** The event is the same, but it's written against your
+  squad: the knock in training lands on one of *your* starters, with *your* costs. If a Pokémon
+  it names leaves your club before the board closes — sold, traded, released — the same event is
+  written again against somebody who's still there, and that's what the winner is dealt.
+- **Some events aren't open to every club.** A template's requirements — a losing run, a squad
+  big enough, a captain — still apply, and a club that doesn't meet them sees why instead of a bid
+  box.
+- **Announcements go up too.** A regulation ruling or a leaked lineup has nothing to choose; it
+  lands on whoever was paid to take it.
+- **A board is a price on pain, so nothing on it can be free.** An event whose answers include one
+  that does nothing at all would be free money — ask for the ceiling, win, decline — so a template
+  with such a branch stays off the board until the branch is given a price. Today that's the
+  league bond, the youth prospect, the swap offer and the sponsor's target.
+
+The board runs on the clock, not on rounds: a round can close in an evening, and an auction half
+the league never saw isn't an auction. Three dials, chosen when the league is created and
+changeable by the commissioner from the Events page — **how long a board stays open**
+(`eventBoardHours`, 24), **how many events go up** (`eventBoardSize`, 2) and **the most a club may
+ask** (`eventBidMax`, ₽50,000). The ceiling is what stops a club with no rivals naming any price
+it likes. A change applies from the next board; the one on show keeps the close time clubs bid
+against. There's no scheduler: whoever opens the league after a board closes settles it, and the
+next board closes on the same beat, however late that was.
+
+Rounds no longer deal anything. A new season sweeps an open board away, bids and all — every
+offer on it names a squad that's about to be sold.
 
 ### What the app can and can't check
 
@@ -346,7 +375,8 @@ And a win is worth ₽1,000 in the beginner tier and ₽100,000 in Champion, so 
 win-rewards (`rewardWins`) or as a share of the balance (`pct` + `min`) rather than flat, or one
 figure is pocket change to one club and a season's earnings to another.
 
-Two dials in `config/economy.ts`: `eventEveryMin`/`eventEveryMax` for pacing, and `eventSeverity` for when a
+Two more dials in `config/economy.ts`: `eventEveryMin`/`eventEveryMax` for how often a club is
+checked for an event it caused, and `eventSeverity` for when a
 season tells you the deck is too harsh — it scales what an option costs and how long its
 consequences last, the two quantities that unambiguously mean "worse" when they're bigger. Value
 percentages and one-off payments are left alone, since a scaler that can't tell a gain from a
@@ -358,11 +388,15 @@ lands on your captain — and an effect can carry `spreadTo: "starters"`, which 
 on two others. Refuse your captain's transfer request and three of your six are sulking, not one.
 That's what makes choosing a captain a decision rather than a label.
 
-Some events aren't random at all. Name a Pokémon in your six and then leave it out of ten matches
-and it asks why; play the same four in all of your last ten and they burn out; make three market
-moves in a round and nobody knows where anybody is meant to be; sit bottom of the table and a
-backer nobody else would take a call from turns up. Those are drawn *ahead* of the deck — an event
-you caused beats one that was rolled — and they name the Pokémon that actually caused them.
+### Events you caused
+
+Four events never go on the board, because they're about you. Name a Pokémon in your six and then
+leave it out of ten matches and it asks why; play the same four in all of your last ten and they
+burn out; make three market moves in a round and nobody knows where anybody is meant to be; sit
+bottom of the table and a backer nobody else would take a call from turns up. Every five to ten
+matches you report — jittered, so you can't count it — the app checks whether you've set one of
+these off. Most of the time you haven't, and nothing happens. When you have, it lands on you,
+unpaid, and names the Pokémon that actually caused it.
 
 Both counts are measured from the Pokémon's own history, not the club's: a signing that arrived
 yesterday hasn't been ignored for a season, however long the club has been going.
@@ -404,15 +438,25 @@ A **listing** is a Pokémon one club has put up at a fixed price, which any othe
 take — first to sign gets it. A `TradeOffer` names the club it's aimed at and has to be accepted;
 a listing is public and needs nobody's agreement.
 
-Three rules make it a market rather than a bluff:
+Anyone can put one of their own Pokémon up, from the **Market** page. Four rules make it a market
+rather than a bluff:
 
 - **The price is frozen when the listing opens** — its market value plus whatever premium put it
   there. A board whose prices move while you read it is not a board.
-- **It runs for five full days**, on the clock rather than on rounds. A round can close in an
-  evening, and an offer half the league never saw is not an offer.
-- **It cannot be taken back.** A listing you could pull the moment somebody showed interest would
-  be a way to find out what your rivals want without ever selling them anything. Putting a
-  Pokémon up is a commitment.
+- **You choose how long it runs**, anywhere from an hour to a week, on the clock rather than on
+  rounds. A round can close in an evening, and an offer half the league never saw is not an offer.
+  An hour is a real tactic: put something up before tonight's matches and see if anyone bites.
+- **You can take your own back whenever you like.** The seller picks the window, so anyone wanting
+  to fish for interest can simply post for an hour — there is nothing left to protect by forcing a
+  manager to watch their own squad be sold out from under them.
+- **A Pokémon has one listing at a time**, and it dies with the ownership: sell it, trade it, or
+  lose it to an event, and the listing comes straight off the board rather than advertising
+  something its seller can no longer deliver.
+
+**An event's listing is the exception.** When a decision puts a Pokémon up — *let it explore its
+options* — that one runs the full five days and **cannot be withdrawn**. It outranks a listing you
+had already posted for the same Pokémon, replacing your terms with its own: putting your own price
+up is not a way to pre-empt what an event is about to do with it.
 
 Nobody comes? It's still yours, it comes off the board on its own, and your club is told. The
 sale itself is a transfer, not a trip through free agency: the Pokémon keeps its value and moves

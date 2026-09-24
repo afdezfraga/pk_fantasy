@@ -1,0 +1,46 @@
+# Publishes the league's documents to GitHub Pages: the landing page, the market sheet and the
+# draft guide. All three are generated and committed (npm run market:update), so this only copies
+# them — nothing is built here, and what's published is exactly what was reviewed in the diff.
+#
+# Only those three files go out, named one by one, so nothing else in data/ is published by accident.
+
+name: Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - data/index.html
+      - data/tiers.html
+      - data/draft-guide.html
+      - .github/workflows/pages.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# A newer push supersedes a deploy in flight, but never cancels one halfway through publishing.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Stage the pages
+        run: |
+          mkdir _site
+          cp data/index.html data/tiers.html data/draft-guide.html _site/
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4
